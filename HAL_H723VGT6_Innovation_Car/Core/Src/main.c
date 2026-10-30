@@ -18,10 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "2812LED.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "2812LED.h"
+#include "CAN.h"
+#include "DM_BLDC_Motor.h"
 
 /* USER CODE END Includes */
 
@@ -42,6 +44,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+FDCAN_HandleTypeDef hfdcan1;
+
 SPI_HandleTypeDef hspi6;
 DMA_HandleTypeDef hdma_spi6_tx;
 
@@ -55,6 +59,7 @@ static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_BDMA_Init(void);
 static void MX_SPI6_Init(void);
+static void MX_FDCAN1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -99,35 +104,33 @@ int main(void)
   MX_GPIO_Init();
   MX_BDMA_Init();
   MX_SPI6_Init();
+  MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
+	DM_CAN_Motor_Init();
+	
+	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Disable);
+	HAL_Delay(1000);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Enable);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	unsigned short brightness;
-	unsigned char color_index;
-	unsigned char colors[3][3] =
-	{
-			{78, 97, 229},
-			{236, 198, 38},
-			{38, 66, 227},
-	};
   while (1)
   {
-		 for (color_index = 0; color_index < 3; color_index++)
-    {
-        for (brightness = 0; brightness <= 255; brightness += 5)
-        {
-            WS2812_SetColor_DMA((colors[color_index][0] * brightness) / 255, (colors[color_index][1] * brightness) / 255, (colors[color_index][2] * brightness) / 255);
-            HAL_Delay(50);
-        }
-        for (brightness = 255; brightness > 0; brightness -= 5)
-        {
-            WS2812_SetColor_DMA((colors[color_index][0] * brightness) / 255, (colors[color_index][1] * brightness) / 255, (colors[color_index][2] * brightness) / 255);
-            HAL_Delay(50);
-        }
-    }
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,100.0f);
+    HAL_Delay(3000);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,200.0f);
+    HAL_Delay(3000);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,300.0f);
+    HAL_Delay(3000);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,200.0f);
+    HAL_Delay(3000);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,100.0f);
+    HAL_Delay(3000);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,10.0f);
+    HAL_Delay(3000);
+   
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -194,6 +197,65 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief FDCAN1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_FDCAN1_Init(void)
+{
+
+  /* USER CODE BEGIN FDCAN1_Init 0 */
+
+  /* USER CODE END FDCAN1_Init 0 */
+
+  /* USER CODE BEGIN FDCAN1_Init 1 */
+
+  /* USER CODE END FDCAN1_Init 1 */
+  hfdcan1.Instance = FDCAN1;
+  hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
+  hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
+  hfdcan1.Init.AutoRetransmission = DISABLE;
+  hfdcan1.Init.TransmitPause = DISABLE;
+  hfdcan1.Init.ProtocolException = DISABLE;
+  hfdcan1.Init.NominalPrescaler = 2;
+  hfdcan1.Init.NominalSyncJumpWidth = 1;
+  hfdcan1.Init.NominalTimeSeg1 = 8;
+  hfdcan1.Init.NominalTimeSeg2 = 3;
+  hfdcan1.Init.DataPrescaler = 1;
+  hfdcan1.Init.DataSyncJumpWidth = 1;
+  hfdcan1.Init.DataTimeSeg1 = 1;
+  hfdcan1.Init.DataTimeSeg2 = 1;
+  hfdcan1.Init.MessageRAMOffset = 0;
+  hfdcan1.Init.StdFiltersNbr = 1;
+  hfdcan1.Init.ExtFiltersNbr = 0;
+  hfdcan1.Init.RxFifo0ElmtsNbr = 8;
+  hfdcan1.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.RxFifo1ElmtsNbr = 0;
+  hfdcan1.Init.RxFifo1ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.RxBuffersNbr = 0;
+  hfdcan1.Init.RxBufferSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.TxEventsNbr = 0;
+  hfdcan1.Init.TxBuffersNbr = 0;
+  hfdcan1.Init.TxFifoQueueElmtsNbr = 8;
+  hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+  hfdcan1.Init.TxElmtSize = FDCAN_DATA_BYTES_8;
+  if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN FDCAN1_Init 2 */
+	//过滤器配置
+	HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT, FDCAN_REJECT);
+  //启动FDCAN外设
+	HAL_FDCAN_Start(&hfdcan1);
+	//开启中断接收
+  HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+
+  /* USER CODE END FDCAN1_Init 2 */
+
+}
+
+/**
   * @brief SPI6 Initialization Function
   * @param None
   * @retval None
@@ -251,9 +313,6 @@ static void MX_BDMA_Init(void)
   __HAL_RCC_BDMA_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMAMUX2_OVR_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
   /* BDMA_Channel0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
@@ -274,6 +333,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

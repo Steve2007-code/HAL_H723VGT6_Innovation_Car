@@ -26,6 +26,7 @@ hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mdma.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_exti.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_cortex.h
+hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_fdcan.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_flash.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_flash_ex.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_hsem.h
@@ -35,5 +36,7 @@ hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h
-hal_h723vgt6_template\main.o: .\USER\inc\2812LED.h
-hal_h723vgt6_template\main.o: .\USER\inc\DMA.h
+hal_h723vgt6_template\main.o: ./USER/inc/2812LED.h
+hal_h723vgt6_template\main.o: ./USER/inc/DMA.h
+hal_h723vgt6_template\main.o: ./USER/inc/CAN.h
+hal_h723vgt6_template\main.o: ./USER/inc/DM_BLDC_Motor.h
