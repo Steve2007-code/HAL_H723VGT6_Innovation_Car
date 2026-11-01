@@ -35,3 +35,5 @@ hal_h723vgt6_template\stm32h7xx_hal_spi.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/s
 hal_h723vgt6_template\stm32h7xx_hal_spi.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h
 hal_h723vgt6_template\stm32h7xx_hal_spi.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h
 hal_h723vgt6_template\stm32h7xx_hal_spi.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h
+hal_h723vgt6_template\stm32h7xx_hal_spi.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h
+hal_h723vgt6_template\stm32h7xx_hal_spi.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h

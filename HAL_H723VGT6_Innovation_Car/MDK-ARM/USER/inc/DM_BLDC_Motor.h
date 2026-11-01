@@ -25,8 +25,8 @@ typedef struct
 		float Torque_min;								/*转矩_min*/
 		
 		uint8_t UpData[8];							/*电机回传数据原始数据*/
-		uint16_t BackID;
-		uint16_t ID_or_ERR;							/*电机回传ID*/
+		uint16_t BackID;								/*电机回传帧头ID*/
+		uint16_t ID_or_ERR;							/*电机回传第一位ID or 错误数据*/
 		float POS;											/*电机位置信息*/
 		float VEL;											/*电机速度信息*/
 		float T;												/*电机扭矩信息*/

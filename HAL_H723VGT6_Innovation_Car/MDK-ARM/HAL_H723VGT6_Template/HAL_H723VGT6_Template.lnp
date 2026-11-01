@@ -24,12 +24,15 @@
 "hal_h723vgt6_template\stm32h7xx_hal_spi_ex.o"
 "hal_h723vgt6_template\stm32h7xx_hal_tim.o"
 "hal_h723vgt6_template\stm32h7xx_hal_tim_ex.o"
+"hal_h723vgt6_template\stm32h7xx_hal_uart.o"
+"hal_h723vgt6_template\stm32h7xx_hal_uart_ex.o"
 "hal_h723vgt6_template\system_stm32h7xx.o"
-"hal_h723vgt6_template\dm_bldc_motor.o"
 "hal_h723vgt6_template\2812led.o"
 "hal_h723vgt6_template\dma.o"
 "hal_h723vgt6_template\can.o"
---strict --scatter "HAL_H723VGT6_Template\HAL_H723VGT6_Template.sct"
+"hal_h723vgt6_template\dm_bldc_motor.o"
+"hal_h723vgt6_template\uart_data.o"
+--library_type=microlib --strict --scatter "HAL_H723VGT6_Template\HAL_H723VGT6_Template.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "HAL_H723VGT6_Template.map" -o HAL_H723VGT6_Template\HAL_H723VGT6_Template.axf

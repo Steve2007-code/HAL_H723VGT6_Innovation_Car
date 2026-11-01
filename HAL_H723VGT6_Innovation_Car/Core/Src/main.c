@@ -21,9 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stdio.h"
 #include "2812LED.h"
 #include "CAN.h"
 #include "DM_BLDC_Motor.h"
+#include "UART_Data.h"
 
 /* USER CODE END Includes */
 
@@ -49,6 +51,9 @@ FDCAN_HandleTypeDef hfdcan1;
 SPI_HandleTypeDef hspi6;
 DMA_HandleTypeDef hdma_spi6_tx;
 
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -58,8 +63,10 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_BDMA_Init(void);
+static void MX_DMA_Init(void);
 static void MX_SPI6_Init(void);
 static void MX_FDCAN1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -103,10 +110,13 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_BDMA_Init();
+  MX_DMA_Init();
   MX_SPI6_Init();
   MX_FDCAN1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 	DM_CAN_Motor_Init();
+	UART_Init();
 	
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Disable);
 	HAL_Delay(1000);
@@ -118,18 +128,32 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,100.0f);
-    HAL_Delay(3000);
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,200.0f);
-    HAL_Delay(3000);
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,300.0f);
-    HAL_Delay(3000);
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,200.0f);
-    HAL_Delay(3000);
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,100.0f);
-    HAL_Delay(3000);
 		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,10.0f);
-    HAL_Delay(3000);
+		HAL_Delay(1000);
+		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
+															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
+																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
+		
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,0.0f);
+		HAL_Delay(1000);
+		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
+															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
+																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
+		
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,10.0f);
+		HAL_Delay(1000);
+		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
+															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
+																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
+		
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,0.0f);
+		HAL_Delay(1000);
+		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
+															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
+																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
+		
+		
+//    HAL_Delay(50);
    
     /* USER CODE END WHILE */
 
@@ -304,6 +328,54 @@ static void MX_SPI6_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_BDMA_Init(void)
@@ -316,6 +388,22 @@ static void MX_BDMA_Init(void)
   /* BDMA_Channel0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
 
 }
 

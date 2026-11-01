@@ -37,3 +37,7 @@ hal_h723vgt6_template\can.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_p
 hal_h723vgt6_template\can.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h
 hal_h723vgt6_template\can.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h
 hal_h723vgt6_template\can.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h
+hal_h723vgt6_template\can.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h
+hal_h723vgt6_template\can.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h
+hal_h723vgt6_template\can.o: ./USER/inc/DM_BLDC_Motor.h
+hal_h723vgt6_template\can.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h

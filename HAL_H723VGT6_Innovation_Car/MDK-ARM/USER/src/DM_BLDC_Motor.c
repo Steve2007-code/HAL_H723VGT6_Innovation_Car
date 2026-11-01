@@ -117,6 +117,14 @@ static uint16_t DM_Motor_12_Data_Frame(float x, float xmin, float xmax)
 	return value;
 }
 
+
+static float DM_Raw_To_Value(uint16_t raw, float xmin, float xmax, uint8_t bits)
+{
+    float full = (float)(((uint32_t)1u << bits) - 1u);
+    if ((float)raw > full) raw = (uint16_t)full;
+    return (float)raw / full * (xmax - xmin) + xmin;
+}
+
 /*
   * @brief  CAN发送电机旋转数据帧(弧度制)(定位置控制)
   * @param  id 电机id，可以是 DM_Motor_4310_StructData 或 DM_Motor_4340_StructData
@@ -250,35 +258,52 @@ HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, floa
   * @note		无
   * @retval 无
   */
-void DM_IMU_Update4310(DM_Motor_Data *pData)
+void DM_IMU_Update4310P(DM_Motor_Data *pData)
 {
-	pData ->ID_or_ERR = pData ->UpData[0];
+//	pData ->ID_or_ERR = pData ->UpData[0];//储存电机回传的ID or 错误信息
+//  pData ->POS/*位置*/ = DM_Motor_16_Data_Frame(((uint16_t)pData ->UpData[1] << 8) | pData ->UpData[2],
+//                                  pData->Position_min, pData->Position_max);
+//  pData ->VEL/*速度*/ = DM_Motor_16_Data_Frame(((uint16_t)pData ->UpData[3] << 4) | ((uint16_t)pData ->UpData[4] >> 4),
+//                                  pData->Velocity_min, pData->Velocity_max);
+//  pData ->T/*扭矩*/ = DM_Motor_16_Data_Frame((((uint16_t)pData ->UpData[4] & 0x0FU) << 8) | pData ->UpData[5],
+//                                  pData->Torque_min, pData->Torque_max);
+//  pData ->T_MOS/*M温度*/  = (float)(int8_t)pData ->UpData[6];
+//  pData ->TRotorl/*线温度*/ = (float)(int8_t)pData ->UpData[7];
+	
+	pData->ID_or_ERR = pData->UpData[0];
+	pData->POS      = DM_Raw_To_Value(((uint16_t)pData->UpData[1] << 8) | pData->UpData[2],
+																		pData->Position_min, pData->Position_max, 16);
+	pData->VEL      = DM_Raw_To_Value(((uint16_t)pData->UpData[3] << 4) | ((uint16_t)pData->UpData[4] >> 4),
+																		pData->Velocity_min, pData->Velocity_max, 12);
+	pData->T        = DM_Raw_To_Value((((uint16_t)pData->UpData[4] & 0x0FU) << 8) | pData->UpData[5],
+																		pData->Torque_min, pData->Torque_max, 12);
+	pData->T_MOS    = (float)(int8_t)pData->UpData[6];
+	pData->TRotorl  = (float)(int8_t)pData->UpData[7];   /* 温度这两行本来就是对的 */
 }
 
 /**
-  * @brief  解收电机数据解析分配函数
+  * @brief  解收电机数据之后下发到对应的解析函数
   * @param  *pData CAN接收到的数据
   * @note		无
   * @retval 无
   */
 void Motor_UpdateData(uint8_t* pData, uint8_t Back_ID)
 {
-	if(Back_ID == DM_Motor_4310_ID)
+	if(Back_ID == DM_Motor_4310P_BackID)
 	{
 		switch(pData[0])
 		{
 			case DM_Motor_4310_ID:
 				memcpy(DM_Motor_4310_StructData.UpData, pData, 8);
-				//DM_IMU_UpdateAccel(&DM_Motor_IMU_StructData);
 				break;
-			case DM_Motor_4310P_ID:
+			case DM_Motor_4310P_BackID:
 				memcpy(DM_Motor_4310P_StructData.UpData, pData, 8);
-				//DM_IMU_UpdateAccel(&DM_Motor_IMU_StructData);
+				DM_IMU_Update4310P(&DM_Motor_4310P_StructData);
 				break;
 		}
 	}
-	else if(Back_ID == DM_Motor_4310P_ID)
+	else if(Back_ID == 0xFF)
 	{
-		;
+    ;
 	}
 }

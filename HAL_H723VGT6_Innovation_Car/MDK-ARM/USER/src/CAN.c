@@ -1,4 +1,6 @@
 #include "CAN.h"
+#include "DM_BLDC_Motor.h"
+#include "stdio.h"
 
 /**
   * @brief  CAN发送一帧报文
@@ -45,6 +47,8 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     // 读出收到的报文
     HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData);
     
+		Motor_UpdateData(rxData,rxHeader.Identifier);
+		
     // rxHeader.Identifier 是CAN ID，rxData[0]~rxData[7]是8字节数据
   }
 }
