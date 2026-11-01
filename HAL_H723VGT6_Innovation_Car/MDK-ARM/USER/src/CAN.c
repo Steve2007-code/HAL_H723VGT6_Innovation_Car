@@ -45,8 +45,13 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     FDCAN_RxHeaderTypeDef rxHeader;
     uint8_t rxData[8];
     // 读出收到的报文
-    HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData);
-    
+//    HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData);
+		while (HAL_FDCAN_GetRxFifoFillLevel(hfdcan, FDCAN_RX_FIFO0) > 0)
+	{
+		if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData) == HAL_OK)
+		Motor_UpdateData(rxData, rxHeader.Identifier);
+	}
+    //把读出来的电机回传数据放进解析函数里面解析回传数据
 		Motor_UpdateData(rxData,rxHeader.Identifier);
 		
     // rxHeader.Identifier 是CAN ID，rxData[0]~rxData[7]是8字节数据

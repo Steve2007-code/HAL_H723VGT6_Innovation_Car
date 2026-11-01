@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "DM_BLDC_Motor.h"
 #include "can.h"
 
@@ -9,6 +10,8 @@ uint8_t DM_Mototr_Disable[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
 /*达妙电机MIT模式下的结构体定义*/
 DM_Motor_Data DM_Motor_4310_StructData;//4310参数定义结构体
 DM_Motor_Data DM_Motor_4310P_StructData;//4340参数定义结构体
+DM_Motor_Data DM_Motor_4310_Next_StructData;//4310next参数定义结构体
+DM_Motor_Data DM_Motor_4310P_Next_StructData;//4340next参数定义结构体
 
 /*
   * @brief  DM电机结构体初始化
@@ -58,6 +61,47 @@ void DM_CAN_Motor_Init(void)
 	DM_Motor_4310P_StructData.Velocity_min = -30;
 	
 	DM_Motor_4310P_StructData.BackID = DM_Motor_4310P_BackID;
+	
+	/*4310_Next数据初始化*/
+	DM_Motor_4310_Next_StructData.hcan = &hfdcan1;
+	DM_Motor_4310_Next_StructData.ID = DM_Motor_4310_Next_ID;
+	DM_Motor_4310_Next_StructData.Kd = 2;
+	DM_Motor_4310_Next_StructData.Kd_max = 5;
+	DM_Motor_4310_Next_StructData.Kd_min = 0;
+	DM_Motor_4310_Next_StructData.Kp = 20;
+	DM_Motor_4310_Next_StructData.Kp_max = 500;
+	DM_Motor_4310_Next_StructData.Kp_min = 0;
+	DM_Motor_4310_Next_StructData.Position = 0;
+	DM_Motor_4310_Next_StructData.Position_max = 12.5;
+	DM_Motor_4310_Next_StructData.Position_min = -12.5;
+	DM_Motor_4310_Next_StructData.Torque = 0;
+	DM_Motor_4310_Next_StructData.Torque_max = 10;
+	DM_Motor_4310_Next_StructData.Torque_min = -10;
+	DM_Motor_4310_Next_StructData.Velocity = 0;
+	DM_Motor_4310_Next_StructData.Velocity_max = 30;
+	DM_Motor_4310_Next_StructData.Velocity_min = -30;
+	
+	DM_Motor_4310_Next_StructData.BackID = DM_Motor_4310_Next_BackID;
+	/*4310P_Next数据初始化*/
+	DM_Motor_4310P_Next_StructData.hcan = &hfdcan1;
+	DM_Motor_4310P_Next_StructData.ID = DM_Motor_4310P_Next_ID;
+	DM_Motor_4310P_Next_StructData.Kd = 5;
+	DM_Motor_4310P_Next_StructData.Kd_max = 5;
+	DM_Motor_4310P_Next_StructData.Kd_min = 0;
+	DM_Motor_4310P_Next_StructData.Kp = 20;
+	DM_Motor_4310P_Next_StructData.Kp_max = 500;
+	DM_Motor_4310P_Next_StructData.Kp_min = 0;
+	DM_Motor_4310P_Next_StructData.Position = 0;
+	DM_Motor_4310P_Next_StructData.Position_max = 12.5;
+	DM_Motor_4310P_Next_StructData.Position_min = -12.5;
+	DM_Motor_4310P_Next_StructData.Torque = 0;
+	DM_Motor_4310P_Next_StructData.Torque_max = 10;
+	DM_Motor_4310P_Next_StructData.Torque_min = -10;
+	DM_Motor_4310P_Next_StructData.Velocity = 0;
+	DM_Motor_4310P_Next_StructData.Velocity_max = 30;
+	DM_Motor_4310P_Next_StructData.Velocity_min = -30;
+	
+	DM_Motor_4310P_Next_StructData.BackID = DM_Motor_4310P_Next_BackID;
 }
 
 /*
@@ -260,16 +304,6 @@ HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, floa
   */
 void DM_IMU_Update4310P(DM_Motor_Data *pData)
 {
-//	pData ->ID_or_ERR = pData ->UpData[0];//储存电机回传的ID or 错误信息
-//  pData ->POS/*位置*/ = DM_Motor_16_Data_Frame(((uint16_t)pData ->UpData[1] << 8) | pData ->UpData[2],
-//                                  pData->Position_min, pData->Position_max);
-//  pData ->VEL/*速度*/ = DM_Motor_16_Data_Frame(((uint16_t)pData ->UpData[3] << 4) | ((uint16_t)pData ->UpData[4] >> 4),
-//                                  pData->Velocity_min, pData->Velocity_max);
-//  pData ->T/*扭矩*/ = DM_Motor_16_Data_Frame((((uint16_t)pData ->UpData[4] & 0x0FU) << 8) | pData ->UpData[5],
-//                                  pData->Torque_min, pData->Torque_max);
-//  pData ->T_MOS/*M温度*/  = (float)(int8_t)pData ->UpData[6];
-//  pData ->TRotorl/*线温度*/ = (float)(int8_t)pData ->UpData[7];
-	
 	pData->ID_or_ERR = pData->UpData[0];
 	pData->POS      = DM_Raw_To_Value(((uint16_t)pData->UpData[1] << 8) | pData->UpData[2],
 																		pData->Position_min, pData->Position_max, 16);
@@ -278,7 +312,54 @@ void DM_IMU_Update4310P(DM_Motor_Data *pData)
 	pData->T        = DM_Raw_To_Value((((uint16_t)pData->UpData[4] & 0x0FU) << 8) | pData->UpData[5],
 																		pData->Torque_min, pData->Torque_max, 12);
 	pData->T_MOS    = (float)(int8_t)pData->UpData[6];
-	pData->TRotorl  = (float)(int8_t)pData->UpData[7];   /* 温度这两行本来就是对的 */
+	pData->TRotorl  = (float)(int8_t)pData->UpData[7];
+}
+
+/**
+  * @brief  printf输出电机数据
+  * @param  * pData 要输出的电机结构体 值可以是 DM_Motor_4310P_StructData DM_Motor_4310_StructData
+	* @param															DM_Motor_4310_Next_StructData DM_Motor_4310P_Next_StructData
+  * @note		无
+  * @retval 无
+  */
+void Motor_Printf_UpdateData(DM_Motor_Data* pData)
+{
+	printf("ID:%#X,位置:%f,速度:%f,扭矩:%f,MOS温度:%f,线圈温度:%f\r\n",
+																			pData ->ID_or_ERR,pData ->POS
+																			,pData ->VEL,pData ->T,
+																			pData ->T_MOS,pData ->TRotorl);
+}
+
+/**
+  * @brief  电机回传一键测试函数
+  * @param  无
+  * @note		无
+  * @retval 无
+  */
+void Motor_BackerData_Text(void)
+{
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310_StructData,10.0f);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,10.0f);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310_Next_StructData,10.0f);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_Next_StructData,10.0f);
+		HAL_Delay(1);
+		Motor_Printf_UpdateData(&DM_Motor_4310_StructData);
+		Motor_Printf_UpdateData(&DM_Motor_4310P_StructData);
+		Motor_Printf_UpdateData(&DM_Motor_4310_Next_StructData);
+		Motor_Printf_UpdateData(&DM_Motor_4310P_Next_StructData);
+		printf("---------------------------------\r\n");
+		HAL_Delay(1000);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310_StructData,0.0f);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,0.0f);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310_Next_StructData,0.0f);
+		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_Next_StructData,0.0f);
+		HAL_Delay(1);
+		Motor_Printf_UpdateData(&DM_Motor_4310_StructData);
+		Motor_Printf_UpdateData(&DM_Motor_4310P_StructData);
+		Motor_Printf_UpdateData(&DM_Motor_4310_Next_StructData);
+		Motor_Printf_UpdateData(&DM_Motor_4310P_Next_StructData);
+		printf("---------------------------------\r\n");
+		HAL_Delay(1000);
 }
 
 /**
@@ -289,20 +370,29 @@ void DM_IMU_Update4310P(DM_Motor_Data *pData)
   */
 void Motor_UpdateData(uint8_t* pData, uint8_t Back_ID)
 {
-	if(Back_ID == DM_Motor_4310P_BackID)
+	//电机回传数据解析分配函数
+
+	switch(pData[0])
 	{
-		switch(pData[0])
-		{
-			case DM_Motor_4310_ID:
-				memcpy(DM_Motor_4310_StructData.UpData, pData, 8);
-				break;
-			case DM_Motor_4310P_BackID:
-				memcpy(DM_Motor_4310P_StructData.UpData, pData, 8);
-				DM_IMU_Update4310P(&DM_Motor_4310P_StructData);
-				break;
-		}
+		case DM_Motor_4310_BackID:
+			memcpy(DM_Motor_4310_StructData.UpData, pData, 8);
+			DM_IMU_Update4310P(&DM_Motor_4310_StructData);
+			break;
+		case DM_Motor_4310P_BackID:
+			memcpy(DM_Motor_4310P_StructData.UpData, pData, 8);
+			DM_IMU_Update4310P(&DM_Motor_4310P_StructData);
+			break;
+		case DM_Motor_4310_Next_BackID:
+			memcpy(DM_Motor_4310_Next_StructData.UpData, pData, 8);
+			DM_IMU_Update4310P(&DM_Motor_4310_Next_StructData);
+			break;
+		case DM_Motor_4310P_Next_BackID:
+			memcpy(DM_Motor_4310P_Next_StructData.UpData, pData, 8);
+			DM_IMU_Update4310P(&DM_Motor_4310P_Next_StructData);
+			break;
 	}
-	else if(Back_ID == 0xFF)
+	//IMU回传数据解析分配函数
+	if(Back_ID == 0xFF)
 	{
     ;
 	}

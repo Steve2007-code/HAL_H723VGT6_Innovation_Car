@@ -1,5 +1,6 @@
 hal_h723vgt6_template\dm_bldc_motor.o: USER\src\DM_BLDC_Motor.c
 hal_h723vgt6_template\dm_bldc_motor.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+hal_h723vgt6_template\dm_bldc_motor.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 hal_h723vgt6_template\dm_bldc_motor.o: ./USER/inc/DM_BLDC_Motor.h
 hal_h723vgt6_template\dm_bldc_motor.o: ../Core/Inc/main.h
 hal_h723vgt6_template\dm_bldc_motor.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h

@@ -119,8 +119,14 @@ int main(void)
 	UART_Init();
 	
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Disable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Disable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Disable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Disable);
 	HAL_Delay(1000);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Enable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Enable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Enable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Enable);
 
   /* USER CODE END 2 */
 
@@ -128,32 +134,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,10.0f);
-		HAL_Delay(1000);
-		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
-															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
-																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
+		Motor_BackerData_Text();
 		
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,0.0f);
-		HAL_Delay(1000);
-		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
-															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
-																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
-		
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,10.0f);
-		HAL_Delay(1000);
-		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
-															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
-																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
-		
-		DM_CAN_Motor_Rotation_deg(&DM_Motor_4310P_StructData,0.0f);
-		HAL_Delay(1000);
-		printf("%d,%f,%f,%f,%f,%f\r\n",DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
-															 ,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
-																DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
-		
-		
-//    HAL_Delay(50);
    
     /* USER CODE END WHILE */
 

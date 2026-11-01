@@ -25,8 +25,8 @@ typedef struct
 		float Torque_min;								/*转矩_min*/
 		
 		uint8_t UpData[8];							/*电机回传数据原始数据*/
-		uint16_t BackID;								/*电机回传帧头ID*/
-		uint16_t ID_or_ERR;							/*电机回传第一位ID or 错误数据*/
+		uint8_t BackID;								/*电机回传帧头ID*/
+		uint8_t ID_or_ERR;							/*电机回传第一位ID or 错误数据*/
 		float POS;											/*电机位置信息*/
 		float VEL;											/*电机速度信息*/
 		float T;												/*电机扭矩信息*/
@@ -38,13 +38,19 @@ typedef struct
 /*达妙电机结构体声明*/
 extern DM_Motor_Data DM_Motor_4310P_StructData;
 extern DM_Motor_Data DM_Motor_4310_StructData;
+extern DM_Motor_Data DM_Motor_4310_Next_StructData;//4310next参数定义结构体
+extern DM_Motor_Data DM_Motor_4310P_Next_StructData;//4340next参数定义结构体
 
 /*电机ID*/
-#define DM_Motor_4310_ID 0x01
+#define DM_Motor_4310P_Next_ID 0x01
 #define DM_Motor_4310P_ID 0x02
+#define DM_Motor_4310_ID 0x03
+#define DM_Motor_4310_Next_ID 0x04
 /*电机回传ID*/
-#define DM_Motor_4310_BackID 0x11
+#define DM_Motor_4310P_Next_BackID 0x11
 #define DM_Motor_4310P_BackID 0x12
+#define DM_Motor_4310_BackID 0x13
+#define DM_Motor_4310_Next_BackID 0x14
 
 /*CAN数据帧声明*/
 extern uint8_t DM_Mototr_Enable[8];
@@ -73,5 +79,9 @@ HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, floa
 
 /*解收电机数据解析分配函数*/
 void Motor_UpdateData(uint8_t* pData, uint8_t Back_ID);
+/*输出电机数据*/
+void Motor_Printf_UpdateData(DM_Motor_Data* pData);
+/*电机回传一键测试函数*/
+void Motor_BackerData_Text(void);
 
 #endif

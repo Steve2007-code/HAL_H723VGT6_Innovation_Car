@@ -1,7 +1,7 @@
 Dependencies for Project 'HAL_H723VGT6_Template', Target 'HAL_H723VGT6_Template': (DO NOT MODIFY !)
 CompilerVersion: 5060960::V5.06 update 7 (build 960)::ARMCC
 F (startup_stm32h723xx.s)(0x6AE59FD3)(--cpu Cortex-M7.fp.dp -g --apcs=interwork --pd "__MICROLIB SETA 1"-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include--pd "__UVISION_VERSION SETA 539" --pd "_RTE_ SETA 1" --pd "STM32H723xx SETA 1" --pd "_RTE_ SETA 1"--list startup_stm32h723xx.lst --xref -o hal_h723vgt6_template\startup_stm32h723xx.o --depend hal_h723vgt6_template\startup_stm32h723xx.d)
-F (../Core/Src/main.c)(0x6AE6B7CC)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\main.o --omf_browse hal_h723vgt6_template\main.crf --depend hal_h723vgt6_template\main.d)
+F (../Core/Src/main.c)(0x6AE7247B)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\main.o --omf_browse hal_h723vgt6_template\main.crf --depend hal_h723vgt6_template\main.d)
 I (../Core/Inc/main.h)(0x6AE59FD1)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h)(0x6AE2009B)
 I (../Core/Inc/stm32h7xx_hal_conf.h)(0x6AE59FD1)
@@ -44,7 +44,7 @@ I (D:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x60252374)
 I (./USER/inc/2812LED.h)(0x6AE486D5)
 I (./USER/inc/DMA.h)(0x6AE486D5)
 I (./USER/inc/CAN.h)(0x6AE486D5)
-I (./USER/inc/DM_BLDC_Motor.h)(0x6AE69315)
+I (./USER/inc/DM_BLDC_Motor.h)(0x6AE7247B)
 I (./USER/inc/UART_Data.h)(0x6AE5A8B4)
 I (D:\Keil_v5\ARM\ARMCC\include\stdarg.h)(0x60252376)
 F (../Core/Src/stm32h7xx_it.c)(0x6AE59FD0)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\stm32h7xx_it.o --omf_browse hal_h723vgt6_template\stm32h7xx_it.crf --depend hal_h723vgt6_template\stm32h7xx_it.d)
@@ -1041,7 +1041,7 @@ I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h)(0x6AE2009B)
 F (.\USER\inc\2812LED.h)(0x6AE486D5)()
 F (.\USER\inc\DMA.h)(0x6AE486D5)()
 F (.\USER\inc\CAN.h)(0x6AE486D5)()
-F (.\USER\inc\DM_BLDC_Motor.h)(0x6AE69315)()
+F (.\USER\inc\DM_BLDC_Motor.h)(0x6AE7247B)()
 F (.\USER\inc\UART_Data.h)(0x6AE5A8B4)()
 F (.\USER\src\2812LED.c)(0x6AE486D5)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\2812led.o --omf_browse hal_h723vgt6_template\2812led.crf --depend hal_h723vgt6_template\2812led.d)
 I (./USER/inc/2812LED.h)(0x6AE486D5)
@@ -1125,7 +1125,7 @@ I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h)(0x6AE2009B)
 I (./USER/inc/2812LED.h)(0x6AE486D5)
-F (.\USER\src\CAN.c)(0x6AE6B5FC)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\can.o --omf_browse hal_h723vgt6_template\can.crf --depend hal_h723vgt6_template\can.d)
+F (.\USER\src\CAN.c)(0x6AE6DB9E)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\can.o --omf_browse hal_h723vgt6_template\can.crf --depend hal_h723vgt6_template\can.d)
 I (./USER/inc/CAN.h)(0x6AE486D5)
 I (../Core/Inc/main.h)(0x6AE59FD1)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h)(0x6AE2009B)
@@ -1165,11 +1165,12 @@ I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h)(0x6AE2009B)
-I (./USER/inc/DM_BLDC_Motor.h)(0x6AE69315)
+I (./USER/inc/DM_BLDC_Motor.h)(0x6AE7247B)
 I (D:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x60252374)
-F (.\USER\src\DM_BLDC_Motor.c)(0x6AE6BA1B)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\dm_bldc_motor.o --omf_browse hal_h723vgt6_template\dm_bldc_motor.crf --depend hal_h723vgt6_template\dm_bldc_motor.d)
+F (.\USER\src\DM_BLDC_Motor.c)(0x6AE7247B)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\dm_bldc_motor.o --omf_browse hal_h723vgt6_template\dm_bldc_motor.crf --depend hal_h723vgt6_template\dm_bldc_motor.d)
 I (D:\Keil_v5\ARM\ARMCC\include\string.h)(0x6025237E)
-I (./USER/inc/DM_BLDC_Motor.h)(0x6AE69315)
+I (D:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x60252374)
+I (./USER/inc/DM_BLDC_Motor.h)(0x6AE7247B)
 I (../Core/Inc/main.h)(0x6AE59FD1)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h)(0x6AE2009B)
 I (../Core/Inc/stm32h7xx_hal_conf.h)(0x6AE59FD1)
@@ -1209,7 +1210,7 @@ I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h)(0x6AE2009B)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h)(0x6AE2009B)
 I (./USER/inc/can.h)(0x6AE486D5)
-F (.\USER\src\UART_Data.c)(0x6AE5A8B4)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\uart_data.o --omf_browse hal_h723vgt6_template\uart_data.crf --depend hal_h723vgt6_template\uart_data.d)
+F (.\USER\src\UART_Data.c)(0x6AE6C08C)(--c99 --gnu -c --cpu Cortex-M7.fp.dp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc -I ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I ../Drivers/CMSIS/Include -I ./USER/inc-I.\RTE\_HAL_H723VGT6_Template-ID:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32H723xx -D_RTE_ -DUSE_PWR_LDO_SUPPLY -DUSE_HAL_DRIVER -DSTM32H723xx-o hal_h723vgt6_template\uart_data.o --omf_browse hal_h723vgt6_template\uart_data.crf --depend hal_h723vgt6_template\uart_data.d)
 I (./USER/inc/UART_Data.h)(0x6AE5A8B4)
 I (../Core/Inc/main.h)(0x6AE59FD1)
 I (../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h)(0x6AE2009B)
