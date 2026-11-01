@@ -37,6 +37,8 @@ hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_p
 hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h
 hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h
 hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h
+hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h
+hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h
 hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h
 hal_h723vgt6_template\dma.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h
 hal_h723vgt6_template\dma.o: ./USER/inc/2812LED.h

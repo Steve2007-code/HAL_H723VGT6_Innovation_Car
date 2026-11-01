@@ -36,12 +36,15 @@ hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h
+hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h
+hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h
 hal_h723vgt6_template\main.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h
 hal_h723vgt6_template\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 hal_h723vgt6_template\main.o: ./USER/inc/2812LED.h
 hal_h723vgt6_template\main.o: ./USER/inc/DMA.h
 hal_h723vgt6_template\main.o: ./USER/inc/CAN.h
+hal_h723vgt6_template\main.o: ./USER/inc/Time.h
 hal_h723vgt6_template\main.o: ./USER/inc/DM_BLDC_Motor.h
 hal_h723vgt6_template\main.o: ./USER/inc/UART_Data.h
 hal_h723vgt6_template\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h

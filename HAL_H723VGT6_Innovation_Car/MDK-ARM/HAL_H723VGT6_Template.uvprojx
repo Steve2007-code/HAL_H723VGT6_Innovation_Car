@@ -81,7 +81,7 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>0</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name></UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
@@ -824,6 +824,11 @@
               <FileType>5</FileType>
               <FilePath>.\USER\inc\UART_Data.h</FilePath>
             </File>
+            <File>
+              <FileName>Time.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\Time.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -853,6 +858,11 @@
               <FileName>UART_Data.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\src\UART_Data.c</FilePath>
+            </File>
+            <File>
+              <FileName>Time.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\Time.c</FilePath>
             </File>
           </Files>
         </Group>

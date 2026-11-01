@@ -32,6 +32,7 @@
 "hal_h723vgt6_template\can.o"
 "hal_h723vgt6_template\dm_bldc_motor.o"
 "hal_h723vgt6_template\uart_data.o"
+"hal_h723vgt6_template\time.o"
 --library_type=microlib --strict --scatter "HAL_H723VGT6_Template\HAL_H723VGT6_Template.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
