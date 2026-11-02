@@ -31,8 +31,8 @@ void DM_CAN_Motor_Init(void)
 	DM_Motor_4310_StructData.Kp_max = 500;
 	DM_Motor_4310_StructData.Kp_min = 0;
 	DM_Motor_4310_StructData.Position = 0;
-	DM_Motor_4310_StructData.Position_max = 12.5;
-	DM_Motor_4310_StructData.Position_min = -12.5;
+	DM_Motor_4310_StructData.Position_max = 300;
+	DM_Motor_4310_StructData.Position_min = -300;
 	DM_Motor_4310_StructData.Torque = 0;
 	DM_Motor_4310_StructData.Torque_max = 10;
 	DM_Motor_4310_StructData.Torque_min = -10;
@@ -44,15 +44,15 @@ void DM_CAN_Motor_Init(void)
 	/*4310P数据初始化*/
 	DM_Motor_4310P_StructData.hcan = &hfdcan1;
 	DM_Motor_4310P_StructData.ID = DM_Motor_4310P_ID;
-	DM_Motor_4310P_StructData.Kd = 5;
+	DM_Motor_4310P_StructData.Kd = 2;
 	DM_Motor_4310P_StructData.Kd_max = 5;
 	DM_Motor_4310P_StructData.Kd_min = 0;
 	DM_Motor_4310P_StructData.Kp = 20;
 	DM_Motor_4310P_StructData.Kp_max = 500;
 	DM_Motor_4310P_StructData.Kp_min = 0;
 	DM_Motor_4310P_StructData.Position = 0;
-	DM_Motor_4310P_StructData.Position_max = 12.5;
-	DM_Motor_4310P_StructData.Position_min = -12.5;
+	DM_Motor_4310P_StructData.Position_max = 300;
+	DM_Motor_4310P_StructData.Position_min = -300;
 	DM_Motor_4310P_StructData.Torque = 0;
 	DM_Motor_4310P_StructData.Torque_max = 10;
 	DM_Motor_4310P_StructData.Torque_min = -10;
@@ -72,8 +72,8 @@ void DM_CAN_Motor_Init(void)
 	DM_Motor_4310_Next_StructData.Kp_max = 500;
 	DM_Motor_4310_Next_StructData.Kp_min = 0;
 	DM_Motor_4310_Next_StructData.Position = 0;
-	DM_Motor_4310_Next_StructData.Position_max = 12.5;
-	DM_Motor_4310_Next_StructData.Position_min = -12.5;
+	DM_Motor_4310_Next_StructData.Position_max = 300;
+	DM_Motor_4310_Next_StructData.Position_min = -300;
 	DM_Motor_4310_Next_StructData.Torque = 0;
 	DM_Motor_4310_Next_StructData.Torque_max = 10;
 	DM_Motor_4310_Next_StructData.Torque_min = -10;
@@ -85,15 +85,15 @@ void DM_CAN_Motor_Init(void)
 	/*4310P_Next数据初始化*/
 	DM_Motor_4310P_Next_StructData.hcan = &hfdcan1;
 	DM_Motor_4310P_Next_StructData.ID = DM_Motor_4310P_Next_ID;
-	DM_Motor_4310P_Next_StructData.Kd = 5;
+	DM_Motor_4310P_Next_StructData.Kd = 2;
 	DM_Motor_4310P_Next_StructData.Kd_max = 5;
 	DM_Motor_4310P_Next_StructData.Kd_min = 0;
 	DM_Motor_4310P_Next_StructData.Kp = 20;
 	DM_Motor_4310P_Next_StructData.Kp_max = 500;
 	DM_Motor_4310P_Next_StructData.Kp_min = 0;
 	DM_Motor_4310P_Next_StructData.Position = 0;
-	DM_Motor_4310P_Next_StructData.Position_max = 12.5;
-	DM_Motor_4310P_Next_StructData.Position_min = -12.5;
+	DM_Motor_4310P_Next_StructData.Position_max = 300;
+	DM_Motor_4310P_Next_StructData.Position_min = -300;
 	DM_Motor_4310P_Next_StructData.Torque = 0;
 	DM_Motor_4310P_Next_StructData.Torque_max = 10;
 	DM_Motor_4310P_Next_StructData.Torque_min = -10;
@@ -170,7 +170,7 @@ static float DM_Raw_To_Value(uint16_t raw, float xmin, float xmax, uint8_t bits)
 }
 
 /*
-  * @brief  CAN发送电机旋转数据帧(弧度制)(定位置控制)
+  * @brief  CAN发送电机旋转数据帧(弧度制)(定位置控制)(TIM报文)
   * @param  id 电机id，可以是 DM_Motor_4310_StructData 或 DM_Motor_4340_StructData
 	* @param	Position 目标位置 Velocity 目标速度 Kp 比例 Kd 微分 Torque 扭矩
   * @note		无
@@ -200,7 +200,7 @@ HAL_StatusTypeDef DM_CAN_Motor_Rotation_Rad(DM_Motor_Data *ax, float Position)
 }
 
 /*
-  * @brief  CAN发送电机旋转数据帧(角度制)(定位置控制)
+  * @brief  CAN发送电机旋转数据帧(角度制)(定位置控制)(TIM报文)
   * @param  ax 电机结构体指针 Position目标位置
 	* @param	Position 目标位置 Velocity 目标速度 Kp 比例 Kd 微分 Torque 扭矩
   * @note		无
@@ -230,7 +230,7 @@ HAL_StatusTypeDef DM_CAN_Motor_Rotation_deg(DM_Motor_Data *ax, float Position)
 }
 
 /*
-  * @brief  CAN发送电机旋转数据帧(弧度制)(定速度控制)
+  * @brief  CAN发送电机旋转数据帧(弧度制)(定速度控制)(TIM报文)
   * @param  ax 电机结构体指针 vel 目标角速度
   * @note		无
   * @retval HAL返回的CAN发送状态
@@ -262,7 +262,7 @@ HAL_StatusTypeDef DM_CAN_Motor_Velocity_Rad(DM_Motor_Data *ax, float vel)
 
 
 /*
-  * @brief  CAN发送电机MIT
+  * @brief  CAN发送电机MIT(TIM报文)
   * @param  ax 电机结构体指针 vel 目标角速度 pos 电机位置 - kp - ki - kd - tor 转矩
   * @note		无
   * @retval HAL返回的CAN发送状态
@@ -294,6 +294,36 @@ HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, floa
 	Data[7] = (uint8_t)(Torque_raw & 0xFF);
 
 	return CAN_Send_Data_Frame(ax->hcan, ax->ID, Data, 8);
+}
+
+/*
+  * @brief  位置速度模式控制电机
+  * @param  ax 电机结构体指针 vel 目标角速度 pos 电机位置
+  * @note		无
+  * @retval HAL返回的CAN发送状态
+  */
+HAL_StatusTypeDef DM_CAN_Motor_Position_Speed(DM_Motor_Data *ax, float vel, float pos)
+{
+	uint8_t  Data[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	uint32_t *p_pos = (uint32_t *)&pos;
+  uint32_t *p_vel = (uint32_t *)&vel;
+
+	ax->Velocity = vel;//速度
+	ax->Position = pos;//位置
+	
+	// p_des 4字节 float，小端 D0 D1 D2 D3
+  Data[0] = (*p_pos >> 0)  & 0xFF;
+  Data[1] = (*p_pos >> 8)  & 0xFF;
+  Data[2] = (*p_pos >> 16) & 0xFF;
+  Data[3] = (*p_pos >> 24) & 0xFF;
+
+  // v_des 4字节 float，小端 D4 D5 D6 D7
+  Data[4] = (*p_vel >> 0)  & 0xFF;
+  Data[5] = (*p_vel >> 8)  & 0xFF;
+  Data[6] = (*p_vel >> 16) & 0xFF;
+  Data[7] = (*p_vel >> 24) & 0xFF;
+
+	return CAN_Send_Data_Frame(ax->hcan, (0x100 + ax->ID), Data, 8);
 }
 
 /**
@@ -328,6 +358,33 @@ void Motor_Printf_UpdateData(DM_Motor_Data* pData)
 																			pData ->ID_or_ERR,pData ->POS
 																			,pData ->VEL,pData ->T,
 																			pData ->T_MOS,pData ->TRotorl);
+}
+
+/**
+  * @brief  printf输出4电机数据
+  * @param  无
+  * @note		无
+  * @retval 无
+  */
+void Motor_Printf_Dour_UpdateData(void)
+{
+	HAL_Delay(1);
+	printf("ID:%#X,位置:%f,速度:%f,扭矩:%f,MOS温度:%f,线圈温度:%f\r\n",
+					DM_Motor_4310P_Next_StructData.ID_or_ERR,DM_Motor_4310P_Next_StructData.POS
+					,DM_Motor_4310P_Next_StructData.VEL,DM_Motor_4310P_Next_StructData.T,
+					DM_Motor_4310P_Next_StructData.T_MOS,DM_Motor_4310P_Next_StructData.TRotorl);
+	printf("ID:%#X,位置:%f,速度:%f,扭矩:%f,MOS温度:%f,线圈温度:%f\r\n",
+					DM_Motor_4310P_StructData.ID_or_ERR,DM_Motor_4310P_StructData.POS
+					,DM_Motor_4310P_StructData.VEL,DM_Motor_4310P_StructData.T,
+					DM_Motor_4310P_StructData.T_MOS,DM_Motor_4310P_StructData.TRotorl);
+	printf("ID:%#X,位置:%f,速度:%f,扭矩:%f,MOS温度:%f,线圈温度:%f\r\n",
+					DM_Motor_4310_StructData.ID_or_ERR,DM_Motor_4310_StructData.POS
+					,DM_Motor_4310_StructData.VEL,DM_Motor_4310_StructData.T,
+					DM_Motor_4310_StructData.T_MOS,DM_Motor_4310_StructData.TRotorl);
+	printf("ID:%#X,位置:%f,速度:%f,扭矩:%f,MOS温度:%f,线圈温度:%f\r\n",
+					DM_Motor_4310_Next_StructData.ID_or_ERR,DM_Motor_4310_Next_StructData.POS
+					,DM_Motor_4310_Next_StructData.VEL,DM_Motor_4310_Next_StructData.T,
+					DM_Motor_4310_Next_StructData.T_MOS,DM_Motor_4310_Next_StructData.TRotorl);
 }
 
 /**

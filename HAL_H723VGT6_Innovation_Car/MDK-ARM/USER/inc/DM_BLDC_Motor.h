@@ -68,19 +68,23 @@ void DM_CAN_Motor_Init(void);
 HAL_StatusTypeDef DM_CAN_Motor_Send_Data(FDCAN_HandleTypeDef *hcan, uint16_t id, uint8_t *data, uint8_t len);
 /*CAM发送电机使/失能*/
 HAL_StatusTypeDef DM_CAN_Motor_SetEnable(uint16_t id, uint8_t *data);
-/*CAN发送电机旋转数据帧(弧度制)(定位置控制)*/
+/*CAN发送电机旋转数据帧(弧度制)(定位置控制)(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_Rotation_Rad(DM_Motor_Data *ax, float Position);
-/*CAN发送电机旋转数据帧(角度制)(定位置控制)*/
+/*CAN发送电机旋转数据帧(角度制)(定位置控制)(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_Rotation_deg(DM_Motor_Data *ax, float Position);
-/*CAN发送电机旋转数据帧(弧度制)(定速度控制)*/
+/*CAN发送电机旋转数据帧(弧度制)(定速度控制)(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_Velocity_Rad(DM_Motor_Data *ax, float vel);
-/*CAN发送电机MIT*/
+/*CAN发送电机MIT(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, float kp, float kd, float tor);
+/*位置速度模式控制电机*/
+HAL_StatusTypeDef DM_CAN_Motor_Position_Speed(DM_Motor_Data *ax, float vel, float pos);
 
 /*解收电机数据解析分配函数*/
 void Motor_UpdateData(uint8_t* pData, uint8_t Back_ID);
 /*输出电机数据*/
 void Motor_Printf_UpdateData(DM_Motor_Data* pData);
+/*printf输出4电机数据*/
+void Motor_Printf_Dour_UpdateData(void);
 /*电机回传一键测试函数*/
 void Motor_BackerData_Text(void);
 

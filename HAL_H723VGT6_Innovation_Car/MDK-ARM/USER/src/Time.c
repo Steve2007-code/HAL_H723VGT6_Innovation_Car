@@ -18,7 +18,7 @@ void Time_Init(void)
   * @note		нч
   * @retval нч
   */
-uint16_t Tick = 0;
+uint32_t Tick = 0;
 uint8_t flag = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {

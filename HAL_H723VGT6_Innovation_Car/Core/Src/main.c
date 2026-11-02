@@ -21,12 +21,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "stdio.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include "2812LED.h"
 #include "CAN.h"
 #include "Time.h"
 #include "DM_BLDC_Motor.h"
 #include "UART_Data.h"
+#include "FourMotor_Coordination.h"
 
 /* USER CODE END Includes */
 
@@ -138,9 +140,13 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+	uint8_t flag = 0;
+  float rad[] = {3.14f,0.0f,-7.14f};
+  while (1) 
   {
-		Motor_BackerData_Text();
+		FMC_PIVOT_REAR_RIGHT(3.14f,10.0f);
+		
+//		Motor_BackerData_Text();
 		
    
     /* USER CODE END WHILE */

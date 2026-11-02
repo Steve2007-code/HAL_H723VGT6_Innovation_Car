@@ -829,6 +829,11 @@
               <FileType>5</FileType>
               <FilePath>.\USER\inc\Time.h</FilePath>
             </File>
+            <File>
+              <FileName>FourMotor_Coordination.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\FourMotor_Coordination.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -863,6 +868,11 @@
               <FileName>Time.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\src\Time.c</FilePath>
+            </File>
+            <File>
+              <FileName>FourMotor_Coordination.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\FourMotor_Coordination.c</FilePath>
             </File>
           </Files>
         </Group>
