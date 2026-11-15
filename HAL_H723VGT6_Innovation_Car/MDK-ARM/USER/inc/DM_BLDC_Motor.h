@@ -25,7 +25,7 @@ typedef struct
 		float Torque_min;								/*转矩_min*/
 		
 		uint8_t UpData[8];							/*电机回传数据原始数据*/
-		uint8_t BackID;								/*电机回传帧头ID*/
+		uint8_t BackID;									/*电机回传帧头ID*/
 		uint8_t ID_or_ERR;							/*电机回传第一位ID or 错误数据*/
 		float POS;											/*电机位置信息*/
 		float VEL;											/*电机速度信息*/
@@ -72,7 +72,7 @@ HAL_StatusTypeDef DM_CAN_Motor_SetEnable(uint16_t id, uint8_t *data);
 HAL_StatusTypeDef DM_CAN_Motor_Rotation_Rad(DM_Motor_Data *ax, float Position);
 /*CAN发送电机旋转数据帧(角度制)(定位置控制)(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_Rotation_deg(DM_Motor_Data *ax, float Position);
-/*CAN发送电机旋转数据帧(弧度制)(定速度控制)(TIM报文)*/
+/*CAN发送电机旋转数据帧(CAN发送电机旋转数据帧(弧度制)(定速度控制)(速度模式报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_Velocity_Rad(DM_Motor_Data *ax, float vel);
 /*CAN发送电机MIT(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, float kp, float kd, float tor);

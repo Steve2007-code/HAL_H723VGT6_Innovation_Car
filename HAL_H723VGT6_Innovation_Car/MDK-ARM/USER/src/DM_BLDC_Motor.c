@@ -230,34 +230,24 @@ HAL_StatusTypeDef DM_CAN_Motor_Rotation_deg(DM_Motor_Data *ax, float Position)
 }
 
 /*
-  * @brief  CAN发送电机旋转数据帧(弧度制)(定速度控制)(TIM报文)
+  * @brief  CAN发送电机旋转数据帧(弧度制)(定速度控制)(速度模式报文)
   * @param  ax 电机结构体指针 vel 目标角速度
   * @note		无
   * @retval HAL返回的CAN发送状态
   */
 HAL_StatusTypeDef DM_CAN_Motor_Velocity_Rad(DM_Motor_Data *ax, float vel)
 {
-	uint8_t  Data[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-	uint16_t Position_raw, Velocity_raw, Kp_raw, Kd_raw, Torque_raw;
+	uint8_t  Data[4] = {0x00, 0x00, 0x00, 0x00};
+	uint32_t *p_vel = (uint32_t *)&vel;
 
 	ax->Velocity = vel;
 
-	Position_raw = DM_Motor_16_Data_Frame(0.0f, ax->Position_min, ax->Position_max);
-	Velocity_raw = DM_Motor_12_Data_Frame(ax->Velocity, ax->Velocity_min, ax->Velocity_max);
-	Kp_raw = 0;
-	Kd_raw = DM_Motor_12_Data_Frame(ax->Kd, ax->Kd_min, ax->Kd_max);
-	Torque_raw = DM_Motor_12_Data_Frame(ax->Torque, ax->Torque_min, ax->Torque_max);
+	Data[0] = (*p_vel >> 0)  & 0xFF;
+	Data[1] = (*p_vel >> 8)  & 0xFF;
+	Data[2] = (*p_vel >> 16) & 0xFF;
+	Data[3] = (*p_vel >> 24) & 0xFF;
 
-	Data[0] = (uint8_t)(Position_raw >> 8);
-	Data[1] = (uint8_t)(Position_raw & 0xFF);
-	Data[2] = (uint8_t)(Velocity_raw >> 4);
-	Data[3] = (uint8_t)(((Velocity_raw & 0x0F) << 4) | (Kp_raw >> 8));
-	Data[4] = (uint8_t)(Kp_raw & 0xFF);
-	Data[5] = (uint8_t)(Kd_raw >> 4);
-	Data[6] = (uint8_t)(((Kd_raw & 0x0F) << 4) | (Torque_raw >> 8));
-	Data[7] = (uint8_t)(Torque_raw & 0xFF);
-
-	return CAN_Send_Data_Frame(ax->hcan, ax->ID, Data, 8);
+	return CAN_Send_Data_Frame(ax->hcan, (0x200 + ax->ID), Data, 4);
 }
 
 

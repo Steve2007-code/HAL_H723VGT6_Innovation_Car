@@ -1,5 +1,6 @@
 #include "CAN.h"
 #include "DM_BLDC_Motor.h"
+#include "DM_IMU_L1_V1.0.h"
 #include "stdio.h"
 
 /**
@@ -48,12 +49,20 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 //    HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData);
 		while (HAL_FDCAN_GetRxFifoFillLevel(hfdcan, FDCAN_RX_FIFO0) > 0)
 	{
-		if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData) == HAL_OK)
-		Motor_UpdateData(rxData, rxHeader.Identifier);
+		if(HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, rxData) == HAL_OK)
+		{
+			if(hfdcan->Instance == FDCAN1)
+			{
+				//把读出来的电机回传数据放进解析函数里面解析回传数据
+				Motor_UpdateData(rxData, rxHeader.Identifier);
+			}
+			else if(hfdcan->Instance == FDCAN3)
+			{
+				//把读出来的IMU数据放进解析函数里面解析回传数据
+				IMU_UpdateData(rxData);
+			}
+		}
 	}
-    //把读出来的电机回传数据放进解析函数里面解析回传数据
-		Motor_UpdateData(rxData,rxHeader.Identifier);
-		
     // rxHeader.Identifier 是CAN ID，rxData[0]~rxData[7]是8字节数据
   }
 }

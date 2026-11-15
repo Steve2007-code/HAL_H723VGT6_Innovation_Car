@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STM32H723VGT6 HAL库 常用函数参考手册</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --sidebar-bg: #16213e;
+  --card-bg: #1e1e3a;
+  --text: #e0e0e0;
+  --text-dim: #a0a0b8;
+  --accent: #3b82f6;
+  --accent2: #10b981;
+  --border: #2a2a4a;
+  --code-bg: #15152a;
+  --tag-bg: #2d2d5a;
+  --func-color: #66d9ef;
+  --proto-color: #a8d8a8;
+  --param-color: #ffb86c;
+  --ret-color: #bd93f9;
+  --warn: #fab387;
+  --danger: #f38ba8;
+  scroll-behavior: smooth;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+
+.sidebar { width:288px; min-width:288px; background:var(--sidebar-bg); border-right:1px solid var(--border); padding:20px 0; overflow-y:auto; position:sticky; top:0; height:100vh; }
+.sidebar-header { padding:0 20px 16px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.sidebar-header h1 { font-size:15px; font-weight:700; margin-bottom:4px; color:var(--accent); }
+.sidebar-header .version { font-size:11px; color:var(--text-dim); }
+.search-box { margin:12px 16px; position:relative; }
+.search-box input { width:100%; padding:8px 12px 8px 32px; background:var(--card-bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; outline:none; }
+.search-box input:focus { border-color:var(--accent); }
+.search-box .si { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:13px; }
+.nav-section { padding:4px 0; }
+.nav-section-title { padding:6px 20px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); }
+.nav-item { display:flex; align-items:center; gap:8px; padding:7px 20px; font-size:13px; color:var(--text); cursor:pointer; transition:all 0.15s; text-decoration:none; border-left:3px solid transparent; }
+.nav-item:hover { background:rgba(59,130,246,0.1); border-left-color:var(--accent); }
+.nav-item.active { background:rgba(59,130,246,0.15); border-left-color:var(--accent); color:var(--accent); }
+.nav-item .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.nav-item .badge { font-size:10px; background:var(--tag-bg); padding:1px 6px; border-radius:10px; margin-left:auto; color:var(--text-dim); }
+
+.main { flex:1; padding:32px 40px; max-width:1120px; overflow-y:auto; }
+.top-bar { display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap; align-items:center; }
+.top-bar button { padding:6px 14px; border:1px solid var(--border); background:var(--card-bg); color:var(--text); border-radius:6px; font-size:12px; cursor:pointer; transition:all 0.15s; }
+.top-bar button:hover { border-color:var(--accent); }
+.top-bar button.primary { background:var(--accent); border-color:var(--accent); font-weight:600; color:#fff; }
+.stats { font-size:12px; color:var(--text-dim); margin-left:auto; }
+
+.note { background:var(--card-bg); border-left:3px solid var(--warn); padding:12px 16px; margin:16px 0 24px; border-radius:0 6px 6px 0; font-size:13px; line-height:1.7; }
+.note strong { color:var(--warn); }
+.note code { background:var(--code-bg); padding:1px 5px; border-radius:3px; font-family:'Cascadia Code','Fira Code','Consolas',monospace; font-size:12px; color:var(--func-color); }
+.note-danger { border-left-color:var(--danger); }
+.note-danger strong { color:var(--danger); }
+.note-ok { border-left-color:var(--accent2); }
+.note-ok strong { color:var(--accent2); }
+.note-star { border-left-color:#f9c74f; }
+.note-star strong { color:#f9c74f; }
+
+.section { margin-bottom:40px; }
+.section-header { margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid var(--border); display:flex; align-items:center; gap:12px; }
+.section-header h2 { font-size:22px; font-weight:700; }
+.section-header .sb { font-size:11px; padding:3px 10px; border-radius:12px; font-weight:600; color:#fff; }
+.section-desc { color:var(--text-dim); font-size:13px; margin-bottom:20px; line-height:1.7; }
+.section-desc code { background:var(--code-bg); padding:1px 5px; border-radius:3px; font-family:'Cascadia Code','Consolas',monospace; font-size:12px; color:var(--func-color); }
+.section-desc strong { color:var(--text); }
+
+.category { margin-bottom:24px; }
+.category-title { font-size:15px; font-weight:600; margin-bottom:10px; padding:6px 12px; background:rgba(59,130,246,0.08); border-left:3px solid var(--accent); border-radius:0 4px 4px 0; }
+
+.api-card { background:var(--code-bg); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; overflow:hidden; transition:border-color 0.2s; }
+.api-card:hover { border-color:#555; }
+.api-card-header { padding:9px 14px; display:flex; align-items:center; gap:10px; cursor:pointer; }
+.api-card-header .an { font-family:'Cascadia Code','Fira Code','Consolas',monospace; font-size:13px; font-weight:600; color:var(--func-color); flex:1; }
+.api-card-header .at { font-size:9px; padding:2px 8px; border-radius:8px; white-space:nowrap; text-transform:uppercase; font-weight:600; }
+.api-card-body { padding:0 14px 12px; display:none; }
+.api-card.open .api-card-body { display:block; }
+.api-card.open { border-color:var(--accent); }
+.api-card-body .proto { font-family:'Cascadia Code','Fira Code','Consolas',monospace; font-size:11.5px; color:var(--proto-color); background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:4px; margin-bottom:8px; overflow-x:auto; white-space:pre-wrap; word-break:break-all; }
+.api-card-body .desc { font-size:12px; color:var(--text-dim); line-height:1.5; }
+.api-card-body .params { margin-top:6px; font-size:11px; }
+.api-card-body .params span { color:var(--param-color); font-family:monospace; }
+.api-card-body .ret { margin-top:4px; font-size:11px; color:var(--ret-color); }
+
+.tag-init { background:#1e5f3a; color:var(--accent2); }
+.tag-cfg { background:#3d1e5f; color:#cba6f7; }
+.tag-op { background:#1e3a5f; color:var(--func-color); }
+.tag-query { background:#5f4e1e; color:#f9e2af; }
+.tag-cb { background:#5f1e3a; color:var(--danger); }
+.tag-macro { background:#2d2d5a; color:var(--text-dim); }
+.tag-pin { background:#1e4f5f; color:#89dceb; }
+.tag-flow { background:#5f3a1e; color:#fab387; }
+.tag-star { background:#5f521e; color:#f9c74f; }
+
+.tbl { width:100%; border-collapse:collapse; font-size:12px; margin:8px 0 18px; }
+.tbl th { background:rgba(59,130,246,0.12); padding:7px 10px; text-align:left; border:1px solid var(--border); font-weight:600; color:var(--text); }
+.tbl td { padding:6px 10px; border:1px solid var(--border); color:var(--text-dim); vertical-align:top; }
+.tbl td code, .tbl th code { background:var(--code-bg); padding:1px 5px; border-radius:3px; font-family:'Cascadia Code','Consolas',monospace; font-size:11px; color:var(--func-color); }
+.tbl tr:hover td { background:rgba(59,130,246,0.04); }
+
+.no-results { text-align:center; padding:40px; color:var(--text-dim); font-size:14px; display:none; }
+.back-top { position:fixed; bottom:24px; right:24px; width:36px; height:36px; background:var(--accent); border:none; border-radius:50%; color:#fff; font-size:18px; cursor:pointer; display:none; align-items:center; justify-content:center; z-index:100; }
+.back-top.visible { display:flex; }
+.footer { margin-top:60px; padding:20px 0; border-top:1px solid var(--border); color:var(--text-dim); font-size:12px; text-align:center; }
+
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#333; border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:#555; }
+@media (max-width:900px) { .sidebar { display:none; } .main { padding:20px; } }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h1>STM32H723VGT6 HAL</h1>
+    <div class="version">Cortex-M7 @550MHz &middot; LQFP100 &middot; 80 I/O</div>
+  </div>
+  <div class="search-box">
+    <span class="si">&#128269;</span>
+    <input type="text" id="searchInput" placeholder="搜索函数名或描述..." oninput="filterAPIs()">
+  </div>
+  <nav id="nav"></nav>
+</aside>
+
+<main class="main" id="mainContent">
+  <div class="top-bar">
+    <button class="primary" onclick="toggleAll(true)">&#128214; 展开全部</button>
+    <button onclick="toggleAll(false)">&#128213; 折叠全部</button>
+    <button onclick="clearSearch()">&#128260; 清除搜索</button>
+    <span class="stats" id="stats">共 0 个函数</span>
+  </div>
+
+  <div class="note">
+    <strong>说明：</strong>本手册精选 STM32H723VGT6 HAL 库最常用的 API，参考 TI DriverLib 手册风格编排。<br>
+    芯片: <code>STM32H723VGT6</code> &middot; 内核: <code>Cortex-M7 + DP-FPU @550MHz</code> &middot; Flash: <code>1MB (带ECC)</code> &middot; SRAM: <code>564KB (带ECC)</code> &middot; 封装: <code>LQFP100 (14&times;14mm)</code> &middot; I/O: <code>80</code><br>
+    每个函数标注 <span style="color:var(--accent2)">初始化</span> / <span style="color:#cba6f7">配置</span> / <span style="color:var(--func-color)">操作</span> / <span style="color:#f9e2af">查询</span> / <span style="color:var(--danger)">回调</span> / <span style="color:var(--text-dim)">宏</span> / <span style="color:#89dceb">引脚</span> / <span style="color:#fab387">流程</span> / <span style="color:#f9c74f">重点</span> 标签方便快速识别用途。<br>
+    参考文档: <code>RM0468</code> (参考手册) &middot; <code>DS13147</code> (数据手册) &middot; <code>AN4891</code> (系统架构与性能) &middot; <code>UM2217</code> (HAL 用户手册)
+  </div>
+
+  <div class="note note-star">
+    <strong>&#11088; 从 STM32F4 转到 STM32H7，必须重新理解的 6 件事：</strong>
+    <table class="tbl" style="margin-top:10px">
+      <tr><th>#</th><th>主题</th><th>F407IGHx（你之前用的）</th><th>H723VGT6（本手册）</th></tr>
+      <tr><td>1</td><td><strong>L1 Cache</strong></td><td>无 Cache（只有 Flash ART 加速器）</td><td><strong>32KB I-Cache + 32KB D-Cache</strong>。DMA 收发前后<strong>必须</strong>做 Cache 维护，否则数据错乱 — 这是 H7 头号坑</td></tr>
+      <tr><td>2</td><td><strong>浮点单元</strong></td><td>单精度 FPU，double 为软件模拟</td><td><strong>DP-FPU 双精度硬件</strong>，float 和 double 都是硬件运算</td></tr>
+      <tr><td>3</td><td><strong>DMA 请求</strong></td><td>写通道号 <code>hdma.Init.Channel = DMA_CHANNEL_4</code></td><td>走 <strong>DMAMUX 请求路由</strong>：<code>hdma.Init.Request = DMA_REQUEST_USART1_TX</code></td></tr>
+      <tr><td>4</td><td><strong>外设时钟</strong></td><td>时钟固定来自 APB1/APB2</td><td>每个外设可在多个时钟源间<strong>独立选择</strong>（PLL1/PLL2/PLL3/HSI/CSE/LSE），靠 <code>HAL_RCCEx_PeriphCLKConfig</code></td></tr>
+      <tr><td>5</td><td><strong>CAN</strong></td><td>bxCAN（<code>HAL_CAN_*</code>）</td><td><strong>FDCAN 支持 CAN FD</strong>（<code>HAL_FDCAN_*</code>），API 完全不同，有 3 路</td></tr>
+      <tr><td>6</td><td><strong>SRAM 分布</strong></td><td>192KB 连续 SRAM</td><td><strong>分成 7 块分处 D1/D2/D3 域</strong>，各块可达的主设备不同。且 H723 的 SRAM1/SRAM2 <strong>各只有 16KB</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="note note-danger">
+    <strong>&#9888;&#65039; H723 不是 H743 的缩水版 —— 有三个真缺席：</strong>
+    <strong>① 没有 SRAM3</strong>（H743 有 32KB @ 0x30040000）；
+    <strong>② SRAM1 / SRAM2 各仅 16KB</strong>（H743 各 128KB）；
+    <strong>③ 没有 AES/HASH/PKA 硬件加密</strong>（H743 有），也没有 JPEG 编解码器和 TrustZone。<br>
+    移植 H743 的工程到 H723 时，凡是用了 <code>SRAM3</code>、<code>CRYP</code>、<code>HASH</code>、<code>JPEG</code> 的代码全部要改。另外 H723 也<strong>没有 HRTIM</strong> 高分辨率定时器。
+  </div>
+
+  <div id="content"></div>
+  <div class="no-results" id="noResults">未找到匹配的函数，请尝试其他关键词。</div>
+
+  <div class="footer">
+    STM32H723VGT6 HAL 库常用函数参考手册 &middot; 基于 ST HAL Driver v1.11.x (H7) &middot; 2026-10-28<br>
+    本手册为常用 API 精选，完整 API 请查阅 ST 官方 <code>UM2217 STM32H7 HAL Driver User Manual</code>、<code>RM0468 参考手册</code>、<code>AN4891 系统架构</code>
+  </div>
+</main>
+
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
+
+<script>
+const D=[
+{id:"startup",name:"开机四步 CAN/MPU启动序列",badge:"★必读",color:"#f9c74f",hdr:"main.c（H7 专属）",desc:"<strong>H7 的 main() 开头比 F4 多了 Cache 和 MPU 两步，漏了会表现出各种莫名其妙的问题。</strong>下面是 CubeMX 生成的标准启动序列，务必理解每一步在干什么。",cats:[
+{t:"标准 main() 模板（照抄即可）",apis:[
+{n:"第 1 步：HAL_Init()",p:"HAL_Init();   // 配置 NVIC GROUP_4、初始化 SysTick(1ms)",d:"和 F4 一样，必须第一行。它还会设置 Flash 的 ART Accelerator（H7 上叫 AXI/AHBS 接口 + Flash 预取）。",pm:"无",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_Init 第一步 初始化 NVIC SysTick 启动"},
+{n:"第 2 步：SystemClock_Config()",p:"SystemClock_Config();   // 550MHz + PLL1/2/3 + 外设内核时钟选择",d:"<strong>H7 的时钟配置远比 F4 复杂</strong>：除了 SYSCLK，还要分别给 SPI/I2C/USART/ADC/USB/RNG/FDCAN/SDMMC 等每个外设选不同的内核时钟源（见 RCC 章节）。",pm:"无",r:"无",tag:"init",kw:"SystemClock_Config 时钟 PLL1 PLL2 PLL3 550MHz"},
+{n:"第 3 步：MPU 配置",p:"HAL_MPU_Disable(); &rarr; HAL_MPU_ConfigRegion(&mpu); (可配多个区) &rarr; HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);",d:"<strong>这是 H7 独有的关键一步</strong>。用 MPU 把 AXI SRAM、FMC 区域等配置成合适的 Cache 属性，<strong>也可以把 DMA 缓冲区那块设为 Non-cacheable，一劳永逸解决 Cache 一致性问题</strong>。详见 Cache 与 MPU 章节。",pm:"见 Cache/MPU 章节模板",r:"无",tag:"init",kw:"MPU 配置 HAL_MPU_Disable HAL_MPU_ConfigRegion HAL_MPU_Enable Cache 属性"},
+{n:"第 4 步：使能 Cache",p:"SCB_EnableICache();  SCB_EnableDCache();",d:"<strong>必须在使用任何 DMA 之前完成。</strong>I-Cache 让 Flash 里的指令 0 等待执行；D-Cache 大幅提升数据访问。开启后就要承担 Cache 一致性的责任。放在 MPU_Enable 之后。",pm:"无",r:"无",tag:"init",kw:"SCB_EnableICache SCB_EnableDCache 使能 缓存 必做"},
+{n:"完整顺序口诀",p:"HAL_Init &rarr; SystemClock_Config &rarr; MPU_Config &rarr; SCB_EnableICache + SCB_EnableDCache &rarr; MX_GPIO_Init &rarr; 其他外设",d:"<strong>顺序不能颠倒</strong>：必须先配 MPU 再开 Cache（MPU 改配置时会自动清流水线）；Cache 必须在 DMA 之前开。CubeMX 生成的 main.c 已经是这个顺序。",pm:"CubeMX 会自动生成 MPU_Config() 和 SCB_EnableXCache()",r:"&mdash;",tag:"flow",kw:"启动 顺序 HAL_Init MPU Cache DMA 口诀"},
+]},
+{t:"为什么 F4 不用管、H7 必须管",apis:[
+{n:"Cache 带来的矛盾",p:"CPU 访问变量走 Cache &middot; DMA 访问内存直连 &middot; 两者看到的可能不是同一份数据",d:"F4 没有 D-Cache，CPU 写 RAM 和 DMA 读 RAM 是同一份数据，天然一致。<strong>H7 的 D-Cache 会让 CPU 的写入暂存在 Cache 里还没落到 RAM，此时 DMA 从 RAM 取走的是旧数据</strong> —— 这就是经典故障「DMA 发出去的内容不对」的根因。",pm:"Cache line 大小 = 32 字节",r:"&mdash;",tag:"star",kw:"Cache 矛盾 CPU DMA 一致性 旧数据 根因 32字节"},
+{n:"三类解决办法（推荐度递减）",p:"① MPU 把 DMA 区设成 Non-cacheable（最省心） ② _by_Addr 精细维护 ③ 全局 Clean/Invalidate（最粗暴）",d:"<strong>强烈推荐方案①</strong>：用 MPU 把 DMA 缓冲区所在区域（如 SRAM4 或 AXI SRAM 的一块）配成 Device/Strongly-ordered 或 Non-cacheable，之后不用写任何 Clean/Invalidate 代码，也不会出错。方案③每次都要全局刷 Cache，550MHz 的 Cache 刷一次代价不小。",pm:"见 Cache 章节完整模板",r:"&mdash;",tag:"star",kw:"解决办法 MPU Non-cacheable by_Addr Clean Invalidate 推荐"},
+]},
+]},
+{id:"hal",name:"HAL 核心",badge:"系统",color:"#3b82f6",hdr:"stm32h7xx_hal.h",desc:"HAL 库核心函数。H7 的 HAL 与 F4 大体相同，但增加了UID 读取的区别（96-bit UID 用 HAL_GetUIDw0/1/2）、Cache 相关调用时机要求。",cats:[
+{t:"初始化与系统",apis:[
+{n:"HAL_Init",p:"HAL_StatusTypeDef HAL_Init(void)",d:"初始化 HAL 库: 配置 NVIC 优先级分组 (默认 GROUP_4)、初始化 SysTick(1ms)、配置 Flash 接口。main 函数首行必须调用。",pm:"无",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_Init 初始化 系统 main NVIC GROUP_4"},
+{n:"HAL_DeInit",p:"HAL_StatusTypeDef HAL_DeInit(void)",d:"反初始化 HAL 库。",pm:"无",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_DeInit 反初始化"},
+{n:"HAL_InitTick",p:"HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)",d:"初始化 SysTick 1ms 中断。<strong>H7 上建议给较高优先级（如 0）</strong>，因为很多 HAL 超时逻辑依赖它。HAL_Init 内部自动调用。",pm:"TickPriority: SysTick 中断优先级 (推荐 0)",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_InitTick SysTick 滴答 优先级 推荐0"},
+{n:"HAL_GetHalVersion",p:"uint32_t HAL_GetHalVersion(void)",d:"获取 HAL 库版本号 (32 位编码)。",pm:"无",r:"版本号",tag:"query",kw:"HAL_GetHalVersion 版本"},
+{n:"HAL_GetREVID",p:"uint32_t HAL_GetREVID(void)",d:"获取芯片修订版本号。H723 常见 0x2003 (Rev V/Y)。",pm:"无",r:"修订号",tag:"query",kw:"HAL_GetREVID 修订 版本 REV"},
+{n:"HAL_GetDEVID",p:"uint32_t HAL_GetDEVID(void)",d:"获取设备标识符。STM32H723/733 为 0x483。",pm:"无",r:"DEVID (H72x/73x = 0x483)",tag:"query",kw:"HAL_GetDEVID 设备 0x483"},
+{n:"HAL_GetUIDw0 / w1 / w2",p:"uint32_t HAL_GetUIDw0(void)  // w1, w2 同理",d:"读取出厂 96 位唯一设备标识符（3&times;32bit）。用于产品序列号、防克隆加密。F4 上是 HAL_GetUIDw0 同款。",pm:"无",r:"32 位 UID 片段",tag:"query",kw:"HAL_GetUIDw0 HAL_GetUIDw1 HAL_GetUIDw2 96位 UID 序列号 唯一"},
+]},
+{t:"延时与滴答",apis:[
+{n:"HAL_GetTick",p:"uint32_t HAL_GetTick(void)",d:"获取系统毫秒计数。约 49.7 天溢出。写非阻塞状态机必备。",pm:"无",r:"毫秒计数值",tag:"query",kw:"HAL_GetTick 滴答 ms 计时 非阻塞"},
+{n:"HAL_Delay",p:"void HAL_Delay(uint32_t Delay)",d:"毫秒阻塞延时。<strong>在 H7 上同样不能在中断里调用</strong>（SysTick 优先级不够高时会死锁）。中断里请用 DWT 或定时器。",pm:"Delay: 毫秒数",r:"无",tag:"op",kw:"HAL_Delay 延时 阻塞 中断 死锁"},
+{n:"HAL_SuspendTick / HAL_ResumeTick",p:"void HAL_SuspendTick(void)  /  void HAL_ResumeTick(void)",d:"暂停 / 恢复 SysTick。<strong>进 Stop/Standby 低功耗前 Suspend，唤醒后 Resume</strong>（唤醒后还需重新配置系统时钟）。",pm:"无",r:"无",tag:"op",kw:"HAL_SuspendTick HAL_ResumeTick 暂停 恢复 低功耗 Stop"},
+{n:"HAL_SetTickFreq / HAL_GetTickFreq",p:"HAL_StatusTypeDef HAL_SetTickFreq(HAL_TickFreqTypeDef Freq)",d:"修改 SysTick 频率。改后 HAL_Delay 的单位随之变化，一般保持默认 1kHz。",pm:"Freq: 10HZ / 100HZ / 1KHZ",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_SetTickFreq HAL_GetTickFreq 滴答 频率"},
+]},
+{t:"调试控制",apis:[
+{n:"HAL_DBGMCU_EnableDBGSleepMode",p:"void HAL_DBGMCU_EnableDBGSleepMode(void)",d:"Sleep 模式下保持调试器连接。",pm:"无",r:"无",tag:"cfg",kw:"HAL_DBGMCU Sleep 调试 DBGMCU"},
+{n:"HAL_DBGMCU_EnableDBGStopMode",p:"void HAL_DBGMCU_EnableDBGStopMode(void)",d:"Stop 模式下保持调试器连接。调低功耗时必加，否则一进 Stop 就掉调试器。",pm:"无",r:"无",tag:"cfg",kw:"HAL_DBGMCU Stop 调试 掉线 低功耗"},
+{n:"HAL_DBGMCU_EnableDBGStandbyMode",p:"void HAL_DBGMCU_EnableDBGStandbyMode(void)",d:"Standby 模式下保持调试器连接。",pm:"无",r:"无",tag:"cfg",kw:"HAL_DBGMCU Standby 调试"},
+]},
+]},
+{id:"rcc",name:"RCC 时钟控制",badge:"clock",color:"#4060c0",hdr:"stm32h7xx_hal_rcc.h / _rcc_ex.h",desc:"复位与时钟控制。<strong>H7 的时钟系统是 F4 的升级版：3 个 PLL（PLL1 给 CPU、PLL2/PLL3 给外设且互不相干）+ 每个外设独立的内核时钟源选择。</strong>这是 H7 时钟配置的核心难点。",cats:[
+{t:"时钟配置（三步走）",apis:[
+{n:"第 1 步：HAL_PWREx_ConfigSupply",p:"HAL_StatusTypeDef HAL_PWREx_ConfigSupply(uint32_t SupplySource)",d:"<strong>必须在配置 PLL 之前调用！</strong>选择 regulator 模式：<code>PWR_LDO_SUPPLY</code>（LDO，简单）或 <code>PWR_DIRECT_SMPS_SUPPLY</code>（SMPS，省电，需外部电感）。<strong>想跑 550MHz 还要配 VOS0</strong>（见 PWR 章节）。",pm:"SupplySource: PWR_LDO_SUPPLY / PWR_DIRECT_SMPS_SUPPLY / PWR_EXTERNAL_SOURCE_SUPPLY",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_PWREx_ConfigSupply 供电 LDO SMPS VOS0 550MHz 第一步"},
+{n:"第 2 步：HAL_RCC_OscConfig",p:"HAL_StatusTypeDef HAL_RCC_OscConfig(RCC_OscInitTypeDef *RCC_OscInitStruct)",d:"配置振荡器：HSE / HSI(64MHz) / HSI48 / CSI(4MHz) / LSE / LSI / <strong>PLL1、PLL2、PLL3</strong>。PLL1 的 P 输出给 CPU。",pm:"结构体含 OscillatorType, HSEState, PLL.PLLState, PLL.PLLM/N/P/Q/R 等",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"init",kw:"HAL_RCC_OscConfig 振荡器 HSE HSI CSI PLL1 PLL2 PLL3 配置"},
+{n:"第 3 步：HAL_RCC_ClockConfig",p:"HAL_StatusTypeDef HAL_RCC_ClockConfig(RCC_ClkInitTypeDef *RCC_ClkInitStruct, uint32_t FLatency)",d:"配置总线分频。<strong>H7 有 6 条总线</strong>：SYSCLK / AHB / APB1 / APB2 / APB3(D1PCLK1) / APB4。Flash 延时 550MHz 下需要 <code>FLASH_LATENCY_7</code>。",pm:"结构体含 ClockType, SYSCLKSource, SYSCLKDivider, AHBCLKDivider, APB1/2/3/4CLKDivider",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"init",kw:"HAL_RCC_ClockConfig 总线 分频 AHB APB1 APB2 APB3 APB4 FLASH_LATENCY_7"},
+{n:"第 4 步：HAL_RCCEx_PeriphCLKConfig ★",p:"HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef *PeriphClkInit)",d:"<strong>这一步是 H7 独有的，也是最容易被忽略的。</strong>为每个外设单独指定它的内核时钟源来自 PLL1_Q / PLL2_P / PLL3_Q / HSI / CSI / LSE 中的哪一个。<strong>漏配会导致外设波特率/采样率完全不对，但代码能编译能下载。</strong>",pm:"结构体含 PeriphClockSelection (位掩码) + 对应外设的 ClockSelection 字段",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"init",kw:"HAL_RCCEx_PeriphCLKConfig 外设 内核时钟 源 选择 漏配 波特率 错"},
+{n:"H7 时钟树要点",p:"PLL1: DIVM1&times;DIVN1&divide;DIVP1 &rarr; SYSCLK(CPU) &middot; DIVQ1 &rarr; 外设 &middot; DIVR1 &rarr; 追踪时钟",d:"三个 PLL 各自独立，<strong>PLL2 通常专门给 ADC/USB/LTDC 这类需要特定频率的外设</strong>，PLL3 给 FDCAN/SDMMC/SPI 等。互不干扰，改一个不影响另一个。",pm:"PLL2: DIVM2/N2/P2/Q2/R2 &middot; PLL3: DIVM3/N3/P3/Q3/R3",r:"&mdash;",tag:"star",kw:"时钟树 PLL1 PLL2 PLL3 DIVM DIVN DIVP DIVQ DIVR 架构 理解"},
+{n:"常见配置示例（以 CubeMX 生成为准）",p:"HSE 25MHz &middot; DIVM1=5 &middot; DIVN1=192 &middot; DIVP1=2 &rarr; SYSCLK = 480MHz",d:"计算公式：<strong>SYSCLK = HSE &divide; DIVM1 &times; DIVN1 &divide; DIVP1</strong>。跑满 550MHz 需 DIVN1=220 且<strong>必须先配 VOS0</strong>（否则最高只能到 200MHz 左右）。<br><strong>注意：</strong>各型号的 PLL VCO 输入/输出范围有限制（参考 RM0468 的 PLL characteristics 表），CubeMX 会自动校验并标红，建议让 CubeMX 生成。",pm:"25 &divide; 5 &times; 192 &divide; 2 = 480 MHz",r:"&mdash;",tag:"star",kw:"配置 示例 25MHz 480MHz 550MHz 公式 VOS0 CubeMX"},
+]},
+{t:"时钟查询",apis:[
+{n:"HAL_RCC_GetSysClockFreq",p:"uint32_t HAL_RCC_GetSysClockFreq(void)",d:"获取 SYSCLK 频率。",pm:"无",r:"Hz",tag:"query",kw:"HAL_RCC_GetSysClockFreq SYSCLK 查询"},
+{n:"HAL_RCC_GetHCLKFreq",p:"uint32_t HAL_RCC_GetHCLKFreq(void)",d:"获取 AHB (HCLK) 频率。",pm:"无",r:"Hz",tag:"query",kw:"HAL_RCC_GetHCLKFreq HCLK AHB"},
+{n:"HAL_RCC_GetPCLK1Freq",p:"uint32_t HAL_RCC_GetPCLK1Freq(void)",d:"获取 APB1 频率（H7 最大 275MHz）。",pm:"无",r:"Hz",tag:"query",kw:"HAL_RCC_GetPCLK1Freq APB1 275MHz"},
+{n:"HAL_RCCEx_GetPeriphCLKFreq ★",p:"uint32_t HAL_RCCEx_GetPeriphCLKFreq(uint32_t PeriphClk)",d:"<strong>查询某个外设实际拿到的内核时钟频率。</strong>诊断「SPI 速率不对」「USART 波特率偏差大」「ADC 采样率不对」时，先在这里打出来看看是不是你的 PeriphCLKConfig 配错了。<br>用法示例：<code>HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_USART1);</code>",pm:"PeriphClk: RCC_PERIPHCLK_xxx 宏（如 RCC_PERIPHCLK_SPI1 / ADC / USB / FDCAN / SDMMC / LTDC）",r:"该外设的内核时钟频率 (Hz)",tag:"query",kw:"HAL_RCCEx_GetPeriphCLKFreq 外设 时钟 查询 诊断 波特率 采样率"},
+{n:"HAL_RCC_MCOConfig",p:"void HAL_RCC_MCOConfig(uint32_t RCC_MCOx, uint32_t RCC_MCOSource, uint32_t RCC_MCODiv)",d:"MCO 时钟输出。MCO1=PA8，MCO2=PC9。可输出 sysclk/pll1_q/pll2_p/hse/hsi48/CSI 等，用示波器量可以验证时钟配置对不对。",pm:"RCC_MCO1/2 | 时钟源 | 分频",r:"无",tag:"cfg",kw:"HAL_RCC_MCOConfig MCO PA8 PC9 输出 示波器 验证"},
+{n:"HAL_RCC_EnableCSS",p:"void HAL_RCC_EnableCSS(void)",d:"时钟安全系统。HSE 失效时自动切 HSI 并触发 NMI。<strong>建议在产品固件里开启</strong>，可防止晶振脱焊导致死机。",pm:"无",r:"无",tag:"cfg",kw:"HAL_RCC_EnableCSS CSS 时钟安全 HSE 失效 NMI"},
+]},
+{t:"外设时钟使能宏（注意总线变了）",apis:[
+{n:"__HAL_RCC_GPIOx_CLK_ENABLE ★",p:"#define __HAL_RCC_GPIOA_CLK_ENABLE()",d:"使能 GPIO 时钟。<strong>关键差异：H7 的 GPIO 挂在 AHB4 总线上（F4 是 AHB1）</strong>。GPIOA~GPIOK 均有对应宏。不开时钟写 GPIO 寄存器是哑操作。",pm:"GPIOA ~ GPIOK",r:"无",tag:"macro",kw:"GPIOA GPIOB GPIOC GPIOD GPIOE CLK_ENABLE 时钟 AHB4 差异 F4 AHB1"},
+{n:"__HAL_RCC_SYSCFG_CLK_ENABLE ★",p:"#define __HAL_RCC_SYSCFG_CLK_ENABLE()",d:"使能系统配置控制器时钟 (APB4)。<strong>用 EXTI 配置引脚映射时必须开，否则 EXTI 中断不触发</strong> —— 这是 F4 到 H7 移植时很容易漏的一步。",pm:"无",r:"无",tag:"macro",kw:"SYSCFG 时钟 APB4 EXTI 中断 不触发 漏 必须"},
+{n:"__HAL_RCC_DMAx_CLK_ENABLE",p:"#define __HAL_RCC_DMA1_CLK_ENABLE()",d:"DMA1/DMA2（D2 域双口 DMA）时钟使能，挂在 AHB1。",pm:"DMA1 / DMA2",r:"无",tag:"macro",kw:"DMA1 DMA2 CLK_ENABLE 时钟 AHB1 D2域"},
+{n:"__HAL_RCC_MDMA_CLK_ENABLE",p:"#define __HAL_RCC_MDMA_CLK_ENABLE()",d:"MDMA 主 DMA 时钟使能，挂在 AHB3。H7 独有。",pm:"无",r:"无",tag:"macro",kw:"MDMA CLK_ENABLE 时钟 AHB3 主DMA"},
+{n:"__HAL_RCC_BDMA_CLK_ENABLE",p:"#define __HAL_RCC_BDMA_CLK_ENABLE()",d:"BDMA 基础 DMA（D3 域）时钟使能，挂在 AHB4（部分批次为 AHB3）。H7 独有。",pm:"无",r:"无",tag:"macro",kw:"BDMA CLK_ENABLE 时钟 AHB4 D3域 基础DMA"},
+{n:"__HAL_RCC_USARTx_CLK_ENABLE",p:"#define __HAL_RCC_USART1_CLK_ENABLE()",d:"串口时钟使能。H723 有 USART1/2/3/6/10 + UART4/5/7/8 + LPUART1。",pm:"USART1/2/3/6/10, UART4/5/7/8, LPUART1",r:"无",tag:"macro",kw:"USART1 USART2 USART3 USART6 UART4 UART5 UART7 UART8 LPUART1 CLK_ENABLE 串口 时钟"},
+{n:"__HAL_RCC_SPIx_CLK_ENABLE",p:"#define __HAL_RCC_SPI1_CLK_ENABLE()",d:"SPI 时钟使能。H723 有 SPI1~SPI5（其中 SPI2/SPI3 可复用 I2S）。",pm:"SPI1 ~ SPI5",r:"无",tag:"macro",kw:"SPI1 SPI2 SPI3 SPI4 SPI5 CLK_ENABLE 时钟 5个"},
+{n:"__HAL_RCC_I2Cx_CLK_ENABLE",p:"#define __HAL_RCC_I2C1_CLK_ENABLE()",d:"I2C 时钟使能。H723 有 I2C1~I2C5（部分支持 I3C）。",pm:"I2C1 ~ I2C5",r:"无",tag:"macro",kw:"I2C1 I2C2 I2C3 I2C4 I2C5 CLK_ENABLE 时钟 I3C"},
+{n:"__HAL_RCC_FDCAN_CLK_ENABLE",p:"#define __HAL_RCC_FDCAN_CLK_ENABLE()",d:"FDCAN 时钟使能 (APB1H)。三个 FDCAN 共用一个时钟宏。",pm:"无",r:"无",tag:"macro",kw:"FDCAN CLK_ENABLE 时钟 APB1H CAN FD"},
+{n:"__HAL_RCC_USB_OTG_HS_CLK_ENABLE",p:"#define __HAL_RCC_USB1_OTG_HS_CLK_ENABLE()",d:"USB OTG HS 时钟。H7 上移植注意：宏名可能是 USB1_OTG_HS 或 USB_OTG_HS，取决于具体 HAL 版本。",pm:"无",r:"无",tag:"macro",kw:"USB OTG HS CLK_ENABLE 时钟 USB1"},
+{n:"__HAL_RCC_OSPIx_CLK_ENABLE",p:"#define __HAL_RCC_OSPI1_CLK_ENABLE()",d:"Octo-SPI 时钟使能 (AHB3)。H723 有 OCTOSPI1 和 OCTOSPI2 两个。",pm:"OCTOSPI1 / OCTOSPI2",r:"无",tag:"macro",kw:"OSPI OCTOSPI CLK_ENABLE 时钟 AHB3 XiP"},
+{n:"__HAL_RCC_SDMMCx_CLK_ENABLE",p:"#define __HAL_RCC_SDMMC1_CLK_ENABLE()",d:"SDMMC 时钟。<strong>H723 有 2 个 SDMMC</strong>（SDMMC1、SDMMC2）。",pm:"SDMMC1 / SDMMC2",r:"无",tag:"macro",kw:"SDMMC1 SDMMC2 CLK_ENABLE 时钟 2个 SD卡"},
+]},
+{t:"外设时钟源选择速查（PeriphCLKConfig 字段）",apis:[
+{n:"USART 时钟源",p:"Usart16ClockSelection / Usart234578ClockSelection / Lpuart1ClockSelection",d:"USART1/6 和 USART2/3/4/5/7/8 分别可选不同源。常用 <code>RCC_USART16CLKSOURCE_PCLK2</code>（APB2）或 <code>RCC_USART16CLKSOURCE_PLL2</code>（更灵活的波特率）。<br><strong>波特率 = f_ker_ck / USARTDIV，所以 USART 的实际 1 分频时钟直接决定波特率精度。</strong>",pm:"RCC_USART16CLKSOURCE_PCLK2 / PLL2 / PLL3 / HSI / CSI / LSE",r:"&mdash;",tag:"macro",kw:"Usart16ClockSelection USART 时钟源 波特率 精度 PCLK2 PLL2"},
+{n:"SPI 时钟源",p:"Spi123ClockSelection / Spi45ClockSelection",d:"SPI1/2/3 一组，SPI4/5 另一组。想要精确的分频（如 42.5MHz 给某个 ADC）就挂 PLL。<br><strong>SPI 速率上限</strong>取决于所选内核时钟的一半。",pm:"RCC_SPI123CLKSOURCE_PLL1 / PLL2 / PLL3 / I2S_CKIN / PER",r:"&mdash;",tag:"macro",kw:"Spi123ClockSelection Spi45ClockSelection SPI 时钟源 分频 速率"},
+{n:"I2C 时钟源",p:"I2c123ClockSelection / I2c4ClockSelection / I2c5ClockSelection",d:"I2C 的内核时钟影响 Timing 寄存器计算。<strong>改了时钟源必须重新生成 Timing 值</strong>（CubeMX 里会自动算），否则 I2C 不通。",pm:"RCC_I2C123CLKSOURCE_PLL3 / HSI / CSI",r:"&mdash;",tag:"macro",kw:"I2c123ClockSelection I2C 时钟源 Timing 重新算 不通"},
+{n:"ADC 时钟源",p:"AdcClockSelection",d:"ADC 内核时钟可来自 PLL2_P / PLL3_R / PER。<strong>注意 ADC 最大时钟有限制</strong>（H723 的 ADC 转换时钟一般不超过 ~80MHz 量级，需查数据手册 by part number），超了采样值会不对。",pm:"RCC_ADCCLKSOURCE_PLL2 / PLL3 / PER",r:"&mdash;",tag:"macro",kw:"AdcClockSelection ADC 时钟源 PLL2 PLL3 PER 上限"},
+{n:"USB 时钟源",p:"UsbClockSelection",d:"USB 需要严格 48MHz。<strong>通常用 HSI48（内部振，免校准）或 PLL1_Q=48MHz。</strong>晶振方案建议用 HSI48 并由 CRS 自动微调和它的偏差。",pm:"RCC_USBCLKSOURCE_HSI48 / PLL1 / PLL3 / HSI48_Div2",r:"48 MHz",tag:"macro",kw:"UsbClockSelection USB 48MHz HSI48 PLL1 CRS"},
+{n:"FDCAN 时钟源",p:"FdcanClockSelection",d:"FDCAN 波特率计算用这个时钟。常用 PLL1_Q 或 PLL2_Q 配成 40/80MHz 这种好算的值。",pm:"RCC_FDCANCLKSOURCE_HSE / PLL1 / PLL2",r:"&mdash;",tag:"macro",kw:"FdcanClockSelection FDCAN 时钟源 波特率 PLL1 PLL2 40MHz"},
+{n:"SDMMC 时钟源",p:"SdmmcClockSelection",d:"SDMMC 的工作时钟，通常 200MHz 分频后给 SD 卡（识别阶段 &le;400kHz，高速模式可达 50MHz 以上）。",pm:"RCC_SDMMCCLKSOURCE_PLL1 / PLL2",r:"&mdash;",tag:"macro",kw:"SdmmcClockSelection SDMMC 时钟源 PLL1 PLL2 400kHz"},
+{n:"RNG 时钟源",p:"RngClockSelection",d:"RNG 需要稳定的时钟（常用 HSI48 或 PLL1_Q）。时钟不稳会产生 RNG 时钟错误 (CEIS)。",pm:"RCC_RNGCLKSOURCE_HSI48 / PLL1 / LSE / LSI",r:"&mdash;",tag:"macro",kw:"RngClockSelection RNG 时钟源 HSI48 PLL1 CEIS"},
+{n:"LTDC / OCTOSPI / RTC 时钟源",p:"LtdcClockSelection / OctospiClockSelection / RTCClockSelection",d:"LTDC 驱动 RGB 屏需要几十 MHz 的像素时钟（PLL2/PLL3 常配 33MHz 左右）。RTC 可选 LSE(32.768k) / LSI(32k) / HSE 分频。",pm:"见 stm32h7xx_hal_rcc_ex.h 的 RCC_xxxCLKSOURCE_ 宏",r:"&mdash;",tag:"macro",kw:"LtdcClockSelection OctospiClockSelection RTCClockSelection LTDC RGB 像素时钟"},
+]},
+]},
+{id:"cache",name:"Cache 与 MPU ★核心难点",badge:"★必读",color:"#f9c74f",hdr:"core_cm7.h + stm32h7xx_hal_cortex.h",desc:"<strong>Cortex-M7 有 32KB 指令 Cache + 32KB 数据 Cache，这是 H7 相对 F4 最大的行为差异，也是 90% 的 H7 疑难杂症来源。</strong> Cache line = 32 字节。本章是整份手册最重要的一章。",cats:[
+{t:"先搞懂为什么会出错",apis:[
+{n:"数据不一致的产生过程",p:"CPU 写 buf → 数据暂存在 D-Cache → DMA 从 RAM 读走旧数据 ✗",d:"CPU 执行写操作时，<strong>正常情况下</strong>（Write-back 模式）数据先进 D-Cache 而不是立刻落到 RAM。DMA 控制器不经过 Cache，直接从 RAM 搬数据，于是搬走的是「上一次」的老数据。<strong>表现：DMA 发送的内容不对、波形不对、文件内容错误。</strong>",pm:"Cache line = 32 字节",r:"&mdash;",tag:"star",kw:"数据 不一致 原因 CPU Cache DMA 旧数据 Write-back 32字节"},
+{n:"另一种：CPU 读到旧数据",p:"DMA 写 buf → 数据落在 RAM → CPU 从 D-Cache 里读的还是旧内容 ✗",d:"反过来也一样：<strong>DMA 把外设数据搬进 RAM 后，CPU 若从 D-Cache 读，读到的可能是 DMA 搬之前缓存的那份</strong>。<br>表现：串口收到的字节是上一次的、ADC 采样值不刷新、以太网包内容错误。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"CPU 读 旧数据 DMA 收到 ADC 采样 不刷新"},
+{n:"一句话口诀",p:"<strong>「DMA 发出去之前要 Clean，DMA 收进来之后要 Invalidate」</strong>",d:"Clean = 把 Cache 里改过的数据刷到 RAM（让 DMA 看得到最新）。Invalidate = 丢弃 Cache 里的副本（让 CPU 从 RAM 重新读）。<br>口诀记忆：发出去要「清干净送走」，收进来要「作废旧的」。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"口诀 Clean Invalidate 发送前 接收后 记忆"},
+]},
+{t:"Cache 使能 / 禁用",apis:[
+{n:"SCB_EnableICache",p:"void SCB_EnableICache(void)",d:"使能指令 Cache (32KB)。让 Flash/外部存储器里的代码接近 0 等待执行。<strong>必须在 SystemClock_Config 之后调用</strong>（时钟不稳定时开 Cache 有风险）。",pm:"无",r:"无",tag:"init",kw:"SCB_EnableICache 指令缓存 使能 ICache 必做"},
+{n:"SCB_EnableDCache",p:"void SCB_EnableDCache(void)",d:"使能数据 Cache (32KB)。<strong>开启之后就必须自己负责 Cache 一致性维护</strong>。",pm:"无",r:"无",tag:"init",kw:"SCB_EnableDCache 数据缓存 使能 DCache 必做 一致性"},
+{n:"SCB_DisableICache / SCB_DisableDCache",p:"void SCB_DisableDCache(void)",d:"禁用 Cache（会自动 Clean+Invalidate）。<strong>调试阶段想排除 Cache 干扰时可以临时关掉</strong>：如果关掉后功能正常、打开后不正常，就确定是 Cache 问题了。这是最快的定位手段。",pm:"无",r:"无",tag:"op",kw:"SCB_DisableDCache SCB_DisableICache 禁用 调试 定位 排除"},
+]},
+{t:"Cache 维护操作（三大全局操作）",apis:[
+{n:"SCB_CleanDCache",p:"void SCB_CleanDCache(void)",d:"<strong>发送 DMA 前调用。</strong>把整个 D-Cache 中所有被修改过 (dirty) 的行写回 RAM。<br>缺点：整个 Cache 都刷，550MHz 下开销不小，频繁调用会拖慢系统。",pm:"无",r:"无",tag:"op",kw:"SCB_CleanDCache 清洗 回写 RAM DMA 发送前 dirty"},
+{n:"SCB_InvalidateDCache",p:"void SCB_InvalidateDCache(void)",d:"<strong>DMA 接收完成、CPU 要读数据前调用。</strong>丢弃整个 D-Cache 的内容，下次读会重新从 RAM 加载。<br><strong>⚠ 危险：如果 Cache 里还有未写回的修改，直接 Invalidate 会丢失数据！</strong>不确定的时候用 CleanInvalidate。",pm:"无",r:"无",tag:"op",kw:"SCB_InvalidateDCache 作废 DMA 接收后 CPU读 危险 丢失"},
+{n:"SCB_CleanInvalidateDCache",p:"void SCB_CleanInvalidateDCache(void)",d:"先写回所有 dirty 行，再让 Cache 整体失效。<strong>最安全的全局操作</strong>，兼顾两种场景。如果拿不准用 Clean 还是 Invalidate，就用这个。",pm:"无",r:"无",tag:"op",kw:"SCB_CleanInvalidateDCache 先写回 再失效 最安全"},
+]},
+{t:"Cache 维护操作（按地址，推荐）",apis:[
+{n:"SCB_CleanDCache_by_Addr",p:"void SCB_CleanDCache_by_Addr(uint32_t *addr, int32_t dsize)",d:"只把指定地址范围的 Cache 行写回 RAM。<strong>比全局 Clean 高效得多，优先使用。</strong><br>用法：<code>SCB_CleanDCache_by_Addr((uint32_t*)txbuf, len);</code>",pm:"addr: 缓冲区地址（应 32 字节对齐） | dsize: 字节数",r:"无",tag:"op",kw:"SCB_CleanDCache_by_Addr 按地址 清洗 高效 DMA 发送 推荐"},
+{n:"SCB_InvalidateDCache_by_Addr",p:"void SCB_InvalidateDCache_by_Addr(uint32_t *addr, int32_t dsize)",d:"只让指定地址范围的 Cache 行失效。<strong>DMA 接收完成后、CPU 读取前调用。</strong><br>用法：<code>SCB_InvalidateDCache_by_Addr((uint32_t*)rxbuf, len);</code>",pm:"addr | dsize",r:"无",tag:"op",kw:"SCB_InvalidateDCache_by_Addr 按地址 失效 DMA 接收 CPU读"},
+{n:"SCB_CleanInvalidateDCache_by_Addr",p:"void SCB_CleanInvalidateDCache_by_Addr(uint32_t *addr, int32_t dsize)",d:"指定范围的「先写回再失效」，按地址版本的安全选择。",pm:"addr | dsize",r:"无",tag:"op",kw:"SCB_CleanInvalidateDCache_by_Addr 按地址 安全 写回 失效"},
+{n:"⚠ 对齐陷阱（务必注意）",p:"// 错误做法：uint8_t buf[64]; SCB_InvalidateDCache_by_Addr(buf, 64);\n// 正确做法：\nALIGN_32BYTES(uint8_t buf[64]);  // CubeMX 生成的对齐宏",d:"<strong>_by_Addr 系列要求地址和长度最好都按 32 字节对齐。</strong>不对齐时，与缓冲区共用同一条 Cache line 的其他变量可能被意外清/失效，产生极难排查的偶发 bug。<br>CubeMX 生成的工程里有 <code>ALIGN_32BYTES</code> 宏可直接使用。",pm:"对齐宏: ALIGN_32BYTES(x) = __attribute__((aligned(32))) x",r:"&mdash;",tag:"star",kw:"对齐 陷阱 ALIGN_32BYTES 32字节 偶发 bug 危险"},
+]},
+{t:"MPU 配置（最省心的终极方案）",apis:[
+{n:"HAL_MPU_Disable",p:"void HAL_MPU_Disable(void)",d:"禁用 MPU。<strong>修改任何 Region 之前必须先 Disable</strong>，改完再 Enable。",pm:"无",r:"无",tag:"cfg",kw:"HAL_MPU_Disable 禁用 MPU 修改前"},
+{n:"HAL_MPU_ConfigRegion",p:"void HAL_MPU_ConfigRegion(MPU_Region_InitTypeDef *MPU_Init)",d:"配置一个 MPU 区域。Cortex-M7 支持 8 或 16 个区域（H7 为 16）。通过应设置 <code>IsCacheable</code> 关闭某区域的缓存。<br>关键字段：<strong>IsCacheable / IsBufferable / TypeExtField (TEX) / IsShareable</strong> 四个字段组合决定该区域的内存属性。",pm:"结构体: Enable, Number, BaseAddress, Size, SubRegionDisable, TypeExtField, AccessPermission, DisableExec, IsShareable, IsCacheable, IsBufferable",r:"无",tag:"cfg",kw:"HAL_MPU_ConfigRegion 区域 配置 IsCacheable IsBufferable TEX IsShareable 属性"},
+{n:"HAL_MPU_Enable",p:"void HAL_MPU_Enable(uint32_t MPU_Control)",d:"使能 MPU。<strong>推荐参数 <code>MPU_PRIVILEGED_DEFAULT</code></strong>（特权模式用默认内存映射，RTOS 友好）。",pm:"MPU_Control: MPU_PRIVILEGED_DEFAULT / MPU_HFNMI_PRIVDEF_NONE / MPU_HARDFAULT_NMI",r:"无",tag:"cfg",kw:"HAL_MPU_Enable 使能 MPU_PRIVILEGED_DEFAULT RTOS"},
+{n:"★ 完整模板：把 DMA 区设为 Non-cacheable",p:"void MPU_Config(void) {\n  HAL_MPU_Disable();\n  MPU_Region_InitTypeDef m;\n  m.Enable           = MPU_REGION_ENABLE;\n  m.Number           = MPU_REGION_NUMBER0;\n  m.BaseAddress      = 0x38000000;        // SRAM4 (D3)\n  m.Size             = MPU_REGION_SIZE_16KB;\n  m.SubRegionDisable = 0x00;\n  m.TypeExtField     = MPU_TEX_LEVEL1;    // Level1 + Cacheable=0 = Normal Non-cacheable\n  m.AccessPermission = MPU_REGION_FULL_ACCESS;\n  m.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;\n  m.IsShareable      = MPU_ACCESS_SHAREABLE;\n  m.IsCacheable      = MPU_ACCESS_NOT_CACHEABLE;\n  m.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;\n  HAL_MPU_ConfigRegion(&m);\n  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);\n}",d:"<strong>强烈推荐的工程实践。</strong>把大 DMA 缓冲区所在的 SRAM4（或 AXI SRAM 的一块）配成 Non-cacheable 后，<strong>DMA 收发完全不用写任何 Clean/Invalidate 代码，也不会出错</strong>。<br>这是工程上最可靠、最省心的做法，比到处补 Cache 维护调用稳健得多。",pm:"注意 BaseAddress 必须能被 Size 整除",r:"&mdash;",tag:"star",kw:"模板 MPU Non-cacheable SRAM4 DMA 缓冲区 省心 推荐 工程实践"},
+{n:"属性组合速查",p:"TEX | C | B  &rarr;  内存类型  &middot;  000|0|0 = Strongly-ordered  &middot;  000|0|1 = Device  &middot;  000|1|0 = Normal 可缓存但直写  &middot;  000|1|1 = Normal Write-back  &middot;  001|0|0 = Normal Non-cacheable",d:"<strong>DMA 缓冲区用 001|0|0 (TEX_LEVEL1 + 不可缓存) 或 Device 类型。</strong>普通变量区保留 Write-back 以获得 Cache 性能。<br>外设寄存器区域必须是 Device 或 Strongly-ordered，否则编译器优化会让读写顺序错乱。",pm:"C = IsCacheable, B = IsBufferable",r:"&mdash;",tag:"star",kw:"属性 组合 TEX C B Strongly-ordered Device Write-back Non-cacheable 速查"},
+]},
+{t:"内存屏障",apis:[
+{n:"__DSB()",p:"__STATIC_FORCEINLINE void __DSB(void)",d:"数据同步屏障。<strong>等待前面所有内存访问真正完成。</strong>Cache 维护操作之后、启动 DMA 之前插一句 <code>__DSB();</code> 是好习惯，确保 Clean/Invalidate 彻底生效。",pm:"无",r:"无",tag:"op",kw:"__DSB 数据同步屏障 Cache 维护后 DMA 前"},
+{n:"__DMB()",p:"__STATIC_FORCEINLINE void __DMB(void)",d:"数据内存屏障。保证屏障前的访问先于屏障后的访问完成（不保证操作已完成，只保证顺序）。",pm:"无",r:"无",tag:"op",kw:"__DMB 数据内存屏障 顺序"},
+{n:"__ISB()",p:"__STATIC_FORCEINLINE void __ISB(void)",d:"指令同步屏障。清空流水线，让之前的指令切实执行完毕。<strong>修改 SCB->VTOR 或修改 Cache 配置后需要调用。</strong>",pm:"无",r:"无",tag:"op",kw:"__ISB 指令同步屏障 VTOR Cache 配置 清流水线"},
+]},
+{t:"不需要管 Cache 的两块特区",apis:[
+{n:"DTCM / ITCM 不经过 Cache",p:"DTCM 0x20000000 (128KB)  &middot;  ITCM 0x00000000",d:"<strong>TCM 是直连内核的紧耦合内存，Cache 对它无效。</strong>把 DMA 描述符、关键中断变量放到 DTCM 就自动免疫 Cache 问题。<br>但注意：<strong>多数 DMA 控制器访问不到 TCM</strong>，所以只能放「CPU 自己用」的关键数据，DMA 缓冲区不能放这里。",pm:"DTCM 速度 = CPU 主频 550MHz（零等待）",r:"&mdash;",tag:"star",kw:"DTCM ITCM 不经过 Cache 免疫 关键数据 描述符 但DMA访问不到"},
+{n:"排查流程：怀疑是 Cache 问题怎么办",p:"① 先注释掉 SCB_EnableDCache()  &rarr;  ② 若功能恢复正常，确认是 Cache 问题  &rarr;  ③ 定位到具体缓冲区  &rarr;  ④ 补 _by_Addr 维护 或  用 MPU 设 Non-cacheable",d:"<strong>关 D-Cache 是最快的二分定位手段。</strong>确定后再决定用哪种解决方案，不要一开始就在代码里到处撒 Clean/Invalidate。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"排查 流程 关Cache 定位 二分 解决 不要乱撒"},
+]},
+]},
+{id:"memory",name:"内存映射与域 ★",badge:"★必读",color:"#e0a458",hdr:"RM0468 / AN4891 Table 5",desc:"H723 的 564KB SRAM 分成 7 块，分属 D1 / D2 / D3 三个电源域，<strong>各块能被哪些主设备访问是不同的</strong>。用错区域会导致「DMA 不工作」或「低功耗模式下数据丢失」。",cats:[
+{t:"H723 内部 SRAM 总表（合计 564KB）",apis:[
+{n:"DTCM-RAM",p:"0x2000 0000  &middot;  128 KB  &middot;  64-bit  &middot;  D1 域  &middot;  550 MHz",d:"数据 TCM，直连内核，速度与 CPU 同频零等待。<strong>放高频访问的变量、中断服务程序用的数据、DMA 描述符、栈。</strong><br>⚠ 大部分 DMA 访问不到这里。不受 Cache 影响。",pm:"大小固定 128KB",r:"&mdash;",tag:"pin",kw:"DTCM 0x20000000 128KB 零等待 栈 描述符 DMA访问不到"},
+{n:"ITCM-RAM",p:"0x0000 0000  &middot;  默认 64 KB（可与 AXI 共享重配）  &middot;  64-bit  &middot;  D1 域  &middot;  550 MHz",d:"指令 TCM。<strong>放对时延要求极高的中断向量表和 ISR 代码</strong>，可做到确定性的实时响应。<br>H723 上 ITCM 与 AXI SRAM 共用一块 192KB 的物理 RAM，通过寄存器配置划分：<strong>默认 64KB 给 ITCM + 192KB 给 AXI SRAM 是可调整的默认态</strong>。",pm:"可通过 TCM_AXI_SHARED 寄存器调整分配",r:"&mdash;",tag:"pin",kw:"ITCM 0x00000000 64KB 指令 中断 实时 共享 重配 分配"},
+{n:"AXI SRAM",p:"0x2400 0000  &middot;  默认约 320 KB（128KB 固定 + 192KB 共享块）  &middot;  64-bit AXI  &middot;  D1 域  &middot;  275 MHz",d:"<strong>H723 上最大的一块 SRAM，也是 DMA 缓冲区、LCD 显存、以太网收发缓冲的首选。</strong>64 位带宽，多主设备可并发访问。<br>⚠ <strong>BDMA 访问不到 AXI SRAM</strong>。",pm:"除 BDMA 外的所有主设备可访问",r:"&mdash;",tag:"pin",kw:"AXI SRAM 0x24000000 320KB 64位 DMA缓冲 LCD显存 以太网 BDMA不行"},
+{n:"SRAM1 / SRAM2 ⚠",p:"SRAM1: 0x3000 0000  &middot;  SRAM2: 0x3000 4000  &middot;  <strong>各仅 16 KB</strong>  &middot;  32-bit AHB  &middot;  D2 域  &middot;  275 MHz",d:"<strong>★ 这是 H723 与 H743 最隐蔽的差异：H743 的 SRAM1/SRAM2 各 128KB，H723 只有各 16KB！</strong><br>共 32KB，适合放中等频率数据和 DMA 缓冲。从 H743 移植过来若申请了超过 16KB 的单块缓冲，会链接失败或越界。<br>⚠ SDMMC1 和 LTDC 访问受限（详见 AN4891）。",pm:"D2 域 BRAM",r:"&mdash;",tag:"star",kw:"SRAM1 SRAM2 0x30000000 16KB 只有 差异 H743 128KB 移植 越界"},
+{n:"SRAM3 — H723 上没有 ✗",p:"H743: 0x3004 0000 (32KB)  &middot;  H723: <strong>不存在</strong>",d:"<strong>H723/H733 没有 SRAM3。</strong>在 H743 上 SRAM3 常用于以太网和 USB 专用缓冲，H723 上这部分要改放 AXISRAM 或 SRAM4。<br>移植 H743 工程时，链接脚本里引用 SRAM3 的地方必须删掉。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"SRAM3 不存在 H723 没有 移植 H743 以太网 USB 缓冲 链接脚本"},
+{n:"SRAM4",p:"0x3800 0000  &middot;  16 KB  &middot;  32-bit AHB  &middot;  <strong>D3 域</strong>  &middot;  275 MHz",d:"D3 域 RAM，<strong>唯一能被 BDMA 访问的区域</strong>，也是 D1/D2 域进入低功耗后仍能保持数据的区域。<br><strong>放 BDMA 的缓冲区，或在低功耗模式仍需保留的数据。</strong>",pm:"BDMA 缓冲区必须放这里",r:"&mdash;",tag:"pin",kw:"SRAM4 0x38000000 D3域 BDMA 唯一 低功耗 保持"},
+{n:"Backup SRAM",p:"0x3880 0000  &middot;  4 KB  &middot;  32-bit AHB  &middot;  D3 域",d:"备份 RAM，配合 VBAT 在掉电/待机时保持数据。<strong>放系统配置、故障记录、RTC 备份数据。</strong>访问前需要使能备份域写权限。",pm:"需 HAL_PWR_EnableBkUpAccess()",r:"&mdash;",tag:"pin",kw:"Backup SRAM 0x38800000 4KB VBAT 掉电保持 配置 备份域"},
+{n:"Flash",p:"0x0800 0000  &middot;  1 MB  &middot;  AXI 64-bit  &middot;  D1 域",d:"程序存储，带 ECC。通过 ART/I-Cache 实现接近 0 等待执行。<strong>H723 只有单 bank 分区方式，扇区擦除粒度较大</strong>（详见 FLASH 章节）。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"Flash 0x08000000 1MB ECC AXI 扇区"},
+]},
+{t:"各区域选型决策表",apis:[
+{n:"该用哪块？一表搞定",p:"用途  &rarr;  推荐区域  &middot;  注意事项",d:"<strong>DMA 收发缓冲</strong> &rarr; AXI SRAM（推荐）或 SRAM4；<br><strong>以太网 / USB 缓冲</strong> &rarr; AXI SRAM（H743 的 SRAM3 角色由它承担）；<br><strong>LCD 显存</strong> &rarr; AXI SRAM（LTDC 可访问）或外部 SDRAM；<br><strong>BDMA 缓冲</strong> &rarr; <strong>只能 SRAM4</strong>；<br><strong>中断服务 / 实时算法数据</strong> &rarr; DTCM；<br><strong>超实时 ISR 代码</strong> &rarr; ITCM；<br><strong>掉电保存的配置</strong> &rarr; Backup SRAM 或 Flash；<br><strong>普通全局变量 / 栈 / 堆</strong> &rarr; DTCM（默认 RAM 区）。",pm:"详见各条目说明",r:"&mdash;",tag:"flow",kw:"选型 决策表 DMA ETH USB LCD BDMA SRAM4 DTCM ITCM 推荐"},
+{n:"在代码里指定区域的方法",p:"uint8_t dma_buf[512] __attribute__((section(\".sram4\"))) __attribute__((aligned(32)));",d:"用 GCC/ARMCC 的 section 属性把变量显式放到指定 SRAM 区。<br>Keil 里要在 scatter file / Options → Target 里确认对应区域已启用。<br><strong>配合 MPU 把该区域设为 Non-cacheable，DMA 就彻底没 Cache 问题了。</strong>",pm:"常见段名需与链接脚本对应",r:"&mdash;",tag:"op",kw:"section attribute 指定区域 SRAM4 aligned Keil scatter 链接脚本"},
+{n:"CubeMX / 链接脚本注意",p:"H723 的 SRAM1/SRAM2 各只有 16KB，链接脚本里不能写成 128KB",d:"从 H743 移植或手改 <code>.ld</code> / <code>.sct</code> 时，<strong>务必核对实际尺寸</strong>。写大了会导致编译通过但运行时内存越界、HardFault。<br>建议直接用 CubeMX 生成对应型号的链接脚本。",pm:"核对对象: .ld 文件的 LENGTH",r:"&mdash;",tag:"star",kw:"链接脚本 ld sct SRAM1 SRAM2 16KB 越界 HardFault CubeMX"},
+]},
+{t:"D1 / D2 / D3 域概念",apis:[
+{n:"什么是三个域",p:"D1 域: CPU + Flash + DTCM/ITCM/AXI SRAM + MDMA  &middot;  D2 域: DMA1/2 + SRAM1/2 + 大部分外设  &middot;  D3 域: BDMA + SRAM4 + Backup + RTC/LPTIM/IWDG 等低功耗外设",d:"H7 把芯片分成 3 个独立供电的域，目的是<strong>让 D1/D2 休眠时 D3 还能工作</strong>（低功耗唤醒、 autosleep 等高级场景）。<br>对初学者只需记住一句话：<strong>普通开发不用管域，但 DMA 缓冲区的位置要选对。</strong>",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"D1 D2 D3 域 概念 供电 低功耗 CPU Flash MDMA BDMA 理解"},
+{n:"H723 与 H743 的域差异",p:"H723 <strong>单核</strong>（H745/H755 才有 M7+M4 双核互连）",d:"<strong>H723/H733 是单核的实现</strong>，所以没有双核间的 HSEM / IPCC 硬件信号量、也没有共享 SRAM 的那套多核同步机制。<br>这不影响单核开发，只是看到别处提到 HSEM/IPCC 时可以忽略。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"单核 H723 H743 HSEM IPCC 双核 忽略 不存在"},
+]},
+]},
+{id:"gpio",name:"GPIO",badge:"I/O",color:"#10b981",hdr:"stm32h7xx_hal_gpio.h",desc:"通用输入输出。STM32H723VGT6 (LQFP100) 有 <strong>GPIOA ~ GPIOK 共 80 个可用 I/O</strong>（100 脚封装）。支持输入 / 输出 / 复用 / 模拟四种模式，<strong>时钟挂在 AHB4 总线</strong>。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_GPIO_Init",p:"void HAL_GPIO_Init(GPIO_TypeDef *GPIOx, GPIO_InitTypeDef *GPIO_Init)",d:"初始化 GPIO 引脚。<strong>注意：在 H7 上务必在此之前调用 __HAL_RCC_GPIOx_CLK_ENABLE() 使能 AHB4 上的 GPIO 时钟。</strong><br>结构体字段：Pin / Mode / Pull / Speed / Alternate。(H7 的 <code>GPIO_InitTypeDef</code> 没有 F1 系列的 Speeed 之外的特殊项)",pm:"GPIOx: GPIOA~GPIOK | GPIO_Init: 配置结构体",r:"无",tag:"init",kw:"HAL_GPIO_Init 初始化 引脚 模式 速度 上下拉 复用 AF AHB4 时钟"},
+{n:"HAL_GPIO_DeInit",p:"void HAL_GPIO_DeInit(GPIO_TypeDef *GPIOx, uint32_t GPIO_Pin)",d:"恢复指定 GPIO 引脚为复位默认状态（模拟输入）。",pm:"GPIOx | GPIO_Pin: GPIO_PIN_0~15",r:"无",tag:"init",kw:"HAL_GPIO_DeInit 反初始化 复位"},
+]},
+{t:"引脚读写",apis:[
+{n:"HAL_GPIO_ReadPin",p:"GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)",d:"读取单个引脚输入电平。",pm:"GPIOx | GPIO_Pin",r:"GPIO_PIN_SET / GPIO_PIN_RESET",tag:"query",kw:"HAL_GPIO_ReadPin 读取 输入 电平"},
+{n:"HAL_GPIO_WritePin",p:"void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)",d:"设置引脚输出电平。走 BSRR 寄存器，原子操作。<br><strong>H7 注意：若GPIO 所在的内存区被 MPU 配成了 Device/Strongly-ordered 类型，写操作不会被 Cache 缓存，可以放心用于 DMA 触发信号。</strong>",pm:"GPIOx | GPIO_Pin | PinState",r:"无",tag:"op",kw:"HAL_GPIO_WritePin 写入 输出 电平 BSRR 原子"},
+{n:"HAL_GPIO_TogglePin",p:"void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)",d:"翻转引脚电平。点灯必备。",pm:"GPIOx | GPIO_Pin",r:"无",tag:"op",kw:"HAL_GPIO_TogglePin 翻转 LED 点灯"},
+]},
+{t:"复用与锁定",apis:[
+{n:"HAL_GPIO_LockPin",p:"HAL_StatusTypeDef HAL_GPIO_LockPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)",d:"锁定引脚配置，复位前不可更改。<strong>H7 上因为有了 Cache/MPU，这个函数更多用于安全场景防止误改。</strong>",pm:"GPIOx | GPIO_Pin",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_GPIO_LockPin 锁定 冻结 配置"},
+{n:"★ GPIO 在 AHB4（与 F4 不同）",p:"__HAL_RCC_GPIOA_CLK_ENABLE();   // AHB4 总线",d:"<strong>H7 的 GPIO 挂在 AHB4，F4 挂在 AHB1。</strong>宏名是一样的，不用担心函数名，但要意识到这是不同总线，低功耗配置时行为不同（见 PWR 章节）。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"GPIO AHB4 总线 差异 F4 AHB1 注意"},
+]},
+{t:"外部中断",apis:[
+{n:"HAL_GPIO_EXTI_IRQHandler",p:"void HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin)",d:"在 stm32h7xx_it.c 的 <code>EXTIx_IRQHandler</code> 中调用。<strong>H7 的 EXTI 可以用 <code>HAL_EXTI_IRQHandler</code> 搭配 handle 的另一种写法，两种都支持。</strong>",pm:"GPIO_Pin: 触发中断的引脚",r:"无",tag:"op",kw:"HAL_GPIO_EXTI_IRQHandler 外部中断 EXTI 处理 it.c"},
+{n:"HAL_GPIO_EXTI_Callback",p:"__weak void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)",d:"外部中断用户回调 (weak)。一个回调服务所有 EXTI 引脚，<strong>必须判断 GPIO_Pin</strong>。建议加软件消抖（记录 HAL_GetTick 时间戳）。",pm:"GPIO_Pin: 触发中断的引脚",r:"无",tag:"cb",kw:"HAL_GPIO_EXTI_Callback 回调 外部中断 判断 消抖"},
+{n:"★ 使用前别忘了开 SYSCFG 时钟",p:"__HAL_RCC_SYSCFG_CLK_ENABLE();   // EXTI 引脚→线路映射依赖 SYSCFG",d:"<strong>H7 上偶发的最常见坑：GPIO/EXTI 都配好了但中断就是不触发。</strong>原因是 <code>SYSCFG</code> 的时钟没开 —— F4 时代 CubeMX 会默认开，H7 时必须自己确认。<br>SYSCFG 挂在 APB4 总线。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"SYSCFG 时钟 APB4 EXTI 不触发 坑 必须"},
+]},
+]},
+{id:"exti",name:"EXTI 外部中断",badge:"中断",color:"#a6e3a1",hdr:"stm32h7xx_hal_exti.h",desc:"外部中断/事件控制器。<strong>H7 的 EXTI 有 88 条线（远超 F4 的 23 条），0~15 对应 GPIO 引脚，16~87 是各种外设的事件线</strong>。HAL 也换成了「句柄 → 配置线 → 注册回调」的三段式新写法。",cats:[
+{t:"新三段式配置流程",apis:[
+{n:"HAL_EXTI_GetHandle",p:"HAL_StatusTypeDef HAL_EXTI_GetHandle(EXTI_HandleTypeDef *hexti, uint32_t ExtiLine)",d:"把一个不透明的 EXTI 句柄和一条 EXTI 线绑定起来。<strong>这是 H7 EXTI 的第一步</strong>，F4 时代没有这个函数。",pm:"hexti: 待填充的句柄 | ExtiLine: EXTILine编号 EXTI_LINE_0 ~ EXTI_LINE_87",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_EXTI_GetHandle 句柄 绑定 EXTI线 LINE_0 LINE_87 第一步"},
+{n:"HAL_EXTI_SetConfigLine",p:"HAL_StatusTypeDef HAL_EXTI_SetConfigLine(EXTI_HandleTypeDef *hexti, EXTI_ConfigTypeDef *pExtiConfig)",d:"配置该 EXTI 线的触发模式：中断/事件、上升沿/下降沿/双边沿，并通过 GPIO 配置指定来源引脚。",pm:"hexti: 句柄 | pExtiConfig: 含 Line / Mode / Trigger / GPIOSel",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_EXTI_SetConfigLine 配置 触发 边沿 GPIOSEL 上升 下降 双边"},
+{n:"HAL_EXTI_RegisterCallback",p:"HAL_StatusTypeDef HAL_EXTI_RegisterCallback(EXTI_HandleTypeDef *hexti, EXTI_CallbackID_TypeDef CallbackID, void (*pPendingCbfn)(void))",d:"为该条线注册独立的回调函数。<strong>相比 F4 的 HAL_GPIO_EXTI_Callback 统一回调，H7 可以每条线有自己的回调，不用在回调里 if-else 判断引脚</strong>，代码更清晰。",pm:"CallbackID: HAL_EXTI_COMMON_CB_ID | pPendingCbfn: 回调函数",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_EXTI_RegisterCallback 注册 回调 每条线 独立 清晰"},
+{n:"HAL_EXTI_IRQHandler",p:"void HAL_EXTI_IRQHandler(EXTI_HandleTypeDef *hexti)",d:"中断处理总入口。在 it.c 的 EXTIx_IRQHandler 中调用。为什么 __HAL_GPIO_EXTI_CLEAR_IT(先) 清标志，再调回调。",pm:"hexti: EXTI 句柄",r:"无",tag:"op",kw:"HAL_EXTI_IRQHandler 中断处理 总入口 it.c EXTIx"},
+]},
+{t:"标准使用模板",apis:[
+{n:"H7 EXTI 完整示例",p:"void EXTI_Init(void) {\n  EXTI_HandleTypeDef hexti0;  // 建议设为全局静态\n  EXTI_ConfigTypeDef cfg;\n  cfg.Line  = EXTI_LINE_0;\n  cfg.Mode  = EXTI_MODE_INTERRUPT;\n  cfg.Trigger = EXTI_TRIGGER_FALLING;\n  cfg.GPIOSel = EXTI_GPIOA;       // 指定来自 PA0\n  HAL_EXTI_GetHandle(&hexti0, EXTI_LINE_0);\n  HAL_EXTI_SetConfigLine(&hexti0, &cfg);\n  HAL_EXTI_RegisterCallback(&hexti0, HAL_EXTI_COMMON_CB_ID, my_isr);\n  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);\n  HAL_NVIC_EnableIRQ(EXTI0_IRQn);\n}",d:"<strong>注意两点易错：</strong><br>① <code>hexti0</code> 必须用 static 或全局，不能是局部变量（句柄在中断里还要用，局部变量出函数就被销毁，中断会发生不可预测的行为）；<br>② 别忘了 <code>__HAL_RCC_SYSCFG_CLK_ENABLE()</code>。",pm:"句柄生命周期必须为全局",r:"&mdash;",tag:"flow",kw:"EXTI 模板 示例 GetHandle SetConfigLine RegisterCallback static 易错"},
+{n:"旧写法仍然可用",p:"HAL_GPIO_EXTI_IRQHandler(pin) + HAL_GPIO_EXTI_Callback(pin)",d:"H7 保留了 F4 风格的 <code>HAL_GPIO_EXTI_IRQHandler</code> 和 <code>EXTI_Callback</code> 组合，从 F4 移植的代码可以直接用。<br><strong>新项目建议用三段式写法，老项目可照旧。</strong>",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"旧写法 兼容 F4 移植 EXTI_Callback 可用 建议新写法"},
+]},
+{t:"标志位宏",apis:[
+{n:"__HAL_GPIO_EXTI_GET_IT / CLEAR_IT",p:"#define __HAL_GPIO_EXTI_GET_IT(__EXTI_LINE__)",d:"查询 / 清除 EXTI 挂起标志。<strong>在回调中也要用 CLEAR_IT 清一次</strong>（虽然 IRQHandler 会清，但自己的软件判断流程里保持习惯更安全）。",pm:"__EXTI_LINE__: EXTI_LINE_0 ~ LINE_15",r:"SET / RESET",tag:"macro",kw:"__HAL_GPIO_EXTI_GET_IT__HAL_GPIO_EXTI_CLEAR_IT 标志 挂起 清除"},
+{n:"__HAL_GPIO_EXTI_GENERATE_SWIT",p:"#define __HAL_GPIO_EXTI_GENERATE_SWIT(__EXTI_LINE__)",d:"软件触发一次 EXTI 中断。测试中断通路是否正常很有用。",pm:"__EXTI_LINE__: EXTI_LINE_0 ~ LINE_15",r:"无",tag:"macro",kw:"__HAL_GPIO_EXTI_GENERATE_SWIT 软件触发 测试 中断通路"},
+]},
+{t:"中断向量表要点",apis:[
+{n:"H7 的 EXTI 中断向量分布",p:"EXTI_LINE_0 → EXTI0_IRQn  &hellip;  EXTI_LINE_4 → EXTI4_IRQn  &middot;  LINE_5~9 → EXTI9_5_IRQn  &middot;  LINE_10~15 → EXTI15_10_IRQn",d:"和 F4 完全相同：<strong>LINE 0~4 各自独占一个中断向量，LINE 5~9 共用 EXTI9_5，LINE 10~15 共用 EXTI15_10</strong>。共用向量的几个线要在同一个 ISR 里判断是哪根线。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"EXTI 中断向量 EXTI0_IRQn EXTI9_5 EXTI15_10 共用 判断"},
+{n:"⚠ 低功耗唤醒要用哪些 EXT",p:"H7 上并非所有 EXTI 都能唤醒 Stop/Standby，D3 域的线才行",d:"做 Stop 模式唤醒时，<strong>要确认所选的唤醒线属于 D3 域（通常是 RTC、LPTIM、部分 GPIO 线）</strong>，否则唤醒不了。详见 PWR 章节和 RM0468 的 EXTI 唤醒能力表。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"低功耗 唤醒 EXTI D3域 Stop Standby 注意 RM0468"},
+]},
+]},
+{id:"nvic",name:"NVIC 中断控制",badge:"中断",color:"#a6e3a1",hdr:"stm32h7xx_hal_cortex.h",desc:"嵌套向量中断控制器。Cortex-M7 支持 16 级优先级（4 bit）。<strong>H7 的外设数量远超 F4，中断向量也多得多，规划优先级更重要。</strong>",cats:[
+{t:"优先级配置",apis:[
+{n:"HAL_NVIC_SetPriorityGrouping",p:"void HAL_NVIC_SetPriorityGrouping(uint32_t PriorityGroup)",d:"设置优先级分组。HAL_Init 默认已设为 GROUP_4（4 位抢占优先级、0 位子优先级）。",pm:"PriorityGroup: 0~3（3 表示 4 位抢占 / 0 位子优先级）",r:"无",tag:"init",kw:"HAL_NVIC_SetPriorityGrouping 优先级 分组 GROUP_4"},
+{n:"HAL_NVIC_SetPriority",p:"void HAL_NVIC_SetPriority(IRQn_Type IRQn, uint32_t PreemptPriority, uint32_t SubPriority)",d:"设置指定中断的优先级。<strong>数值越小优先级越高。</strong>",pm:"IRQn: 中断号 | PreemptPriority: 抢占优先级 | SubPriority: 子优先级",r:"无",tag:"cfg",kw:"HAL_NVIC_SetPriority 优先级 抢占 子优先级"},
+{n:"HAL_NVIC_GetPriority",p:"void HAL_NVIC_GetPriority(IRQn_Type IRQn, uint32_t PriorityGroup, uint32_t *pPreemptPriority, uint32_t *pSubPriority)",d:"获取指定中断的当前优先级。",pm:"IRQn | PriorityGroup | 两个输出指针",r:"无 (通过指针返回)",tag:"query",kw:"HAL_NVIC_GetPriority 优先级 查询"},
+]},
+{t:"中断使能与控制",apis:[
+{n:"HAL_NVIC_EnableIRQ",p:"void HAL_NVIC_EnableIRQ(IRQn_Type IRQn)",d:"使能指定中断。CubeMX 生成的 MX_xxx_Init 里会自动调用。",pm:"IRQn: 中断号 如 USART1_IRQn, DMA1_Stream0_IRQn",r:"无",tag:"cfg",kw:"HAL_NVIC_EnableIRQ 使能 中断 IRQn"},
+{n:"HAL_NVIC_DisableIRQ",p:"void HAL_NVIC_DisableIRQ(IRQn_Type IRQn)",d:"禁用指定中断。",pm:"IRQn",r:"无",tag:"cfg",kw:"HAL_NVIC_DisableIRQ 禁用 中断"},
+{n:"HAL_NVIC_GetPendingIRQ / SetPendingIRQ / ClearPendingIRQ",p:"uint32_t HAL_NVIC_GetPendingIRQ(IRQn_Type IRQn)",d:"查询 / 设置 / 清除中断挂起状态。SetPendingIRQ 可软件触发中断用于调试。",pm:"IRQn: 中断号",r:"Get: 1=挂起 / 0=未挂起",tag:"query",kw:"HAL_NVIC_GetPendingIRQ SetPendingIRQ ClearPendingIRQ 挂起 软件触发"},
+{n:"HAL_NVIC_GetActive",p:"uint32_t HAL_NVIC_GetActive(IRQn_Type IRQn)",d:"查询中断是否正在执行。用于诊断中断嵌套、ISR 卡死。",pm:"IRQn",r:"1=活动 / 0=非活动",tag:"query",kw:"HAL_NVIC_GetActive 活动 查询 嵌套 卡死"},
+{n:"HAL_NVIC_SystemReset",p:"void HAL_NVIC_SystemReset(void)",d:"请求系统软复位，调用后不返回。",pm:"无",r:"无 (不返回)",tag:"op",kw:"HAL_NVIC_SystemReset 复位 软复位 重启"},
+]},
+{t:"★ H7 中断向量命名要点",apis:[
+{n:"DMA 中断名变了",p:"DMA1_Stream0_IRQn / DMA2_Stream7_IRQn  &middot;  BDMA_Channel0_IRQn  &middot;  MDMA_IRQn",d:"H7 有三类 DMA，中断号也分三套：<strong>DMA1/2 用 _StreamN</strong>（和 F4 类似）、<strong>BDMA 用 _ChannelN</strong>、MDMA 统一为 <code>MDMA_IRQn</code>。写 it.c 时别搞混。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"DMA 中断名 DMA1_Stream0 BDMA_Channel0 MDMA_IRQn 三套 别混"},
+{n:"Cache 与 DMA 中断的优先级关系",p:"建议: Cache 维护 → 清 immediately 的原则：DMA 完成中断优先级要足够高",d:"<strong>DMA 完成中断里做 Cache Invalidate 属于临界操作</strong>，如果被打断（更高优先级抢占）且期间有人又写了缓冲区，可能清到一半出问题。<strong>建议给 DMA 完成中断较高优先级，且 Invalidate 后立刻处理数据不要拖。</strong>",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"Cache DMA 中断 优先级 Invalidate 临界 建议 高"},
+]},
+]},
+{id:"cortex",name:"Cortex-M7 内核",badge:"内核",color:"#6b7cff",hdr:"core_cm7.h + stm32h7xx_hal_cortex.h",desc:"Cortex-M7 内核特性。<strong>H7 的 FPU 是双精度硬件 (DP-FPU)，与 F4 的单精度有本质区别</strong>。另外有 DWT 周期计数器、16 个 MPU 区域、ETM 跟踪。",cats:[
+{t:"★ DP-FPU 双精度浮点",apis:[
+{n:"float vs double 在 H7 上",p:"两者均为硬件运算 &middot; 1550MHz 下性能差异很小",d:"<strong>F4 上用 double 会掉进软件模拟，慢十几倍；H7 的 DP-FPU 让 double 也走硬件。</strong>写矩阵运算、卡尔曼滤波、GPS 经纬度计算时可以直接用 double，不用再怕性能问题。<br>但仍建议：确定不需要双精度的场合继续用 float，省寄存器和内存带宽。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"DP-FPU 双精度 double 硬件 区别 F4 软件模拟 性能 建议"},
+{n:"启用 FPU 的编译选项",p:"宏: __FPU_PRESENT=1, __FPU_USED=1, __ARM_FP / 编译器 -mfpu=fpv5-d16 -mfloat-abi=hard",d:"<strong>Keil: Options → Target → Floating Point Hardware = Double Precision。</strong>系统功能的选项必须选否则double 会走软件模拟（且不报错，只是慢）。<br>CubeIDE/GCC: -mfpu=fpv5-dp-d16 -mfloat-abi=data16。",pm:"&mdash;",r:"__ARM_FP_HAS_DP 宏可检查是否启用",tag:"cfg",kw:"FPU 启用 编译选项 Keil Double Precision -mfpu fpv5 dp 必须"},
+]},
+{t:"MPU 内存保护单元",apis:[
+{n:"HAL_MPU_ConfigRegion",p:"void HAL_MPU_ConfigRegion(MPU_Region_InitTypeDef *MPU_Init)",d:"配置 MPU 区域。Cortex-M7 支持 <strong>16 个区域</strong>（比 F4 的 8 个多一倍），可以精细划分。详细用法见「Cache 与 MPU」章节。",pm:"结构体含 Enable, Number, BaseAddress, Size, TEX, AccessPermission, IsShareable, IsCacheable, IsBufferable, SubRegionDisable, DisableExec",r:"无",tag:"cfg",kw:"HAL_MPU_ConfigRegion 区域 16个 精细 划分 详见Cache章节"},
+{n:"★ 用 MPU 主动保护内存",p:"把栈末尾以外的区域设为不可访问，可在栈溢出时立即触发 MemManage 而不是随机崩溃",d:"这是 MPU 的高级用法：<strong>在栈顶上方放一个不可访问的保护页，栈溢出时立刻进 MemManage_Handler，可以直接定位是那个任务栈爆了。</strong>跑 FreeRTOS 时非常有价值。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"MPU 保护 栈溢出 MemManage 定位 FreeRTOS 技巧"},
+{n:"HAL_MPU_Enable / Disable",p:"void HAL_MPU_Enable(uint32_t MPU_Control)",d:"使能/门禁用 MPU。推荐参数 MPU_PRIVILEGED_DEFAULT。改任何 Region 前必须 Disable。",pm:"MPU_Control: MPU_PRIVILEGED_DEFAULT / MPU_HFNMI_PRIVDEF_NONE",r:"无",tag:"cfg",kw:"HAL_MPU_Enable HAL_MPU_Disable 使能 禁用 推荐参数"},
+]},
+{t:"DWT 精确延时 / 性能测量",apis:[
+{n:"DWT 周期计数器初始化",p:"CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; DWT->CYCCNT = 0; DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;",d:"开启 DWT 周期计数器。<strong>550MHz 下 1us = 550 个周期</strong>，实测精度远高于任何定时器方案。不占外设资源。<br>注意 CYCCNT 是 32 位，550MHz 下约 7.8 秒溢出。",pm:"三步: 使能 TRCENA → 清零 CYCCNT → 使能 CYCCNTENA",r:"&mdash;",tag:"init",kw:"DWT CYCCNT 周期计数器 微秒 延时 550MHz 7.8秒溢出"},
+{n:"微秒延时实现",p:"void DelayUS(uint32_t us) {\n  uint32_t start = DWT->CYCCNT;\n  uint32_t cnt = us * (SystemCoreClock / 1000000);\n  while ((DWT->CYCCNT - start) < cnt);\n}",d:"<strong>利用无符号减法天然处理溢出的特性</strong>，不需要额外判断是否溢出。放在 SRAM/TCM 里执行效果更准。",pm:"cnt = us &times; 550 (550MHz 时)",r:"无",tag:"op",kw:"DelayUS 微秒 延时 实现 DWT 溢出 无符号减法"},
+{n:"测量代码执行时间",p:"uint32_t t0 = DWT->CYCCNT; code(); uint32_t dt = DWT->CYCCNT - t0;",d:"<strong>性能优化的第一工具：</strong>测某个函数或算法到底跑了多少个周期。<br><strong>注意 Cache 影响：</strong>第一次跑（Cache 冷）和之后跑（Cache 热）差别很大，测性能要跑多次或清零 I-Cache 后测。",pm:"&mdash;",r:"差值为 CPU 周期数",tag:"query",kw:"测量 执行时间 DWT 周期 性能 优化 Cache 冷热"},
+]},
+{t:"异常与诊断",apis:[
+{n:"HardFault_Handler",p:"void HardFault_Handler(void)",d:"硬件错误中断。<strong>强烈建议重写成打印诊断信息的版本</strong>：读 SCB->CFSR（可配置故障状态寄存器）、SCB->HFSR、SCB->MMFAR/SCB->BFAR，通过串口输出。<br>CFSR 常见位：IACCVIOL(取指访问违例)、IMPRECISERR(异步总线错误，通常是野指针)、PRECISERR(精确总线错误，BFAR 有效)",pm:"&mdash;",r:"&mdash;",tag:"cb",kw:"HardFault 硬件错误 CFSR HFSR MMFAR BFAR 诊断 定位 野指针"},
+{n:"MemManage_Handler",p:"void MemManage_Handler(void)",d:"MPU 区域访问违例。<strong>只有开了 MPU 才会触发。</strong>堆栈溢出保护就是用它。",pm:"&mdash;",r:"&mdash;",tag:"cb",kw:"MemManage MPU 违例 栈溢出 保护 触发"},
+{n:"BusFault_Handler",p:"void BusFault_Handler(void)",d:"总线错误，典型是访问了不存在的地址或时钟未开启的外设寄存器。<strong>H7 上如果访问某外设寄存器 BusFault，九成是该外设时钟没使能。</strong>",pm:"&mdash;",r:"&mdash;",tag:"cb",kw:"BusFault 总线错误 访问 不存在 时钟未开 外设寄存器 九成"},
+{n:"SCB->VTOR 中断向量表重定位",p:"SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;",d:"在 IAP/Bootloader 跳转 App 时必须设置。<strong>H7 上 VTOR 对齐要求更严格</strong>（必须 512 字节对齐或更高，取决于中断向量数量）。跳转后还要 <code>__set_MSP()</code> 和 <code>__ISB()</code>。",pm:"VECT_TAB_OFFSET 通常是 0x00000000 或 App 偏移",r:"无",tag:"cfg",kw:"VTOR 向量表 重定位 IAP Bootloader 跳转 对齐 __set_MSP __ISB"},
+]},
+]},
+{id:"usart",name:"UART / USART / LPUART",badge:"通信",color:"#cba6f7",hdr:"stm32h7xx_hal_uart.h",desc:"H723 有 <strong>9 路串口：USART1/2/3/6/10 + UART4/5/7/8 + LPUART1</strong>。H7 的串口带<strong>硬件 FIFO（8 级深）</strong>，可大幅降低中断频率；LPUART 可在 Stop 模式下继续收数据。波特率取决于你在 RCC 里给它选的内核时钟源。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_UART_Init",p:"HAL_StatusTypeDef HAL_UART_Init(UART_HandleTypeDef *huart)",d:"初始化串口：波特率、字长、停止位、校验、流控、过采样。内部调用 MspInit 开时钟配 GPIO。",pm:"huart: 串口句柄",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"init",kw:"HAL_UART_Init 初始化 波特率 字长 停止位 校验"},
+{n:"★ 波特率与时钟源的关系",p:"波特率 = f_kernel / USARTDIV &middot; f_kernel 由 RCCEx_PeriphCLKConfig 决定",d:"<strong>H7 的串口波特率不再简单等于 PCLK 除法。</strong>如果给 USART1 选了 PLL2 内核时钟，波特率就按 PLL2 的频率算。<br>遇到「波特率不对」，先调 <code>HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_USART1)</code> 看实际时钟。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"波特率 时钟源 PLL2 PCLK GetPeriphCLKFreq 排查 不对"},
+{n:"HAL_UART_DeInit",p:"HAL_StatusTypeDef HAL_UART_DeInit(UART_HandleTypeDef *huart)",d:"反初始化串口。",pm:"huart: 串口句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_UART_DeInit 反初始化"},
+]},
+{t:"★ H7 独有：硬件 FIFO",apis:[
+{n:"HAL_UARTEx_EnableFifoMode",p:"HAL_StatusTypeDef HAL_UARTEx_EnableFifoMode(UART_HandleTypeDef *huart)",d:"<strong>启用串口硬件 FIFO（H7 独有优势）。</strong>FIFO 有 8 级深度，开启后收发攒够了才触发中断，<strong>中断频率可降一个数量级</strong>。高频收发场景（如 4Mbps 以上的数据流）强烈建议开。",pm:"huart: 串口句柄",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_UARTEx_EnableFifoMode 硬件 FIFO 8级 中断频率 优势 高速"},
+{n:"HAL_UARTEx_DisableFifoMode",p:"HAL_StatusTypeDef HAL_UARTEx_DisableFifoMode(UART_HandleTypeDef *huart)",d:"关闭 FIFO 模式，回到逐字节中断。",pm:"huart: 串口句柄",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_UARTEx_DisableFifoMode 关闭 FIFO 逐字节"},
+{n:"HAL_UARTEx_SetTxFifoThreshold",p:"HAL_StatusTypeDef HAL_UARTEx_SetTxFifoThreshold(UART_HandleTypeDef *huart, uint32_t Threshold)",d:"设置 TX FIFO 阈值：低于多少触发 TXFE 中断。常用 UART_TXFIFO_THRESHOLD_1_8（剩 1 格就请求续填）。",pm:"Threshold: UART_TXFIFO_THRESHOLD_1_8 ~ 7_8 / EMPTY / FULL",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_UARTEx_SetTxFifoThreshold TX FIFO 阈值 续填"},
+{n:"HAL_UARTEx_SetRxFifoThreshold",p:"HAL_StatusTypeDef HAL_UARTEx_SetRxFifoThreshold(UART_HandleTypeDef *huart, uint32_t Threshold)",d:"设置 RX FIFO 阈值：收到多少字节触发 RXNE 中断。配合空闲中断用 1_2 或更高。",pm:"Threshold: UART_RXFIFO_THRESHOLD_1_8 ~ 7_8 / EMPTY / FULL",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_UARTEx_SetRxFifoThreshold RX FIFO 阈值 空闲中断"},
+]},
+{t:"收发（阻塞 / 中断 / DMA）",apis:[
+{n:"HAL_UART_Transmit / Receive",p:"HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint32_t Timeout)",d:"阻塞收发。调试打印首选。",pm:"huart | pData | Size | Timeout(ms)",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_UART_Transmit HAL_UART_Receive 阻塞 打印 Polling"},
+{n:"HAL_UART_Transmit_IT / Receive_IT",p:"HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size)",d:"中断方式非阻塞收发。接收完成后进 RxCpltCallback，<strong>回调里要重新调 Receive_IT 才能继续收</strong>。",pm:"huart | pData | Size",r:"HAL_OK / HAL_BUSY / HAL_ERROR",tag:"op",kw:"HAL_UART_Transmit_IT HAL_UART_Receive_IT 中断 非阻塞 重启"},
+{n:"HAL_UARTEx_ReceiveToIdle_IT / _DMA ★",p:"HAL_StatusTypeDef HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size)",d:"<strong>空闲中断接收不定长数据（H7 收 GPS / 上位机指令包的最优解）。</strong>缓冲区收满或总线空闲都会触发 RxEventCallback，Size 参数返回实际字节数。",pm:"huart | pData | Size",r:"HAL_OK / HAL_BUSY / HAL_ERROR",tag:"op",kw:"ReceiveToIdle_IT ReceiveToIdle_DMA 空闲中断 不定长 GPS 指令包 最优"},
+{n:"HAL_UART_IRQHandler",p:"void HAL_UART_IRQHandler(UART_HandleTypeDef *huart)",d:"串口中断总入口，在 it.c 的 USARTx_IRQHandler 中调用。",pm:"huart: 串口句柄",r:"无",tag:"op",kw:"HAL_UART_IRQHandler 中断处理 总入口"},
+{n:"★ DMA 收发的 Cache 维护",p:"SCB_InvalidateDCache_by_Addr((uint32_t*)rxbuf, sizeof(rxbuf));",d:"<strong>DMA 接收完成、CPU 读缓冲区之前必须 Invalidate</strong>，否则读到的是 D-Cache 里的旧数据。详见 Cache 章节。发送前同理要 Clean。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"DMA Cache Invalidate 接收 完成 读取前 必须"},
+]},
+{t:"回调函数",apis:[
+{n:"HAL_UART_TxCpltCallback",p:"__weak void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)",d:"发送完成回调 (weak)。",pm:"huart: 串口句柄",r:"无",tag:"cb",kw:"HAL_UART_TxCpltCallback 发送完成 回调"},
+{n:"HAL_UART_RxCpltCallback",p:"__weak void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)",d:"接收完成回调 (weak)。中断接收完成后触发。",pm:"huart",r:"无",tag:"cb",kw:"HAL_UART_RxCpltCallback 接收完成 回调"},
+{n:"HAL_UARTEx_RxEventCallback",p:"__weak void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)",d:"空闲/事件回调 (weak)。配合 ReceiveToIdle 使用，<strong>Size 是本包实际长度</strong>。",pm:"huart | Size: 实际字节数",r:"无",tag:"cb",kw:"RxEventCallback 空闲 回调 实际长度"},
+{n:"HAL_UART_ErrorCallback",p:"__weak void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)",d:"错误回调 (weak)。H7 上常见错误码：ORE(过载)/FE(帧错)/NE(噪声)/DMA 错误。<strong>出错后要在回调里重新使能接收</strong>，否则串口挂死。",pm:"huart",r:"无",tag:"cb",kw:"HAL_UART_ErrorCallback 错误 ORE FE NE 重新使能 挂死"},
+]},
+{t:"LPUART 低功耗串口",apis:[
+{n:"LPUART1",p:"可在 Stop 模式保持接收 &middot; 时钟源常选 HSI16/LSE/CSI",d:"<strong>低功耗串口：主时钟停了它还能收数据</strong>，收到数据触发唤醒。做电池设备的唤醒口（如 LoRa 模组回包）非常合适。<br>时钟源选 LSE(32.768k) 时波特率上限低（约 9600~38400），选 HSI16 可以到 115200+。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"LPUART1 低功耗 Stop 唤醒 LoRa LSE HSI16 波特率上限"},
+]},
+]},
+{id:"spi",name:"SPI",badge:"通信",color:"#f38ba8",hdr:"stm32h7xx_hal_spi.h",desc:"H723 有 <strong>5 个 SPI（SPI1~SPI5）</strong>，SPI2/SPI3 可复用为 I2S。<strong>H7 的 SPI 支持 4~32 位可变数据宽度、32 深 FIFO、SS 闲时插入</strong>，比 F4 灵活得多。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_SPI_Init",p:"HAL_StatusTypeDef HAL_SPI_Init(SPI_HandleTypeDef *hspi)",d:"初始化 SPI。H7 特有字段：<code>DataSize</code>（SPI_DATASIZE_4BIT~32BIT）、<code>FifoThreshold</code>、<code>MasterSSIdleness</code>、<code>MasterInterDataIdleness</code>、<code>MasterKeepIOState</code>。",pm:"hspi: SPI 句柄",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"init",kw:"HAL_SPI_Init 初始化 DataSize FifoThreshold MasterKeepIOState"},
+{n:"HAL_SPI_DeInit",p:"HAL_StatusTypeDef HAL_SPI_DeInit(SPI_HandleTypeDef *hspi)",d:"反初始化 SPI。",pm:"hspi",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_SPI_DeInit 反初始化"},
+{n:"★ 32 位数据宽度",p:"hspi.Init.DataSize = SPI_DATASIZE_32BIT;",d:"<strong>H7 支持 4~32 位任意数据宽度</strong>（F4 只有 8/16）。接 24 位 ADC（如 ADS1256）、32 位高速 ADC 时不用拆字节了，效率大增。",pm:"SPI_DATASIZE_4BIT ~ SPI_DATASIZE_32BIT",r:"&mdash;",tag:"star",kw:"32位 数据宽度 DataSize 24位 ADS1256 拆字节"},
+]},
+{t:"收发",apis:[
+{n:"HAL_SPI_TransmitReceive",p:"HAL_StatusTypeDef HAL_SPI_TransmitReceive(SPI_HandleTypeDef *hspi, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size, uint32_t Timeout)",d:"全双工阻塞收发。读写 Flash/W25Q 最常用。",pm:"hspi | pTxData | pRxData | Size | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_SPI_TransmitReceive 全双工 阻塞 W25Q Flash 收发"},
+{n:"HAL_SPI_Transmit / Receive",p:"HAL_StatusTypeDef HAL_SPI_Transmit(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size, uint32_t Timeout)",d:"单工发送 / 接收（接收时主模式发 dummy 字节产生时钟）。",pm:"hspi | pData | Size | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_SPI_Transmit HAL_SPI_Receive 单工 dummy"},
+{n:"HAL_SPI_Transmit_DMA / Receive_DMA / TransmitReceive_DMA",p:"HAL_StatusTypeDef HAL_SPI_TransmitReceive_DMA(SPI_HandleTypeDef *hspi, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size)",d:"DMA 方式收发。<strong>H7 上 DMA 请求走 DMAMUX：</strong><code>hdma.Init.Request = DMA_REQUEST_SPI1_TX;</code>。刷 LCD、搬图像首选。",pm:"hspi | pTxData | pRxData | Size",r:"HAL_OK / HAL_BUSY / HAL_ERROR",tag:"op",kw:"SPI DMA DMAMUX Request 刷屏 LCD 图像"},
+{n:"HAL_SPI_IRQHandler",p:"void HAL_SPI_IRQHandler(SPI_HandleTypeDef *hspi)",d:"SPI 中断总入口。",pm:"hspi",r:"无",tag:"op",kw:"HAL_SPI_IRQHandler 中断 总入口"},
+{n:"HAL_SPI_Abort / Abort_IT",p:"HAL_StatusTypeDef HAL_SPI_Abort(SPI_HandleTypeDef *hspi)",d:"中止当前传输。超时保护或错误恢复时用。",pm:"hspi",r:"HAL_OK / HAL_TIMEOUT",tag:"op",kw:"HAL_SPI_Abort 中止 超时 错误恢复"},
+]},
+{t:"★ H7 SPI 常用新招",apis:[
+{n:"HAL_SPIEx_FlushRxFifo ★",p:"HAL_StatusTypeDef HAL_SPIEx_FlushRxFifo(SPI_HandleTypeDef *hspi)",d:"<strong>清空 SPI 硬件 RX FIFO。</strong>H7 的 FIFO 有 32 深，有时序问题的传输结束后 FIFO 里可能残留脏数据，<strong>下次传输读到前几个字节不对，九成是 FIFO 没清</strong>。每轮通信前刷一下最保险。",pm:"hspi",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_SPIEx_FlushRxFifo 清空 FIFO 残留 脏数据 前几个字节不对 九成"},
+{n:"MasterKeepIOState 保持 IO 状态",p:"hspi.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_ENABLE;",d:"<strong>H7 独有选项：</strong>SPI 被禁用时保持 SCK/MOSI 引脚的电平（而不是变浮空）。对 CS 由软件管理的多器件总线很重要，防止切换瞬间毛刺。",pm:"SPI_MASTER_KEEP_IO_STATE_ENABLE / DISABLE",r:"&mdash;",tag:"star",kw:"MasterKeepIOState 保持 IO 禁用 浮空 毛刺 软件CS"},
+{n:"MasterSSIdleness / MasterInterDataIdleness",p:"hspi.Init.MasterSSIdleness = 2;  &middot;  hspi.Init.MasterInterDataIdleness = 2;",d:"<strong>H7 独有选项：</strong>在 NSS 释放后 / 帧间插入额外的时钟周期闲时。很多 SPI Flash（如 W25Q 系列的某些命令）要求 CS 拉低后延时再发数据，以前要手动拆成两次调用，现在硬件直接配。",pm:"单位: SPI 时钟周期数 0~15",r:"&mdash;",tag:"star",kw:"MasterSSIdleness MasterInterDataIdleness 帧间 闲时 CS 延时 硬件"},
+]},
+{t:"回调",apis:[
+{n:"HAL_SPI_TxRxCpltCallback / TxCplt / RxCplt",p:"__weak void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)",d:"收发完成回调 (weak)。",pm:"hspi",r:"无",tag:"cb",kw:"HAL_SPI_TxRxCpltCallback TxCpltCallback RxCpltCallback 回调 完成"},
+{n:"HAL_SPI_ErrorCallback",p:"__weak void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)",d:"SPI 错误回调。H7 常见错误：CRC 错 / 溢出(OVR) / 帧格式(FRE)。<strong>出错后建议 Abort + FlushRxFifo 再重来</strong>。",pm:"hspi",r:"无",tag:"cb",kw:"HAL_SPI_ErrorCallback 错误 CRC OVR FRE Abort FlushRxFifo 恢复"},
+]},
+]},
+{id:"i2c",name:"I2C",badge:"通信",color:"#89b4fa",hdr:"stm32h7xx_hal_i2c.h",desc:"H723 有 <strong>5 个 I2C（I2C1~I2C5）</strong>，部分支持 I3C。<strong>与 F4 最大的 API 差异：H7 用 Timing 寄存器值代替 ClockSpeed</strong>，配置错误是移植时最常见的问题。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_I2C_Init",p:"HAL_StatusTypeDef HAL_I2C_Init(I2C_HandleTypeDef *hi2c)",d:"初始化 I2C。<strong>★ H7 关键差异：用 <code>hi2c.Init.Timing</code>（一个 32 位时序寄存器值）而不是 F4 的 <code>ClockSpeed</code>。</strong>Timing 值由 CubeMX 根据内核时钟自动计算。<br>如果代码从 F4 移植过来直接把 ClockSpeed 填进去，I2C 完全不工作。",pm:"hi2c: I2C 句柄（Init.Timing 由 CubeMX 计算）",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"init",kw:"HAL_I2C_Init Timing ClockSpeed 差异 移植 CubeMX 不工作"},
+{n:"★ Timing 不对的排查",p:"HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_I2C1);",d:"<strong>Timing 值是针对特定内核时钟算出来的。</strong>改了 I2C 时钟源（如从 HSI 换到 PLL3）后必须重新生成 Timing，否则 SCL 频率会偏甚至通信失败。<br>先用 GetPeriphCLKFreq 确认时钟，再回 CubeMX 重算 Timing。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"Timing 排查 时钟源 GetPeriphCLKFreq 重算 SCL 频率偏"},
+{n:"HAL_I2C_DeInit",p:"HAL_StatusTypeDef HAL_I2C_DeInit(I2C_HandleTypeDef *hi2c)",d:"反初始化 I2C。",pm:"hi2c",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_I2C_DeInit 反初始化"},
+{n:"HAL_I2CEx_ConfigAnalogFilter",p:"HAL_StatusTypeDef HAL_I2CEx_ConfigAnalogFilter(I2C_HandleTypeDef *hi2c, uint32_t AnalogFilter)",d:"配置模拟干扰滤波器（默认开启）。总线有毛刺/干扰时保持开启。",pm:"AnalogFilter: I2C_ANALOGFILTER_ENABLE / DISABLE",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_I2CEx_ConfigAnalogFilter 模拟滤波 毛刺 干扰"},
+{n:"HAL_I2CEx_ConfigDigitalFilter",p:"HAL_StatusTypeDef HAL_I2CEx_ConfigDigitalFilter(I2C_HandleTypeDef *hi2c, uint32_t DigitalFilter)",d:"配置数字滤波器（按 DNF 个 I2C 时钟周期过滤）。干扰强时可设 2~4。",pm:"DigitalFilter: 0~15",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_I2CEx_ConfigDigitalFilter 数字滤波 DNF 干扰"},
+{n:"HAL_I2CEx_EnableFastModePlus",p:"HAL_StatusTypeDef HAL_I2CEx_EnableFastModePlus(uint32_t FastModePlus)",d:"使能 Fast Mode+ (Fm+, 1MHz)。部分引脚支持。需要更强的上拉（约 1k&Omega; 以内）。",pm:"FastModePlus: I2C_FASTMODEPLUS_I2C1 等",r:"HAL_OK",tag:"cfg",kw:"FastModePlus Fm+ 1MHz 上拉 EnableFastModePlus"},
+]},
+{t:"读写（API 与 F4 相同）",apis:[
+{n:"HAL_I2C_Master_Transmit / Receive",p:"HAL_StatusTypeDef HAL_I2C_Master_Transmit(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint8_t *pData, uint16_t Size, uint32_t Timeout)",d:"主机阻塞发送。<strong>DevAddress 是 7 位地址左移 1 位</strong>（如 MPU6050 的 0x68 要写 0xD0）。",pm:"hi2c | DevAddress | pData | Size | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_I2C_Master_Transmit Receive 地址 左移 0xD0"},
+{n:"HAL_I2C_Mem_Write / Mem_Read ★",p:"HAL_StatusTypeDef HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress, uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)",d:"读写从机寄存器（先发寄存器地址再读写）。<strong>挂 MPU6050 / OLED / AT24C02 的主力函数，与 F4 用法完全一致，可直接移植。</strong>",pm:"hi2c | DevAddress | MemAddress | MemAddSize(8/16BIT) | pData | Size | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_I2C_Mem_Read Mem_Write 寄存器 MPU6050 OLED AT24C02 移植"},
+{n:"HAL_I2C_IsDeviceReady",p:"HAL_StatusTypeDef HAL_I2C_IsDeviceReady(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint32_t Trials, uint32_t Timeout)",d:"探测从机是否在线（发地址看 ACK）。<strong>I2C 不通时的第一招：先跑它确认接线和地址对不对。</strong>",pm:"hi2c | DevAddress | Trials | Timeout",r:"HAL_OK(在线) / HAL_ERROR(无响应)",tag:"query",kw:"HAL_I2C_IsDeviceReady 探测 在线 ACK 接线 地址 第一招"},
+]},
+{t:"回调与恢复",apis:[
+{n:"HAL_I2C_ErrorCallback",p:"__weak void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)",d:"错误回调。<strong>经典故障「从机拉死 SDA」：重写此回调，调 HAL_I2C_DeInit + Init 重新初始化即可自恢复</strong>，不用断电重启。",pm:"hi2c",r:"无",tag:"cb",kw:"ErrorCallback 拉死 SDA 恢复 DeInit Init 自恢复 重启"},
+{n:"HAL_I2C_MemTxCpltCallback / MemRxCpltCallback",p:"__weak void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)",d:"寄存器读写完成回调（weak，中断/DMA 模式用）。",pm:"hi2c",r:"无",tag:"cb",kw:"MemRxCpltCallback MemTxCpltCallback 寄存器 回调"},
+]},
+]},
+{id:"fdcan",name:"FDCAN (CAN FD) ★",badge:"通信",color:"#e0a458",hdr:"stm32h7xx_hal_fdcan.h",desc:"<strong>H7 的 CAN 是 FDCAN（CAN FD），和 F4 的 bxCAN 是完全不同的两套外设和 API。</strong>H723 有 3 路 FDCAN 共享一块 10KB 消息 RAM（FDCAN1 还支持时间触发 TT-CAN）。支持经典 CAN（1Mbps）和 CAN FD（数据段最高 ~5Mbps，64 字节数据）。",cats:[
+{t:"FDCAN vs bxCAN 快速对照",apis:[
+{n:"★ 概念对照表",p:"bxCAN (F4): 3 个发送邮箱 + 2 个硬件过滤器组  &rarr;  FDCAN (H7): Tx FIFO/队列 + Rx FIFO0/1，过滤器在共享 Message RAM 里配置",d:"<strong>从 F4 移植 CAN 代码基本等于重写。</strong>核心变化：<br>① 没有邮箱概念，改成 Tx FIFO（先进先出发送）和可选 Tx 队列（按 ID 优先级发送）；<br>② 过滤器可以配 28+ 个，且每个都要显式激活；<br>③ 有一个全局过滤器配置（不匹配的帧怎么处理），<strong>不配它默认全丢</strong>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"FDCAN bxCAN 对照 移植 邮箱 Tx FIFO 过滤器 全局 重写"},
+]},
+{t:"初始化与配置",apis:[
+{n:"HAL_FDCAN_Init",p:"HAL_StatusTypeDef HAL_FDCAN_Init(FDCAN_HandleTypeDef *hfdcan)",d:"初始化 FDCAN：模式、分频、位时序（收发分开配）、收发 FIFO 大小、重传策略。<strong>内部会做 Message RAM 的布局</strong>（各 FIFO/缓冲的起始地址和元素数量在 Init 结构体里指定）。",pm:"hfdcan: FDCAN 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_FDCAN_Init 初始化 Message RAM 布局 FIFO 大小 位时序"},
+{n:"★ HAL_FDCAN_ConfigGlobalFilter",p:"HAL_StatusTypeDef HAL_FDCAN_ConfigGlobalFilter(FDCAN_HandleTypeDef *hfdcan, uint32_t NonMatchingStd, uint32_t NonMatchingExt, uint32_t RejectRemoteStd, uint32_t RejectRemoteExt)",d:"<strong>不匹配任何过滤器的帧怎么处理 —— 不配默认全部丢弃，一个包都收不到！</strong>调试阶段建议：<code>FDCAN_ACCEPT_IN_RX_FIFO0</code>（不匹配的也进 FIFO0）。这是从 bxCAN 移植时最容易踩的坑。",pm:"NonMatchingStd/Ext: FDCAN_ACCEPT_IN_RX_FIFO0 / 1 或 FDCAN_REJECT",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"ConfigGlobalFilter 不匹配 丢弃 收不到 ACCEPT_IN_RX_FIFO0 坑 必配"},
+{n:"HAL_FDCAN_ConfigFilter",p:"HAL_StatusTypeDef HAL_FDCAN_ConfigFilter(FDCAN_HandleTypeDef *hfdcan, FDCAN_FilterTypeDef *sFilterConfig)",d:"配置一个过滤器（ID + 掩码 + 指定进哪个 FIFO）。结构体含 <code>IdType</code>（标准/扩展）、<code>FilterIndex</code>、<code>FilterType</code>（范围/掩码/双精）、<code>FilterID1/FilterID2</code>、<code>FilterConfig</code>（FDCAN_FILTER_TO_RXFIFO0 等）。",pm:"sFilterConfig: 过滤器配置结构体",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_FDCAN_ConfigFilter 过滤器 掩码 范围 FIFO0 FIFO1 激活"},
+{n:"HAL_FDCAN_Start",p:"HAL_StatusTypeDef HAL_FDCAN_Start(FDCAN_HandleTypeDef *hfdcan)",d:"启动 FDCAN（退出初始化模式）。<strong>过滤器必须全部在 Start 之前配好</strong>，Start 之后 Message RAM 布局冻结。",pm:"hfdcan",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_FDCAN_Start 启动 退出初始化 冻结 之前"},
+{n:"HAL_FDCAN_Stop",p:"HAL_StatusTypeDef HAL_FDCAN_Stop(FDCAN_HandleTypeDef *hfdcan)",d:"停止 FDCAN。",pm:"hfdcan",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_FDCAN_Stop 停止"},
+]},
+{t:"收发",apis:[
+{n:"HAL_FDCAN_AddMessageToTxFifoQ ★",p:"HAL_StatusTypeDef HAL_FDCAN_AddMessageToTxFifoQ(FDCAN_HandleTypeDef *hfdcan, FDCAN_TxHeaderTypeDef *pTxHeader, uint8_t *pTxData)",d:"发送报文。<strong>没有邮箱概念了，统一往 Tx FIFO 里塞。</strong>TxHeader 含 Identifier、IdType、DataLength（FDCAN_DLC_BYTES_8 / _12 / _16 ... _64）、FDFrame（是否 CAN FD 帧）、BitRateSwitch（可变波特率）、ErrorStateIndicator、MessageMarker。",pm:"hfdcan | pTxHeader: 帧头 | pTxData: 数据(最多 64 字节)",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"AddMessageToTxFifoQ 发送 TxHeader Identifier DLC FDFrame BitRateSwitch 64字节"},
+{n:"HAL_FDCAN_GetTxMessage",p:"HAL_StatusTypeDef HAL_FDCAN_GetTxMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t TxLocation, FDCAN_TxHeaderTypeDef *pTxHeader, uint8_t *pTxData)",d:"读取已发送的消息（用于确认发送内容）。",pm:"hfdcan | TxLocation | pTxHeader | pTxData",r:"HAL_OK / HAL_ERROR",tag:"query",kw:"HAL_FDCAN_GetTxMessage 读取 已发送 确认"},
+{n:"HAL_FDCAN_GetRxMessage ★",p:"HAL_StatusTypeDef HAL_FDCAN_GetRxMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t RxLocation, FDCAN_RxHeaderTypeDef *pRxHeader, uint8_t *pRxData)",d:"从 Rx FIFO 读报文。在 <code>RxFifo0Callback</code> 回调里调用，<code>RxLocation = FDCAN_RX_FIFO0</code>。RxHeader 里除了 ID/DLC 还有接收时间戳、滤波器命中编号、错误状态。",pm:"hfdcan | RxLocation: FDCAN_RX_FIFO0/1 | pRxHeader(返回) | pRxData(返回)",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_FDCAN_GetRxMessage 接收 FIFO0 回调 时间戳 滤波命中"},
+{n:"HAL_FDCAN_GetRxFifoFillLevel",p:"uint32_t HAL_FDCAN_GetRxFifoFillLevel(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo)",d:"查询 Rx FIFO 里的待读报文数（轮询方式用）。",pm:"RxFifo: FDCAN_RX_FIFO0 / 1",r:"0~64",tag:"query",kw:"GetRxFifoFillLevel 待读 数量 轮询"},
+{n:"HAL_FDCAN_GetTxFifoFreeLevel",p:"uint32_t HAL_FDCAN_GetTxFifoFreeLevel(FDCAN_HandleTypeDef *hfdcan)",d:"查询 Tx FIFO 剩余空位。发送前查一下防丢帧。",pm:"hfdcan",r:"0~32",tag:"query",kw:"GetTxFifoFreeLevel 剩余 空位 防丢"},
+]},
+{t:"中断与回调",apis:[
+{n:"HAL_FDCAN_ActivateNotification ★",p:"HAL_StatusTypeDef HAL_FDCAN_ActivateNotification(FDCAN_HandleTypeDef *hfdcan, uint32_t ActiveITs, uint32_t NotificationLocation)",d:"使能中断。最常用：<code>FDCAN_IT_RX_FIFO0_NEW_MESSAGE</code>（FIFO0 来新报文）。H7 的这个函数还带第三个参数指定回调的 NotificationLocation，实现<strong>不同过滤器的消息走不同回调</strong>。",pm:"ActiveITs: 中断位掩码 | NotificationLocation: 回调编号",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ActivateNotification 使能 RX_FIFO0_NEW_MESSAGE 回调编号 Location"},
+{n:"HAL_FDCAN_IRQHandler",p:"void HAL_FDCAN_IRQHandler(FDCAN_HandleTypeDef *hfdcan)",d:"FDCAN 中断总入口。H723 的 FDCAN1/2/3 各有独立中断向量（FDCAN1_IT0/IT1、FDCAN2_IT0 等，<strong>每个控制器有 IT0 和 IT1 两条中断线</strong>）。",pm:"hfdcan",r:"无",tag:"op",kw:"HAL_FDCAN_IRQHandler 中断 总入口 IT0 IT1 两条"},
+{n:"HAL_FDCAN_RxFifo0Callback ★",p:"__weak void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)",d:"FIFO0 收到报文回调。<strong>在里面调 HAL_FDCAN_GetRxMessage 取数据</strong>。第二个参数是触发此回调的中断类型位掩码，用于区分「新消息」和「 FIFO 满」等情况。",pm:"hfdcan | RxFifo0ITs: 中断类型",r:"无",tag:"cb",kw:"RxFifo0Callback 回调 GetRxMessage 取数据 中断类型"},
+{n:"HAL_FDCAN_TxFifoEmptyCallback",p:"__weak void HAL_FDCAN_TxFifoEmptyCallback(FDCAN_HandleTypeDef *hfdcan)",d:"Tx FIFO 空回调（全部发送完成）。",pm:"hfdcan",r:"无",tag:"cb",kw:"TxFifoEmptyCallback 发送完成 回调"},
+{n:"HAL_FDCAN_ErrorCallback / ErrorStatusCallback",p:"__weak void HAL_FDCAN_ErrorCallback(FDCAN_HandleTypeDef *hfdcan)",d:"错误回调 / 总线错误状态变化回调（错误被动、总线关闭恢复）。用 <code>HAL_FDCAN_GetError</code> 查具体错误码。",pm:"hfdcan",r:"无",tag:"cb",kw:"FDCAN ErrorCallback ErrorStatus 错误被动 总线关闭 GetError"},
+]},
+{t:"波特率与 CAN FD 要点",apis:[
+{n:"位时序配置",p:"hfdcan.Init.NominalPrescaler / NominalSyncJumpWidth / NominalTimeSeg1 / NominalTimeSeg2",d:"<strong>经典 CAN（仲裁段）时序用 Nominal 系列字段</strong>；CAN FD 高速数据段用 <code>DataPrescaler / DataTimeSeg1 / DataTimeSeg2</code> 单独配。<br>内核时钟来自 <code>HAL_RCCEx_PeriphCLKConfig</code> 的 FdcanClockSelection。",pm:"&mdash;",r:"&mdash;",tag:"cfg",kw:"位时序 NominalPrescaler DataPrescaler 仲裁段 数据段 时钟源"},
+{n:"CAN FD 帧的好处",p:"数据段 64 字节（经典 CAN 8 字节） &middot; 数据段波特率可 5Mbps",d:"<strong>同一帧里仲裁段用慢速保证多节点竞争，数据段切高速。</strong>需要 <code>FDFrame=1 + BitRateSwitch=1</code>。对端设备也要支持 CAN FD。<br>注：H723 的 CAN FD 数据段速率上限受收发器限制，常规收发器（TJA1051）只到 2~5Mbps。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"CAN FD 64字节 数据段 5Mbps BitRateSwitch 收发器 TJA1051 限制"},
+{n:"外部收发器 + 终端电阻",p:"FDCAN 控制器不能直接接总线 &middot; 需 CAN FD 收发器 + 两端 120&Omega;",d:"和 bxCAN 一样要外接收发器。<strong>CAN FD 高速模式要选支持 FD 的收发器</strong>（如 TJA1051 2Mbps / TJA1052 5Mbps），经典收发器会把高速波形打坏。",pm:"TJA1051 / TJA1052 / MCP2562FD",r:"&mdash;",tag:"pin",kw:"收发器 TJA1051 TJA1052 MCP2562FD 终端电阻 120欧 FD支持"},
+]},
+]},
+{id:"tim",name:"TIM 定时器",badge:"定时",color:"#fab387",hdr:"stm32h7xx_hal_tim.h",desc:"H723 有 <strong>17 个 16 位定时器 + 4 个 32 位定时器（TIM2/TIM5 等）+ 5 个低功耗定时器 LPTIM</strong>。API 与 F4 基本一致，可直接移植。<strong>注意：H723 没有 HRTIM 高分辨率定时器</strong>。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_TIM_Base_Init",p:"HAL_StatusTypeDef HAL_TIM_Base_Init(TIM_HandleTypeDef *htim)",d:"初始化基本定时（PSC/ARR/计数方向）。H7 定时器时钟取决于总线，可到 275MHz。",pm:"htim: TIM 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_TIM_Base_Init PSC ARR 预分频 重装载"},
+{n:"HAL_TIM_PWM_Init / ConfigChannel",p:"HAL_StatusTypeDef HAL_TIM_PWM_Init(TIM_HandleTypeDef *htim)",d:"PWM 初始化 + 通道配置。与 F4 完全一致。",pm:"htim",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_TIM_PWM_Init PWM ConfigChannel 通道 占空比"},
+{n:"HAL_TIM_IC_Init / Encoder_Init",p:"HAL_StatusTypeDef HAL_TIM_Encoder_Init(TIM_HandleTypeDef *htim, TIM_Encoder_InitTypeDef *sConfig)",d:"输入捕获 / 编码器模式初始化。与 F4 一致。",pm:"htim | sConfig",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_TIM_Encoder_Init 编码器 IC 输入捕获 测速"},
+]},
+{t:"启动 / 停止",apis:[
+{n:"HAL_TIM_Base_Start / Stop / Start_IT / Stop_IT",p:"HAL_StatusTypeDef HAL_TIM_Base_Start_IT(TIM_HandleTypeDef *htim)",d:"启动/停止基本定时（_IT 版本开更新中断）。做 1ms 节拍、软件状态机。",pm:"htim",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_TIM_Base_Start_IT 启动 停止 节拍 状态机"},
+{n:"HAL_TIM_PWM_Start / Stop",p:"HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef *htim, uint32_t Channel)",d:"启动指定通道 PWM 输出。舵机、电机、调光。",pm:"htim | Channel: TIM_CHANNEL_1~4",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_TIM_PWM_Start PWM 舵机 电机 调光 通道"},
+{n:"HAL_TIM_Encoder_Start / Stop",p:"HAL_StatusTypeDef HAL_TIM_Encoder_Start(TIM_HandleTypeDef *htim, uint32_t Channel)",d:"启动编码器模式，读 CNT 即位置。",pm:"htim | Channel: TIM_CHANNEL_ALL/1/2",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_TIM_Encoder_Start 编码器 CNT 位置"},
+]},
+{t:"回调与宏",apis:[
+{n:"HAL_TIM_PeriodElapsedCallback",p:"__weak void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)",d:"定时器溢出回调。<strong>必须用 htim-&gt;Instance == TIMx 判断来源</strong>（所有定时器共用这个回调）。",pm:"htim",r:"无",tag:"cb",kw:"PeriodElapsedCallback 溢出 回调 Instance 判断"},
+{n:"HAL_TIM_IC_CaptureCallback",p:"__weak void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)",d:"输入捕获回调。测频率、脉宽、超声波回波。",pm:"htim",r:"无",tag:"cb",kw:"CaptureCallback 输入捕获 回调 频率 脉宽 超声波"},
+{n:"__HAL_TIM_SET_COMPARE / GET_COMPARE",p:"#define __HAL_TIM_SET_COMPARE(__HANDLE__, __CHANNEL__, __COMPARE__)",d:"运行时改占空比（CCR）。舵机调角、电机调速最常用。",pm:"HANDLE | CHANNEL | COMPARE",r:"无",tag:"macro",kw:"SET_COMPARE 占空比 CCR 舵机 调速"},
+{n:"__HAL_TIM_SET_COUNTER / GET_COUNTER",p:"#define __HAL_TIM_GET_COUNTER(__HANDLE__)",d:"读写计数器。编码器模式下读位置。",pm:"HANDLE",r:"当前 CNT",tag:"macro",kw:"SET_COUNTER GET_COUNTER CNT 编码器 位置"},
+{n:"__HAL_TIM_MOE_ENABLE",p:"#define __HAL_TIM_MOE_ENABLE(__HANDLE__)",d:"<strong>高级定时器 TIM1/TIM8 输出 PWM 前必须调用</strong>（主输出使能），否则引脚无波形。",pm:"HANDLE",r:"无",tag:"macro",kw:"MOE_ENABLE TIM1 TIM8 高级 主输出 无波形 必须"},
+]},
+{t:"H7 定时器资源速查",apis:[
+{n:"TIM1 / TIM8",p:"高级定时器 16-bit &middot; 互补输出 + 死区 + 刹车 &middot; 电机 FOC 首选",d:"TIM1 引脚 PA8~PA11 附近；TIM8 引脚 PC6~PC9 附近。做三相逆变器、BLDC 驱动用。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"TIM1 TIM8 高级 互补 死区 刹车 FOC BLDC"},
+{n:"TIM2 / TIM5（32 位）",p:"32 位计数 &middot; 0~4.29e9 不溢出 &middot; 编码器首选",d:"<strong>唯二的 32 位定时器</strong>。做长时间测量、高精度编码器累积计数不会溢出翻转。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"TIM2 TIM5 32位 编码器 累积 不溢出"},
+{n:"LPTIM1~5（低功耗定时器）",p:"D3 域 &middot; Stop 模式仍运行 &middot; 可配 LSE/LSI 时钟",d:"<strong>低功耗定时器：主域断电了它还在跑</strong>。做超低功耗周期唤醒（配合 Stop 模式，如每 5 秒醒来采一次数据）。H723 有 5 个，LPTIM1~5。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"LPTIM 低功耗 定时器 Stop 唤醒 LSE LSI D3域"},
+]},
+]},
+{id:"adc",name:"ADC（16 位！）",badge:"模拟",color:"#40a070",hdr:"stm32h7xx_hal_adc.h",desc:"<strong>H723 的 ADC1/ADC2 是 16 位（F4 是 12 位），最高 3.6 MSPS，双 ADC 交错可达 7.2 MSPS；ADC3 是 12 位 5 MSPS。</strong>还支持硬件过采样（Oversampling）进一步提高有效精度，自带硬件校准。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_ADC_Init",p:"HAL_StatusTypeDef HAL_ADC_Init(ADC_HandleTypeDef *hadc)",d:"初始化 ADC。<strong>H7 关键差异：分辨率可选 8/10/12/14/16 位</strong>（ADC1/2）；转换时钟、扫描、连续、触发等。<strong>分辨率越高采样越慢</strong>：16 位时最高约 3.6MSPS 降为约 1MSPS 量级（视时钟而定）。",pm:"hadc: ADC 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_ADC_Init 16位 分辨率 8 10 12 14 16 采样速度"},
+{n:"HAL_ADC_ConfigChannel",p:"HAL_StatusTypeDef HAL_ADC_ConfigChannel(ADC_HandleTypeDef *hadc, ADC_ChannelConfTypeDef *sConfig)",d:"配置通道：通道号、采样时间、序列 Rank。<strong>H7 的单端/差分在通道配置里选</strong>（SingleDiff 字段）。",pm:"hadc | sConfig: 通道配置（含 SingleDiff）",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"HAL_ADC_ConfigChannel 通道 采样时间 Rank 单端 差分 SingleDiff"},
+{n:"★ HAL_ADCEx_Calibration_Start",p:"HAL_StatusTypeDef HAL_ADCEx_Calibration_Start(ADC_HandleTypeDef *hadc, uint32_t SingleDiff)",d:"<strong>H7 的 ADC 校准比 F4 重要得多</strong>：16 位精度下不校准偏差可达几十 LSB。参数选单端（ADC_SINGLE_ENDED）或差分。<strong>每次 Init 后、Enable 前都要跑一次</strong>。",pm:"SingleDiff: ADC_SINGLE_ENDED / ADC_DIFFERENTIAL_ENDED",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"Calibration_Start 校准 必须 16位 偏差 单端 差分"},
+]},
+{t:"★ H7 独有：硬件过采样",apis:[
+{n:"HAL_ADC_ConfigOversampling ★",p:"HAL_StatusTypeDef HAL_ADC_ConfigOversampling(ADC_HandleTypeDef *hadc, ADC_OversamplingTypeDef *pOversampling)",d:"<strong>硬件自动过采样：对同一通道连采 2~256 次，硬件求和右移后给结果。</strong>等效位数最高 +4 bit（256 倍过采样约 17~18 位有效）。<br>相比软件过采样：<strong>零 CPU 开销、时序确定</strong>。做高精度慢速测量（电池电压、温度、应变片）强烈推荐。",pm:"Ratio: 2~256 | Shift: 右移位数 | OversamplingStop: 恢复条件",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ConfigOversampling 过采样 256 等效位数 17位 18位 硬件 零开销 高精度"},
+{n:"过采样使用示例",p:"hovs.Ratio = ADC_OVERSAMPLING_RATIO_256; hovs.RightBitShift = ADC_RIGHTBITSHIFT_4; hovs.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;",d:"<strong>256 倍过采样 + 右移 4 位 = 平均后的 16 位结果，噪底降低约 6dB。</strong>不需要平均时把 Ratio 配小（如 16 倍 + 移 2 位）。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"过采样 示例 Ratio 256 RightBitShift 平均 噪底"},
+]},
+{t:"转换控制与结果",apis:[
+{n:"HAL_ADC_Start / Stop / Start_IT / Start_DMA",p:"HAL_StatusTypeDef HAL_ADC_Start_DMA(ADC_HandleTypeDef *hadc, uint32_t *pData, uint32_t Length)",d:"启动转换（轮询/中断/DMA 三种方式）。DMA 多通道连续采集最常用。",pm:"hadc | pData | Length",r:"HAL_OK / HAL_BUSY / HAL_ERROR",tag:"op",kw:"HAL_ADC_Start_DMA 启动 转换 多通道 连续"},
+{n:"HAL_ADC_PollForConversion / GetValue",p:"HAL_StatusTypeDef HAL_ADC_PollForConversion(ADC_HandleTypeDef *hadc, uint32_t Timeout)",d:"轮询等待转换完成；GetValue 读结果。<strong>16 位模式下结果范围 0~65535</strong>（换算: V = value / 65535 &times; VREF）。",pm:"hadc | Timeout",r:"GetValue: 0~65535 (16位)",tag:"query",kw:"PollForConversion GetValue 16位 65535 换算 VREF"},
+{n:"HAL_ADC_ConvCpltCallback / ConvHalfCpltCallback",p:"__weak void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)",d:"转换完成 / 半完成回调。<strong>DMA 接收后在回调里先 Invalidate Cache 再读数据</strong>。",pm:"hadc",r:"无",tag:"cb",kw:"ConvCpltCallback 转换完成 回调 Invalidate Cache"},
+{n:"★ 交错模式（双 ADC 同步采样）",p:"HAL_ADCEx_MultiModeStart_DMA(hadc, pData, Length)",d:"ADC1+ADC2 交错触发，<strong>吞吐翻倍到 7.2 MSPS</strong>。结果数组交替存放两个 ADC 的值。另有同步同时采样模式（两通道同一时刻采样，用于相位敏感的功率计算）。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"交错 Interleaved 双ADC 7.2MSPS MultiMode 同步采样 功率"},
+]},
+{t:"ADC3 与实战要点",apis:[
+{n:"ADC3（12 位高速）",p:"5 MSPS &middot; 适合示波器式高速采集",d:"ADC3 是独立的 12 位 5 MSPS 转换器，<strong>适合做低成本示波器 / 音频采样 / 振动分析</strong>。与 ADC1/2 用不同的驱动配置但同一套 HAL API。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"ADC3 12位 5MSPS 高速 示波器 音频 振动"},
+{n:"GPIO 要配 ANALOG 模式",p:"HAL_GPIO_Init(gpio, &(GPIO_InitTypeDef){ .Mode = GPIO_MODE_ANALOG })",d:"ADC 引脚必须配 <code>GPIO_MODE_ANALOG</code>，且 VDDA/VREF+ 供电要干净（LC 滤波），否则 16 位精度就是摆设。<strong>16 位下布线要求远高于 12 位</strong>：模拟地平面、远离数字信号、短走线。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"GPIO ANALOG VDDA VREF 滤波 布线 模拟地 16位 要求"},
+]},
+]},
+{id:"analog",name:"DAC / OPAMP / COMP",badge:"模拟",color:"#40a070",hdr:"stm32h7xx_hal_dac.h / _opamp.h / _comp.h",desc:"H723 有 <strong>2 路 12 位 DAC + 2 个运算放大器 + 2 个比较器</strong>。DAC 可输出三角波/噪声波、可由 DMA 驱动做任意波形发生器。运放和比较器是 H7 相对 F4 的新增模拟外设。",cats:[
+{t:"DAC 数模转换",apis:[
+{n:"HAL_DAC_Init / ConfigChannel",p:"HAL_StatusTypeDef HAL_DAC_Init(DAC_HandleTypeDef *hdac)",d:"初始化 DAC。H723 有 DAC1_OUT1 (PA4) 和 DAC1_OUT2 (PA5) 两路 12 位输出。<strong>GPIO 要配 GPIO_MODE_ANALOG</strong>。",pm:"hdac | ChannelConfig",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_DAC_Init ConfigChannel PA4 PA5 12位 模拟模式"},
+{n:"HAL_DAC_SetValue",p:"HAL_StatusTypeDef HAL_DAC_SetValue(DAC_HandleTypeDef *hdac, uint32_t Channel, uint32_t Alignment, uint32_t Data)",d:"设置输出电压。输出 = Data / 4095 &times; VREF。",pm:"hdac | Channel | Alignment | Data(0~4095)",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"SetValue 设置 输出电压 4095 VREF"},
+{n:"HAL_DAC_Start_DMA ★",p:"HAL_StatusTypeDef HAL_DAC_Start_DMA(DAC_HandleTypeDef *hdac, uint32_t Channel, uint32_t *pData, uint32_t Length, uint32_t Alignment)",d:"<strong>任意波形发生器：把正弦波表丢进去就能输出正弦波。</strong>配合 TIM 触发可精确控制输出频率（f = TIM 触发频率 / 波表点数）。做信号源、扫频、音乐播放都用它。",pm:"hdac | Channel | pData: 波形数据表 | Length | Alignment",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"Start_DMA 波形发生器 正弦波 信号源 扫频 TIM触发 频率"},
+{n:"HAL_DACEx_NoiseWave / TriangleWave",p:"HAL_StatusTypeDef HAL_DACEx_TriangleWaveGenerate(DAC_HandleTypeDef *hdac, uint32_t Channel, uint32_t Amplitude)",d:"<strong>DAC 硬件自带噪声波和三角波发生器</strong>，CPU 和 DMA 都不用参与，频率由触发源决定。做简单测试信号零开销。",pm:"hdac | Channel | Amplitude",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"NoiseWave TriangleWave 噪声 三角波 硬件 零开销"},
+]},
+{t:"运算放大器 OPAMP（H7 新增）",apis:[
+{n:"HAL_OPAMP_Init",p:"HAL_StatusTypeDef HAL_OPAMP_Init(OPAMP_HandleTypeDef *hopamp)",d:"初始化片内运放。<strong>H7 有 2 个运放，可按需配成跟随器 / 可编程增益放大器 PGA / 独立运放模式</strong>。<br>典型用法：把 DAC 输出经运放缓冲后驱动外部负载；或用 PGA 模式放大电流采样电阻上的小信号（如 0.01&Omega; 采样电阻 ×50 增益）。",pm:"hopamp: OPAMP 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_OPAMP_Init 运放 PGA 跟随器 缓冲 电流采样 增益"},
+{n:"HAL_OPAMP_Start / Stop",p:"HAL_StatusTypeDef HAL_OPAMP_Start(OPAMP_HandleTypeDef *hopamp)",d:"启动 / 停止运放。",pm:"hopamp",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"OPAMP Start Stop 启动 停止"},
+{n:"HAL_OPAMP_SelfCalibrate",p:"HAL_StatusTypeDef HAL_OPAMP_SelfCalibrate(OPAMP_HandleTypeDef *hopamp)",d:"运放自校准。<strong>上电后调一次可显著降低失调电压</strong>（对直流小信号放大很重要）。",pm:"hopamp",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"SelfCalibrate 自校准 失调电压 漂移"},
+]},
+{t:"比较器 COMP（H7 新增）",apis:[
+{n:"HAL_COMP_Init",p:"HAL_StatusTypeDef HAL_COMP_Init(COMP_HandleTypeDef *hcomp)",d:"初始化比较器。<strong>可做硬件过流保护、过零检测、电池欠压检测</strong>。输出可以直接连到定时器的刹车输入实现硬件级别的紧急关断（不用软件参与）。",pm:"hcomp: COMP 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_COMP_Init 比较器 过流 过零 欠压 刹车 硬件保护"},
+{n:"HAL_COMP_Start / Stop",p:"HAL_StatusTypeDef HAL_COMP_Start(COMP_HandleTypeDef *hcomp)",d:"启动 / 停止比较器。",pm:"hcomp",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"COMP Start Stop 启动 停止"},
+{n:"HAL_COMP_GetOutputLevel",p:"uint32_t HAL_COMP_GetOutputLevel(COMP_HandleTypeDef *hcomp)",d:"读取比较器输出电平（当前是高还是低）。",pm:"hcomp",r:"COMP_OUTPUT_LEVEL_HIGH / LOW",tag:"query",kw:"GetOutputLevel 读取 输出 电平"},
+]},
+]},
+{id:"dma",name:"DMA / BDMA / MDMA ★",badge:"★重点",color:"#8040c0",hdr:"stm32h7xx_hal_dma.h / _bdma.h / _mdma.h",desc:"<strong>H7 有三类 DMA，这是与 F4 最大的架构差异之一：DMA1/DMA2（双口 DMA，D2 域）+ MDMA（主 DMA，D1 域）+ BDMA（基础 DMA，D3 域）。</strong>另外引入了 <strong>DMAMUX 请求路由</strong>，不再用「通道号」选外设。",cats:[
+{t:"★ 与 F4 的三个关键差异",apis:[
+{n:"差异 1：DMAMUX 请求路由",p:"F4: hdma.Init.Channel = DMA_CHANNEL_4;  &rarr;  H7: hdma.Init.Request = DMA_REQUEST_USART1_TX;",d:"<strong>H7 用 DMAMUX 把「外设请求」路由到任意 DMA 流，不再受固定通道表约束。</strong><br>所以 <code>DMA_HandleTypeDef.Init</code> 里的字段从 <code>Channel</code> 变成了 <code>Request</code>。这是移植时第一个要改的地方。",pm:"Request: DMA_REQUEST_xxx（如 USART1_TX / SPI1_TX / ADC1）",r:"&mdash;",tag:"star",kw:"DMAMUX Request Channel 差异 移植 F4 请求路由"},
+{n:"差异 2：三类 DMA 各管一摊",p:"DMA1/DMA2: 16 个流，D2 域，能给大部分外设服务 &middot; BDMA: 8 个通道，D3 域，<strong>只能访问 SRAM4</strong> &middot; MDMA: 16 个通道，D1 域，独立主设备，支持链表",d:"<strong>BDMA 存在的意义：D3 域低功耗外设（LPUART、LPTIM、低功耗 SPI）的 DMA 请求只有它能接。</strong><br>MDMA 是独立的 AHB 主设备，可以做「内存到内存」的高效搬运，还能访问 TCM。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"三类 DMA DMA1 DMA2 BDMA MDMA D3域 SRAM4 低功耗 区别"},
+{n:"差异 3：Cache 问题",p:"F4: 不需要管  &rarr;  H7: DMA 缓冲区必须做 Cache 维护",d:"<strong>这是 H7 上 DMA 相关故障的头号原因。</strong>详见 Cache 章节。最省心的方案是用 MPU 把 DMA 缓冲区设为 Non-cacheable。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"Cache 问题 DMA 头号 原因 MPU Non-cacheable"},
+]},
+{t:"DMA1 / DMA2 常用函数（D2 域，双口）",apis:[
+{n:"HAL_DMA_Init / DeInit",p:"HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)",d:"初始化 DMA：<code>Instance</code>（DMA1_Stream0~7 / DMA2_Stream0~7）、<code>Request</code>（DMAMUX 请求）、方向、数据宽度、自增、循环/单次、优先级、FIFO 模式与阈值。",pm:"hdma: DMA 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_DMA_Init Instance Stream Request DMAMUX FIFO 循环"},
+{n:"HAL_DMA_Start / Start_IT / Abort",p:"HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength)",d:"启动/中止 DMA 传输。一般通过外设的 <code>_DMA</code> 后缀函数间接使用，不必直接调。",pm:"hdma | SrcAddress | DstAddress | DataLength",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"HAL_DMA_Start_IT Abort 启动 中止 传输"},
+{n:"HAL_DMA_IRQHandler",p:"void HAL_DMA_IRQHandler(DMA_HandleTypeDef *hdma)",d:"DMA 中断总入口。<strong>16 个流各自有独立的 IRQHandler 向量</strong>（DMA1_Stream0_IRQHandler …）。",pm:"hdma",r:"无",tag:"op",kw:"HAL_DMA_IRQHandler 中断 流 IRQHandler 16个"},
+{n:"HAL_DMA_RegisterCallback / 回调",p:"__weak void HAL_DMA_XferCpltCallback(DMA_HandleTypeDef *hdma)",d:"传输完成 / 半完成 / 错误回调。<strong>半完成回调可以实现 ping-pong 双缓冲</strong>，做到「边收边处理」。",pm:"hdma",r:"无",tag:"cb",kw:"XferCpltCallback XferHalfCpltCallback 半完成 双缓冲 ping-pong"},
+{n:"__HAL_DMA_GET_COUNTER",p:"#define __HAL_DMA_GET_COUNTER(__HANDLE__)",d:"读 DMA 剩余待传字节数。<strong>循环模式下用「总长度 - 剩余」算已收字节数</strong>（不定长接收的经典技巧，但 H7 更推荐用 ReceiveToIdle）。",pm:"HANDLE",r:"剩余传输计数",tag:"macro",kw:"GET_COUNTER 剩余 计数 循环 已收字节"},
+{n:"__HAL_LINKDMA",p:"#define __HAL_LINKDMA(__HANDLE__, __PPP_DMA_FIELD__, __DMA_HANDLE__)",d:"把 DMA 句柄关联到外设（如 huart1.hdmatx）。<strong>忘了写会导致外设的 _DMA 接口一直返回 HAL_BUSY。</strong>",pm:"外设句柄 | DMA字段(hdmatx/hdmarx) | DMA句柄",r:"无",tag:"macro",kw:"LINKDMA 关联 hdmatx hdmarx HAL_BUSY 链接"},
+]},
+{t:"★ MDMA 主 DMA（H7 独有）",apis:[
+{n:"HAL_MDMA_Init",p:"HAL_StatusTypeDef HAL_MDMA_Init(MDMA_HandleTypeDef *hmdma)",d:"初始化 MDMA。MDMA 是<strong>独立于 DMA1/2 的 AHB 主设备</strong>，在 D1 域，<strong>可以访问 TCM（DTCM/ITCM）</strong>，这是普通 DMA 做不到的。",pm:"hmdma: MDMA 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_MDMA_Init 主DMA D1域 访问 TCM DTCM ITCM"},
+{n:"HAL_MDMA_Start_IT",p:"HAL_StatusTypeDef HAL_MDMA_Start_IT(MDMA_HandleTypeDef *hmdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t BlockDataLength, uint32_t BlockCount)",d:"启动 MDMA 传输（支持块重复，BlockCount>1 时按块循环）。",pm:"hmdma | SrcAddress | DstAddress | BlockDataLength | BlockCount",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"HAL_MDMA_Start_IT 启动 传输 BlockCount 块重复"},
+{n:"★ MDMA 链表模式",p:"HAL_MDMA_LinkedList_CreateNode / AddNode / StartLinkedList",d:"<strong>MDMA 最强大的特性：链表模式。</strong>可以预先准备好一串「搬运任务节点」（寄存器配置块），MDMA 自己按链表依次执行，<strong>CPU 完全不参与</strong>。<br>典型用途：LCD 刷多块区域、多缓冲音频、复杂的 DMA 编排。",pm:"LinkedListBaseAddr / LinkedNodeAddress",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"MDMA 链表 LinkedList 节点 CreateNode AddNode 自动化 CPU不参与 LCD 音频"},
+{n:"HAL_MDMA_IRQHandler",p:"void HAL_MDMA_IRQHandler(MDMA_HandleTypeDef *hmdma)",d:"MDMA 中断总入口（H7 上 MDMA 只有<strong>一个共用中断向量 MDMA_IRQn</strong>，不像 DMA 那样每个流一个）。",pm:"hmdma",r:"无",tag:"op",kw:"HAL_MDMA_IRQHandler 中断 MDMA_IRQn 一个 共用"},
+]},
+{t:"★ BDMA 基础 DMA（D3 域）",apis:[
+{n:"HAL_BDMA_Init / DeInit",p:"HAL_StatusTypeDef HAL_BDMA_Init(BDMA_HandleTypeDef *hbdma)",d:"初始化 BDMA。<strong>BDMA 在 D3 域，只有它能为 D3 域的低功耗外设（LPUART / LPTIM / 低功耗 SPI）服务。</strong>通道编号 BDMA_Channel0~7。",pm:"hbdma: BDMA 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_BDMA_Init 基础DMA D3域 LPUART LPTIM 通道 0-7"},
+{n:"★ BDMA 只能访问 SRAM4",p:"缓冲区必须放 0x38000000（SRAM4）或 Backup SRAM",d:"<strong>这是 BDMA 最容易踩的坑：缓冲区放在 AXI SRAM 或 SRAM1 时，BDMA 传输不报错但数据全错（全 0 或全 0xFF）。</strong><br>用 <code>__attribute__((section(\".sram4\")))</code> 把缓冲区显式放到 SRAM4。",pm:"SRAM4: 0x38000000, 16KB",r:"&mdash;",tag:"star",kw:"BDMA SRAM4 0x38000000 缓冲区 只能 数据全错 坑"},
+{n:"HAL_BDMA_Start_IT / Abort / IRQHandler",p:"HAL_StatusTypeDef HAL_BDMA_Start_IT(BDMA_HandleTypeDef *hbdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength)",d:"启动 / 中止 / 中断处理。用法与 HAL_DMA 对应函数一致。",pm:"hbdma | SrcAddress | DstAddress | DataLength",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"BDMA Start_IT Abort IRQHandler 启动 中断"},
+]},
+{t:"DMAMUX 高级功能",apis:[
+{n:"HAL_DMAEx_ConfigMuxSync",p:"HAL_StatusTypeDef HAL_DMAEx_ConfigMuxSync(DMA_HandleTypeDef *hdma, DMA_MuxSyncConfigTypeDef *pSyncConfig)",d:"<strong>DMAMUX 的同步功能</strong>：DMA 传输可以由外部事件（如定时器到达、EXTI 信号）门控，只在事件到来时搬一次。做「按需采样」很省资源。",pm:"hdma | pSyncConfig: SyncMode / SyncSignalID / SyncPolarity / RequestNumber",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ConfigMuxSync 同步 门控 事件 按需采样"},
+{n:"HAL_DMAEx_ConfigMuxRequestGenerator",p:"HAL_StatusTypeDef HAL_DMAEx_ConfigMuxRequestGenerator(DMA_HandleTypeDef *hdma, DMA_RequestGeneratorConfigTypeDef *pGenConfig)",d:"<strong>DMAMUX 请求发生器</strong>：让 DMA 自己产生周期性请求（基于外部信号），不需要外设参与。可用于自定义周期搬运。",pm:"hdma | pGenConfig: SignalID / Polarity / RequestNumber",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ConfigMuxRequestGenerator 请求发生器 周期 搬运"},
+]},
+]},
+{id:"ospi",name:"OCTOSPI 八线 SPI",badge:"存储",color:"#5fa8d3",hdr:"stm32h7xx_hal_ospi.h",desc:"<strong>H7 用 OCTOSPI 替代了 F4 的 QUADSPI</strong>，支持 1/2/4/8 线 SPI，H723 有 2 个 OCTOSPI。<strong>最常用的方式是 XiP 内存映射模式</strong> —— 把外部 NOR Flash 映射到地址空间，像读普通内存一样执行代码、读数据。",cats:[
+{t:"初始化与配置",apis:[
+{n:"HAL_OSPI_Init",p:"HAL_StatusTypeDef HAL_OSPI_Init(OSPI_HandleTypeDef *hospi)",d:"初始化 OCTOSPI：时钟预分频、片选、FIFO 阈值、双闪存模式、延迟采样、CS 高电平时间。",pm:"hospi: OSPI 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_OSPI_Init 初始化 预分频 FIFO 双闪存 延迟采样"},
+{n:"HAL_OSPI_Command ★",p:"HAL_StatusTypeDef HAL_OSPI_Command(OSPI_HandleTypeDef *hospi, OSPI_RegularCmdTypeDef *Cmd, uint32_t Timeout)",d:"<strong>向外部 Flash 发命令的最核心函数。</strong>配置指令码、地址模式/地址、数据模式、线宽（1/2/4/8 线）、Dummy 周期、数据长度。<br>读 ID、写使能、扇区擦除、页编程都靠它。",pm:"hospi | Cmd: 命令配置 | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_OSPI_Command 命令 指令码 地址 线宽 Dummy 擦除 编程 读ID"},
+{n:"HAL_OSPI_Transmit / Receive",p:"HAL_StatusTypeDef HAL_OSPI_Receive(OSPI_HandleTypeDef *hospi, uint8_t *pData, uint32_t Timeout)",d:"在执行了 Receive 类型的 Command 之后，用它把数据读进缓冲区 / 写出数据。",pm:"hospi | pData | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_OSPI_Transmit Receive 读数据 写数据"},
+{n:"HAL_OSPI_AutoPolling ★",p:"HAL_StatusTypeDef HAL_OSPI_AutoPolling(OSPI_HandleTypeDef *hospi, OSPI_AutoPollingTypeDef *pObj, uint32_t Timeout)",d:"<strong>硬件自动轮询状态寄存器。</strong>擦除/编程命令下发后，Flash 需要时间完成，以前要软件循环读状态位，现在 <strong>OSPI 硬件自己轮询直到条件满足</strong>，CPU 可以去做别的事。做 Flash 固件升级时非常好用。",pm:"hospi | pObj: Match/Mask/MatchMode/Interval | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"star",kw:"AutoPolling 自动轮询 状态寄存器 擦除 等待 硬件 CPU解放"},
+]},
+{t:"★ XiP 内存映射模式",apis:[
+{n:"HAL_OSPI_MemoryMapped ★",p:"HAL_StatusTypeDef HAL_OSPI_MemoryMapped(OSPI_HandleTypeDef *hospi, OSPI_MemoryMappedTypeDef *pObj)",d:"<strong>进入内存映射模式：外部 Flash 被映射进地址空间（OCTOSPI1 起始 0x9000 0000），之后直接指针读取，硬件自动处理命令和 Dummy 周期。</strong><br>可以把代码放到外部 Flash 里直接在原地执行（XiP = eXecute in Place），也可以放字库、图片、音频等大块数据。",pm:"hospi | pObj: TimeoutActivation / TimeoutPeriod",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"MemoryMapped XiP 内存映射 0x90000000 原地执行 字库 图片 音频"},
+{n:"HAL_OSPI_EnableMemoryMappedMode",p:"HAL_StatusTypeDef HAL_OSPI_EnableMemoryMappedMode(OSPI_HandleTypeDef *hospi)",d:"直接进入内存映射模式（简化版，用 Init 里已配置的参数）。<strong>注意：进入映射模式后就不能再发普通命令了，要退出才能擦写。</strong>",pm:"hospi",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"EnableMemoryMappedMode 进入 映射 退出 才能擦写"},
+{n:"映射地址与容量",p:"OCTOSPI1: 0x9000 0000 &middot; OCTOSPI2: 0x7000 0000 &middot; 各 256MB 窗口",d:"映射后可直接 <code>*(uint32_t*)0x90000000</code> 读数据。<strong>但读速度受 OSPI 时钟和 Flash 本身限制，且要经过 Cache</strong>（I-Cache 对取指有效，D-Cache 对数据读取有效）。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"映射 地址 0x90000000 OCTOSPI1 OCTOSPI2 0x70000000 Cache"},
+{n:"★ XiP 执行代码的关键注意",p:"外部 Flash 执行代码前必须做的事：① 开 I-Cache ② 配置 MPU 允许该区域可执行 ③ 处理好 Flash 的读时序（Dummy 周期要对）",d:"<strong>直接把 .text 段指到 0x90000000 而没配 MPU/Cache 的话，虽然能跑，但速度只有内置 Flash 的几分之一</strong>，而且遇到延迟敏感的 ISR 会明显卡顿。<br>实用方案：<strong>ISR 和热路径代码放内部 Flash/TCM，大块只读数据（字库/图片）放外部 Flash。</strong>",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"XiP 代码 注意 I-Cache MPU 可执行 Dummy 时序 ISR 热路径 建议"},
+]},
+{t:"中断与回调",apis:[
+{n:"HAL_OSPI_IRQHandler",p:"void HAL_OSPI_IRQHandler(OSPI_HandleTypeDef *hospi)",d:"OSPI 中断总入口。",pm:"hospi",r:"无",tag:"op",kw:"HAL_OSPI_IRQHandler 中断 总入口"},
+{n:"HAL_OSPI_CmdCpltCallback / RxCpltCallback / TxCpltCallback",p:"__weak void HAL_OSPI_CmdCpltCallback(OSPI_HandleTypeDef *hospi)",d:"命令完成 / 接收完成 / 发送完成回调（weak）。",pm:"hospi",r:"无",tag:"cb",kw:"CmdCpltCallback RxCpltCallback TxCpltCallback 回调 完成"},
+{n:"HAL_OSPI_ErrorCallback",p:"__weak void HAL_OSPI_ErrorCallback(OSPI_HandleTypeDef *hospi)",d:"错误回调。用 <code>HAL_OSPI_GetError</code> 查具体错误。",pm:"hospi",r:"无",tag:"cb",kw:"HAL_OSPI_ErrorCallback GetError 错误 回调"},
+]},
+]},
+{id:"fmc",name:"FMC 外部存储器",badge:"存储",color:"#4a90a4",hdr:"stm32h7xx_hal_sram.h / _sdram.h / _nand.h",desc:"灵活存储控制器，支持 SRAM/PSRAM/SDRAM/NOR/NAND，最多 16 位数据总线。<strong>LQFP100 封装的 FMC 引脚有限</strong>，引不全 32 位数据宽度，通常用 8/16 位 SDRAM 或并口 LCD。",cats:[
+{t:"Bank 地址映射",apis:[
+{n:"Bank1 — NOR / SRAM / PSRAM",p:"0x6000 0000 ~ 0x6FFF FFFF  &middot;  片选 NE1~NE4",d:"外扩 SRAM 芯片、并口彩屏（8080 接口，如 ILI9488/SSD1963）都用这里。NE1 = 0x60000000。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"Bank1 NOR SRAM PSRAM 0x60000000 NE1 并口彩屏 ILI9488"},
+{n:"Bank2 / Bank3 — NAND",p:"0x7000 0000 / 0x8000 0000",d:"NAND Flash 控制器区，分公共区和属性区。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"Bank2 Bank3 NAND 0x70000000 0x80000000"},
+{n:"★ OCTOSPI 区（不是 FMC）",p:"OCTOSPI1: 0x9000 0000  &middot;  OCTOSPI2: 0x7000 0000",d:"<strong>注意 H7 上 0x7000 0000 同时被 OCTOSPI2 和 FMC NAND Bank3 占用（二选一，由芯片配置决定）。</strong>不要两个同时用。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"OCTOSPI 地址 0x90000000 0x70000000 冲突 NAND Bank3 二选一"},
+{n:"SDRAM 区",p:"FMC Bank5: 0xC000 0000  &middot;  Bank6: 0xD000 0000  &middot;  各 256MB 窗口",d:"外扩 SDRAM 的首选，能挂 8/16 位 SDRAM。<strong>映射后可以直接用指针访问</strong>：<code>*(uint16_t*)0xC0000000 = 0x1234;</code>",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"SDRAM Bank5 Bank6 0xC0000000 0xD0000000 指针 访问"},
+]},
+{t:"SRAM / NOR",apis:[
+{n:"HAL_SRAM_Init",p:"HAL_StatusTypeDef HAL_SRAM_Init(SRAM_HandleTypeDef *hsram, FMC_NORSRAM_TimingTypeDef *Timing, FMC_NORSRAM_TimingTypeDef *TimingWrite)",d:"初始化外部 SRAM/NOR（FMC Bank1）。分别配置读时序和写时序（地址建立/数据建立/总线周转）。",pm:"hsram | Timing: 读时序 | TimingWrite: 写时序",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_SRAM_Init 初始化 SRAM NOR Bank1 时序 地址建立 数据建立"},
+{n:"HAL_SRAM_Read_8b / 16b / 32b",p:"void HAL_SRAM_Read_16b(SRAM_HandleTypeDef *hsram, uint32_t *pAddress, uint16_t *pDst, uint32_t uwDataSize)",d:"从外部存储器读数据。",pm:"hsram | pAddress | pDst | uwDataSize",r:"无",tag:"op",kw:"SRAM_Read_16b 8b 32b 读取"},
+{n:"HAL_SRAM_Write_8b / 16b / 32b",p:"void HAL_SRAM_Write_16b(SRAM_HandleTypeDef *hsram, uint32_t *pAddress, uint16_t *pSrc, uint32_t uwDataSize)",d:"写数据。<strong>也可以直接指针赋值，速度更快</strong>。",pm:"hsram | pAddress | pSrc | uwDataSize",r:"无",tag:"op",kw:"SRAM_Write_16b 写入 指针 直接"},
+]},
+{t:"SDRAM",apis:[
+{n:"HAL_SDRAM_Init",p:"HAL_StatusTypeDef HAL_SDRAM_Init(SDRAM_HandleTypeDef *hsdram, FMC_SDRAM_TimingTypeDef *Timing)",d:"初始化 SDRAM。配列地址位宽、行地址位宽、Bank 数、CAS 延迟、写保护以及七个时序参数（TMRD/TXSR/TRAS/TRC/TWR/TRP/TRCD）。",pm:"hsdram | Timing",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_SDRAM_Init 初始化 CAS 时序 TMRD TRAS TRP TRCD"},
+{n:"★ HAL_SDRAM_SendCommand",p:"HAL_StatusTypeDef HAL_SDRAM_SendCommand(SDRAM_HandleTypeDef *hsdram, FMC_SDRAM_CommandTypeDef *Command, uint32_t Timeout)",d:"<strong>发 SDRAM 命令：上电初始化序列必须按这个顺序执行</strong> —— 时钟配置使能 &rarr; 预充电全部 &rarr; 自动刷新 &times;8 &rarr; 加载模式寄存器。顺序错了 SDRAM 就是读不出数据。",pm:"hsdram | Command: 含 CommandMode/TargetBank/AutoRefreshNumber/ModeRegisterDefinition",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"star",kw:"SendCommand 命令 预充电 自动刷新 模式寄存器 上电序列 顺序"},
+{n:"★ HAL_SDRAM_ProgramRefreshRate",p:"HAL_StatusTypeDef HAL_SDRAM_ProgramRefreshRate(SDRAM_HandleTypeDef *hsdram, uint32_t RefreshRate)",d:"<strong>设置刷新速率，算错了会表现为「随机数据错误」这种最折磨人的现象。</strong><br>公式：<code>RefreshRate = (SDRAM 时钟 MHz) &times; (SDRAM 刷新周期 us) - 20</code>。以 100MHz + 64ms/8192 行为例：(100 &times; 7.8125) - 20 &asymp; 761。",pm:"hsdram | RefreshRate: COUNT 寄存器值",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"ProgramRefreshRate 刷新 速率 公式 随机 数据错误 COUNT"},
+{n:"HAL_SDRAM_GetModeStatus",p:"uint32_t HAL_SDRAM_GetModeStatus(SDRAM_HandleTypeDef *hsdram)",d:"查询 SDRAM 当前是正常模式还是自刷新模式。",pm:"hsdram",r:"SDRAM_NORMAL_MODE / SDRAM_SELF_REFRESH_MODE",tag:"query",kw:"GetModeStatus 模式 自刷新"},
+]},
+{t:"★ FMC + Cache 的注意点",apis:[
+{n:"FMC 区域要不要做 Cache 维护",p:"用 DMA 读写外部存储器时必须；纯 CPU 访问不用",d:"<strong>FMC 映射区默认是可 Cache 的。</strong>如果只是 CPU 读写（比如往外部 SDRAM 存图像、读字库），不用管。<strong>但如果用 DMA 搬到 FMC 区（或从 FMC 区读给 DMA 发），就要做 Clean/Invalidate</strong>。<br>更省事：用 MPU 把 FMC 区配成 Non-cacheable 或 Write-through。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"FMC Cache DMA 维护 MPU Non-cacheable Write-through"},
+]},
+]},
+{id:"sdmmc",name:"SDMMC / SD 卡",badge:"存储",color:"#5fa8d3",hdr:"stm32h7xx_hal_sd.h",desc:"<strong>H723 有 2 个 SDMMC（SDMMC1 / SDMMC2）</strong>，支持 SD 卡、SDHC/SDXC、eMMC、SDIO 设备（WiFi 模组）。支持 1/4/8 位总线，最高速率远高于 F4。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_SD_Init",p:"HAL_StatusTypeDef HAL_SD_Init(SD_HandleTypeDef *hsd)",d:"初始化 SD 卡：上电、识别、读 CID/CSD、配置总线宽度。<strong>识别阶段时钟会自动降到 400kHz</strong>，之后提速。",pm:"hsd: SD 句柄",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"init",kw:"HAL_SD_Init 初始化 识别 CID CSD 400kHz"},
+{n:"HAL_SD_InitCard",p:"HAL_StatusTypeDef HAL_SD_InitCard(SD_HandleTypeDef *hsd)",d:"只做卡的识别（重新初始化，不重配总线宽度）。<strong>热插拔后重新识别用这个。</strong>",pm:"hsd",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"init",kw:"InitCard 识别 重新 热插拔"},
+{n:"HAL_SD_ConfigWideBusOperation",p:"HAL_StatusTypeDef HAL_SD_ConfigWideBusOperation(SD_HandleTypeDef *hsd, uint32_t WideMode)",d:"配置总线宽度。<strong>4 位比 1 位快 4 倍，8 位（eMMC）再翻倍</strong>，但硬件上对应的 D1~D7 都要接和上拉。",pm:"WideMode: SDMMC_BUS_WIDE_1B / 4B / 8B",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ConfigWideBusOperation 总线宽度 4bit 8bit eMMC 快"},
+]},
+{t:"读写",apis:[
+{n:"HAL_SD_ReadBlocks / WriteBlocks",p:"HAL_StatusTypeDef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint8_t *pData, uint32_t BlockAdd, uint32_t NumberOfBlocks, uint32_t Timeout)",d:"阻塞读写。<strong>BlockAdd 是块号不是字节地址</strong>，每块 512 字节：字节地址 = 块号 &times; 512。",pm:"hsd | pData | BlockAdd: 块号 | NumberOfBlocks | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"ReadBlocks WriteBlocks 块号 512 字节地址"},
+{n:"HAL_SD_ReadBlocks_DMA / WriteBlocks_DMA ★",p:"HAL_StatusTypeDef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, uint32_t BlockAdd, uint32_t NumberOfBlocks)",d:"<strong>大数据量必须用 DMA</strong>（音频、日志、图像），否则 CPU 全被阻塞。<strong>读完后记得 Invalidate D-Cache</strong>。",pm:"hsd | pData | BlockAdd | NumberOfBlocks",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"ReadBlocks_DMA 大数量 Invalidate Cache 必须"},
+{n:"HAL_SD_Erase",p:"HAL_StatusTypeDef HAL_SD_Erase(SD_HandleTypeDef *hsd, uint32_t BlockStartAdd, uint32_t BlockEndAdd)",d:"擦除块区间。擦除后写入更快。",pm:"hsd | BlockStartAdd | BlockEndAdd",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"HAL_SD_Erase 擦除 区间"},
+{n:"HAL_SD_GetCardInfo",p:"HAL_StatusTypeDef HAL_SD_GetCardInfo(SD_HandleTypeDef *hsd, HAL_SD_CardInfoTypeDef *pCardInfo)",d:"获取卡信息：<strong>容量 = BlockNbr &times; BlockSize</strong>，还有卡类型（SDSC/SDHC/SDXC）、速度等级、RCA。",pm:"hsd | pCardInfo(返回)",r:"HAL_OK / HAL_ERROR",tag:"query",kw:"GetCardInfo 容量 BlockNbr SDHC SDXC 卡类型"},
+{n:"HAL_SD_GetCardState",p:"HAL_SD_CardStateTypeDef HAL_SD_GetCardState(SD_HandleTypeDef *hsd)",d:"获取卡状态。<strong>写完后要等状态回到 TRANSFER 才能继续操作</strong>，否则会写失败。",pm:"hsd",r:"HAL_SD_CARD_TRANSFER / RECEIVING / PROGRAMMING",tag:"query",kw:"GetCardState 状态 TRANSFER 写完 等待"},
+]},
+{t:"★ 时钟与配置要点",apis:[
+{n:"SDMMC 时钟源",p:"SdmmcClockSelection: PLL1_Q / PLL2_R",d:"SDMMC 需要一个稳定的工作时钟（常见 100~200MHz），然后由分频器分出卡时钟（≤50MHz 高速模式）。<strong>SDMMC 自己的时钟与 CPU 主频无关</strong>，所以超频 CPU 不影响 SD 卡稳定性。",pm:"改时钟后要重新 Init",r:"高速模式 &le;50MHz",tag:"cfg",kw:"时钟源 PLL1_Q PLL2_R 50MHz 分频 独立"},
+{n:"★ SDMMC1 只认 AXI SRAM",p:"SDMMC1 的 DMA 无法访问 SRAM1/SRAM2，缓冲区要放 AXI SRAM 或 SRAM4",d:"<strong>这是 H7 上 SD 卡 DMA 失败的经典原因：缓冲区放在 DTCM 或 SRAM1 时，DMA 传输不报错但数据全是 0。</strong><br>把 SD 卡缓冲放在 <code>0x24000000</code>（AXI SRAM）区域最稳。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"SDMMC1 AXI SRAM 缓冲区 不能 SRAM1 DTCM 数据全0 经典 坑"},
+{n:"eMMC 支持",p:"H723 的 SDMMC 支持 eMMC 8 位模式",d:"焊接 eMMC 芯片时用 8 位总线，容量大、速度快，适合做数据记录仪。<strong>参考 STM32H745I-DISCO 的原理图</strong>（ST 官方推荐）。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"eMMC 8位 数据记录仪 H745I-DISCO 参考 原理图"},
+]},
+{t:"回调",apis:[
+{n:"HAL_SD_TxCpltCallback / RxCpltCallback",p:"__weak void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)",d:"读写完成回调（DMA 模式）。<strong>读完成后在这里 Invalidate Cache</strong>。",pm:"hsd",r:"无",tag:"cb",kw:"RxCpltCallback TxCpltCallback 完成 回调 Invalidate"},
+{n:"HAL_SD_ErrorCallback",p:"__weak void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)",d:"错误回调。用 HAL_SD_GetError 查错误（超时/CRC/命令错）。",pm:"hsd",r:"无",tag:"cb",kw:"ErrorCallback GetError 错误 CRC 超时"},
+]},
+]},
+{id:"eth",name:"ETH 以太网",badge:"通信",color:"#4f7fd8",hdr:"stm32h7xx_hal_eth.h",desc:"10/100 Mbps 以太网 MAC，支持 MII（17 信号）或 RMII（9 信号）、IEEE 1588 PTP 硬件时间戳、VLAN 标签、硬件校验和卸载。需外接 PHY（LAN8720 / DP83848）。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_ETH_Init",p:"HAL_StatusTypeDef HAL_ETH_Init(ETH_HandleTypeDef *heth)",d:"初始化 ETH：MAC 地址、自动协商、双工/速度、描述符列表、校验和卸载。内部会读 PHY 协商出实际速率。",pm:"heth: ETH 句柄",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"init",kw:"HAL_ETH_Init 初始化 MAC PHY 自动协商 MAC地址"},
+{n:"HAL_ETH_DeInit",p:"HAL_StatusTypeDef HAL_ETH_DeInit(ETH_HandleTypeDef *heth)",d:"反初始化 ETH。",pm:"heth",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_ETH_DeInit 反初始化"},
+{n:"HAL_ETH_SetMACConfig",p:"HAL_StatusTypeDef HAL_ETH_SetMACConfig(ETH_HandleTypeDef *heth, ETH_MACConfigTypeDef *macconf)",d:"运行中改 MAC 参数（双工/速度/帧长/CRC 剥离/自动填充）。",pm:"heth | macconf",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"SetMACConfig 双工 速度 CRC 帧长"},
+]},
+{t:"启动与收发",apis:[
+{n:"HAL_ETH_Start_IT ★",p:"HAL_StatusTypeDef HAL_ETH_Start_IT(ETH_HandleTypeDef *heth)",d:"<strong>启动以太网并使能中断 —— 配 LwIP / FreeRTOS 时必须用这个</strong>，否则收不到任何包。",pm:"heth",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"Start_IT 中断 启动 LwIP FreeRTOS 必须"},
+{n:"HAL_ETH_Transmit / Transmit_IT",p:"HAL_StatusTypeDef HAL_ETH_Transmit(ETH_HandleTypeDef *heth, ETH_TxPacketConfig *pTxConfig, uint32_t Timeout)",d:"发送以太网帧。需填好 TxDescList 描述符链（数据指针、长度、选项）。",pm:"heth | pTxConfig: 发送包配置 | Timeout",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT / HAL_BUSY",tag:"op",kw:"HAL_ETH_Transmit 发送 帧 描述符 TxDescList"},
+{n:"HAL_ETH_ReadData ★",p:"HAL_StatusTypeDef HAL_ETH_ReadData(ETH_HandleTypeDef *heth, void **pAppBuff)",d:"从接收描述符读一个帧。<strong>返回 HAL_OK = 有数据</strong>，pAppBuff 指向帧内容。",pm:"heth | pAppBuff(返回)",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"ReadData 读取 接收 帧 数据"},
+{n:"HAL_ETH_GetRxPktSize",p:"uint32_t HAL_ETH_GetRxPktSize(ETH_HandleTypeDef *heth)",d:"获取当前接收帧长度。",pm:"heth",r:"字节数",tag:"query",kw:"GetRxPktSize 帧 长度"},
+{n:"HAL_ETH_BuildRxDescriptors",p:"HAL_StatusTypeDef HAL_ETH_BuildRxDescriptors(ETH_HandleTypeDef *heth)",d:"<strong>重建接收描述符链。长期运行后必须调用，否则收包会停。</strong>",pm:"heth",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"BuildRxDescriptors 重建 描述符 收包停"},
+]},
+{t:"PHY 寄存器与排错",apis:[
+{n:"HAL_ETH_ReadPHYRegister ★",p:"HAL_StatusTypeDef HAL_ETH_ReadPHYRegister(ETH_HandleTypeDef *heth, uint16_t PHYReg, uint32_t *RegValue)",d:"<strong>读 PHY 寄存器。排查「网口不亮 / ping 不通」的第一步：读 BMSR(寄存器1) 的 bit2 看链路状态。</strong><br>为 0 说明物理层没连上 &rarr; 查网线、PHY 供电、RMII 的 50MHz 参考时钟。",pm:"heth | PHYReg | RegValue(返回)",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"star",kw:"ReadPHYRegister PHY BMSR bit2 链路 网口不亮 ping不通 第一步"},
+{n:"HAL_ETH_WritePHYRegister",p:"HAL_StatusTypeDef HAL_ETH_WritePHYRegister(ETH_HandleTypeDef *heth, uint16_t PHYReg, uint32_t RegValue)",d:"写 PHY 寄存器（PHY 软复位、强制速度/双工、LED 配置）。",pm:"heth | PHYReg | RegValue",r:"HAL_OK / HAL_ERROR / HAL_TIMEOUT",tag:"op",kw:"WritePHYRegister PHY 软复位 强制速度 LED"},
+{n:"★ 以太网 DMA 的 Cache 问题",p:"收发描述符和数据缓冲区必须做 Cache 维护，或用 MPU 设 Non-cacheable",d:"<strong>以太网是 Cache 问题最严重的场景</strong>：收包时 CPU 从 Cache 读到旧包内容、发包时 DMA 发出去的是旧数据。建议<strong>把 ETH 描述符区整块用 MPU 设为 Non-cacheable</strong>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"以太网 Cache 描述符 Non-cacheable 严重 建议 MPU"},
+]},
+{t:"回调",apis:[
+{n:"HAL_ETH_RxCpltCallback ★",p:"__weak void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef *heth)",d:"接收完成回调。<strong>LwIP 的 ethernetif_input 就是在这里被唤醒的。</strong>",pm:"heth",r:"无",tag:"cb",kw:"RxCpltCallback 接收完成 回调 LwIP ethernetif_input"},
+{n:"HAL_ETH_TxCpltCallback / ErrorCallback",p:"__weak void HAL_ETH_TxCpltCallback(ETH_HandleTypeDef *heth)",d:"发送完成 / 错误回调。",pm:"heth",r:"无",tag:"cb",kw:"TxCpltCallback ErrorCallback 发送完成 错误"},
+]},
+]},
+{id:"usb",name:"USB OTG",badge:"通信",color:"#4f7fd8",hdr:"stm32h7xx_hal_pcd.h / _hcd.h",desc:"H723 有 <strong>1 个 USB OTG FS（全速 12Mbps）+ 1 个 USB OTG HS</strong>。<strong>★ 关键：HS 的 480Mbps 高速模式需要外接 ULPI PHY，片内只有 FS 收发器</strong>（这点容易误解）。",cats:[
+{t:"★ 架构要点",apis:[
+{n:"USB HS 到底能不能跑 480Mbps",p:"片内只有 FS PHY（12Mbps）&middot; 跑 HS 必须外接 ULPI PHY 芯片",d:"<strong>官方数据手册原文：HS 模式下需要外接连接到 ULPI 的 PHY 器件。</strong><br>所以：<br>① 不接外部 PHY &rarr; USB OTG_HS 只能当全速设备用；<br>② 想跑 480Mbps &rarr; 外挂 USB3300（ULPI PHY）这类芯片，占 12 根信号线。<br>很多教程说「H723 有高速 USB」但没讲这个前提，容易踩坑。",pm:"外部 PHY 例: USB3300 / USB3320",r:"FS 12Mbps / HS 480Mbps(需外PHY)",tag:"star",kw:"USB HS 480Mbps ULPI PHY 外接 USB3300 12Mbps FS 误解 前提"},
+{n:"48MHz 时钟要求",p:"USB 需要严格 48MHz 时钟，来自 PLL1_Q / PLL3_Q / HSI48",d:"<strong>推荐用 HSI48（内部 48MHz RC）</strong>，配合 CRS（时钟恢复系统）自动校准，省一个晶振。用 PLL 分频则要保证分频结果精确 48MHz。",pm:"UsbClockSelection: RCC_USBCLKSOURCE_HSI48 / PLL1 / PLL3",r:"48 MHz",tag:"cfg",kw:"48MHz HSI48 CRS PLL1_Q PLL3_Q 时钟 晶振"},
+{n:"VBUS 供电",p:"有独立的 USB 供电引脚 VDD33USB",d:"H723 有 <strong>VDD33USB 独立供电脚</strong>，需接 3.3V（或按需求配）。做自供电设备时要注意这个引脚的连接。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"VDD33USB VBUS 供电 独立 引脚 自供电"},
+]},
+{t:"HAL USB 常用函数",apis:[
+{n:"HAL_PCD_Init / DeInit",p:"HAL_StatusTypeDef HAL_PCD_Init(PCD_HandleTypeDef *hpcd)",d:"初始化 USB 设备控制器（PCD = Peripheral Controller Driver）。",pm:"hpcd: PCD 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_PCD_Init 设备 初始化 PCD"},
+{n:"HAL_PCD_Start / Stop",p:"HAL_StatusTypeDef HAL_PCD_Start(PCD_HandleTypeDef *hpcd)",d:"启动 / 停止 USB 设备（连接/断开上拉）。",pm:"hpcd",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"PCD_Start Stop 启动 停止 连接"},
+{n:"HAL_PCD_EP_Open / Close / Transmit / Receive",p:"HAL_StatusTypeDef HAL_PCD_EP_Transmit(PCD_HandleTypeDef *hpcd, uint8_t ep_addr, uint8_t *pBuf, uint32_t len)",d:"端点开关 + 端点收发。<strong>这一层是底层，通常由 USB Device 中间件（CDC/HID/MSC 类）调用</strong>，自己写 USB 驱动时才直接用。",pm:"hpcd | ep_addr | pBuf | len",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"EP_Open EP_Transmit EP_Receive 端点 底层 中间件 CDC HID"},
+{n:"HAL_PCD_SOFCallback / SetupStageCallback",p:"__weak void HAL_PCD_SetupStageCallback(PCD_HandleTypeDef *hpcd)",d:"USB 事件回调（Setup 阶段 / SOF / 复位 / 数据传输完成）。中间件会实现这些。",pm:"hpcd",r:"无",tag:"cb",kw:"SetupStageCallback SOFCallback USB 事件 回调 中间件"},
+{n:"★ 实用建议：直接用中间件",p:"CubeMX &rarr; Middleware &rarr; USB_DEVICE，选 CDC（虚拟串口）/ HID / MSC（U盘）",d:"<strong>不要自己从零写 USB 协议栈</strong>，链路层和枚举过程极复杂。CubeMX 能一键生成 CDC/HID/MSC 类，直接调 <code>CDC_Transmit_FS(buf, len)</code> 就能收发。<br>做虚拟串口是最常见的用法。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"中间件 CDC 虚拟串口 HID MSC CubeMX 不要自己写 建议"},
+]},
+]},
+{id:"dma2d",name:"DMA2D (Chrom-ART)",badge:"图形",color:"#c98ae0",hdr:"stm32h7xx_hal_dma2d.h",desc:"<strong>Chrom-ART 二维图形加速器</strong>：硬件完成填充、拷贝、Alpha 混合、颜色格式转换、图层叠加。<strong>用来做 GUI 比 CPU 快几十倍</strong>，且不占 CPU。配合 LTDC 做界面是 H7 的标准方案。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_DMA2D_Init",p:"HAL_StatusTypeDef HAL_DMA2D_Init(DMA2D_HandleTypeDef *hdma2d)",d:"初始化 DMA2D：模式、输出颜色格式（ARGB8888/RGB565等）、输出偏移、行数、行宽、Alpha 模式。",pm:"hdma2d: DMA2D 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_DMA2D_Init 初始化 颜色格式 ARGB8888 RGB565 Alpha"},
+{n:"HAL_DMA2D_DeInit",p:"HAL_StatusTypeDef HAL_DMA2D_DeInit(DMA2D_HandleTypeDef *hdma2d)",d:"反初始化 DMA2D。",pm:"hdma2d",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_DMA2D_DeInit 反初始化"},
+]},
+{t:"三大用法",apis:[
+{n:"① HAL_DMA2D_Start (寄存器到存储器)",p:"HAL_StatusTypeDef HAL_DMA2D_Start(DMA2D_HandleTypeDef *hdma2d, uint32_t pdata, uint32_t DstAddress, uint32_t Width, uint32_t Height)",d:"<strong>用单一颜色填充一块区域</strong>（清屏、画纯色矩形）。pdata 是 ARGB 颜色值。",pm:"hdma2d | pdata: 颜色值 | DstAddress | Width | Height",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"DMA2D_Start 填充 清屏 纯色 矩形 颜色"},
+{n:"② HAL_DMA2D_Blit (存储器到存储器)",p:"HAL_StatusTypeDef HAL_DMA2D_Blit(DMA2D_HandleTypeDef *hdma2d, uint32_t pdata, uint32_t Width, uint32_t Height)",d:"<strong>把一块图像数据搬到显存，并自动做颜色格式转换。</strong>贴图、显示照片的核心函数。<br>例：Flash 里存的 RGB565 图片 &rarr; 转成 ARGB8888 显示到屏幕。",pm:"hdma2d | pdata: 源数据地址 | Width | Height",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"DMA2D_Blit 贴图 显示 图片 格式转换 RGB565 ARGB8888"},
+{n:"③ 图层混合（Alpha）",p:"HAL_DMA2D_ConfigLayer(hdma2d, LayerIdx)  +  HAL_DMA2D_Start()",d:"<strong>把前景图层和背景图层按 Alpha 混合</strong>（半透明菜单、图标叠加、圆角效果）。DMA2D 有 2 个图层，硬件自动算 <code>结果 = 前景&times;alpha + 背景&times;(1-alpha)</code>。",pm:"LayerIdx: 0 或 1",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"图层 混合 Alpha ConfigLayer 半透明 菜单 图标 叠加"},
+{n:"HAL_DMA2D_Start_IT / 回调",p:"__weak void HAL_DMA2D_CpltCallback(DMA2D_HandleTypeDef *hdma2d)",d:"中断方式启动 + 完成回调。<strong>大块拷贝建议用中断版</strong>，CPU 不用死等。",pm:"hdma2d",r:"无",tag:"cb",kw:"Start_IT CpltCallback 中断 完成 回调 大块"},
+{n:"HAL_DMA2D_PollForTransfer",p:"HAL_StatusTypeDef HAL_DMA2D_PollForTransfer(DMA2D_HandleTypeDef *hdma2d, uint32_t Timeout)",d:"阻塞等待传输完成。",pm:"hdma2d | Timeout",r:"HAL_OK / HAL_TIMEOUT",tag:"query",kw:"PollForTransfer 等待 完成 阻塞"},
+]},
+{t:"★ 与 Cache 的关系",apis:[
+{n:"DMA2D 读源数据 / 写显存都要考虑 Cache",p:"源数据在 D-Cache 里的部分要先 Clean，目标区 CPU 之后要读的话要 Invalidate",d:"DMA2D 也是 DMA 类外设，<strong>访问内存不经过 Cache</strong>。所以：<br>① 源图片数据如果刚被 CPU 写过 &rarr; 先 Clean；<br>② 显存被 CPU 读过之后再被 DMA2D 改写 &rarr; 先 Invalidate 旧的。<br><strong>实践建议：把显存所在区域整块用 MPU 设为 Write-through 或 Non-cacheable。</strong>",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"DMA2D Cache 显存 Clean Invalidate MPU Write-through 建议"},
+]},
+]},
+{id:"ltdc",name:"LTDC 液晶控制器",badge:"图形",color:"#c98ae0",hdr:"stm32h7xx_hal_ltdc.h",desc:"<strong>LCD-TFT 控制器</strong>：硬件直接驱动 RGB 并口屏（最高 XGA 1024&times;768），自动从显存读取像素并生成行场同步/时钟信号，<strong>CPU 挂上显存就可以完全不管显示</strong>。带 2 层叠加和硬件色键。",cats:[
+{t:"初始化",apis:[
+{n:"HAL_LTDC_Init",p:"HAL_StatusTypeDef HAL_LTDC_Init(LTDC_HandleTypeDef *hltdc)",d:"初始化 LTDC：<strong>行场同步参数（HSW/HBP/HFP/VSW/VBP/VFP，必须和屏幕手册一致）</strong>、像素时钟分频、极性、背景色。参数填错的表现是「花屏 / 黑屏 / 图像偏移」。",pm:"hltdc: LTDC 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_LTDC_Init 初始化 行场同步 HSW HBP VSW 参数 花屏 黑屏 偏移"},
+{n:"HAL_LTDC_ConfigLayer",p:"HAL_StatusTypeDef HAL_LTDC_ConfigLayer(LTDC_HandleTypeDef *hltdc, LTDC_LayerCfgTypeDef *pLayerCfg, uint32_t LayerIdx)",d:"配置图层：<strong>显存地址、像素格式（RGB565/ARGB8888）、窗口位置尺寸、Alpha 常数与混合方式</strong>。LTDC 有 2 个硬件图层，可做「背景图 + 前景UI」叠加。",pm:"hltdc | pLayerCfg: 图层配置 | LayerIdx: 0/1",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ConfigLayer 图层 显存地址 像素格式 窗口 Alpha 叠加"},
+{n:"HAL_LTDC_SetAddress ★",p:"HAL_StatusTypeDef HAL_LTDC_SetAddress(LTDC_HandleTypeDef *hltdc, uint32_t Address, uint32_t LayerIdx)",d:"<strong>切换显存地址 —— 双缓冲翻页的关键。</strong>准备两个显存区，CPU/DMA2D 画后台缓冲区，画完切地址，屏幕瞬间翻转，无撕裂。",pm:"hltdc | Address: 新显存地址 | LayerIdx",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"SetAddress 双缓冲 翻页 无撕裂 切换 显存"},
+{n:"HAL_LTDC_SetWindowPosition / SetWindowSize",p:"HAL_StatusTypeDef HAL_LTDC_SetWindowPosition(LTDC_HandleTypeDef *hltdc, uint32_t X0, uint32_t Y0, uint32_t LayerIdx)",d:"移动 / 缩放图层窗口。做滑动菜单、动画很方便。",pm:"hltdc | X0,Y0 | LayerIdx",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"SetWindowPosition SetWindowSize 移动 缩放 图层 动画"},
+{n:"HAL_LTDC_Reload",p:"HAL_StatusTypeDef HAL_LTDC_Reload(LTDC_HandleTypeDef *hltdc, LTDC_Reload_t ReloadType)",d:"<strong>修改图层参数后必须调用它才会生效</strong>（或在垂直消隐期自动重载）。忘调就是「改了没反应」。",pm:"ReloadType: LTDC_RELOAD_IMMEDIATE / VBLANK / VSYNC",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_LTDC_Reload 重载 生效 改了没反应 垂直消隐"},
+]},
+{t:"★ 显存与像素时钟规划",apis:[
+{n:"显存大小计算",p:"显存 = 宽 &times; 高 &times; 每像素字节数（RGB565=2 / ARGB8888=4）",d:"<strong>800&times;480 RGB565 = 768KB —— 超过 H723 的 564KB SRAM！</strong><br>所以 800&times;480 必须外扩 SDRAM，或者降到 480&times;272（261KB，能放下但很紧张）。<br>做这项规划前先算清楚，别画到一半发现内存不够。",pm:"480&times;272 RGB565 = 261KB &middot; 800&times;480 RGB565 = 768KB",r:"&mdash;",tag:"star",kw:"显存 计算 768KB 564KB 不够 外扩SDRAM 480x272 800x480 规划"},
+{n:"像素时钟计算",p:"PCLK = (HSPW + HBP + 有效宽 + HFP) &times; (VSPW + VBP + 有效高 + VFP) &times; 帧率",d:"以 800&times;480@60Hz 为例：(48+88+800+40) &times; (3+23+480+1) &times; 60 &asymp; 33.3 MHz。<strong>这个频率由 LTDC 时钟源（PLL2/PLL3）分频得到</strong>，配不准会闪烁或滚屏。",pm:"LTDC 时钟常挂 PLL3_R 或 PLL2_R",r:"&mdash;",tag:"star",kw:"像素时钟 PCLK 计算 800x480 60Hz 33.3MHz 分频 闪烁"},
+{n:"显存放哪",p:"小屏放 AXI SRAM &middot; 大屏必须外部 SDRAM（FMC Bank5 0xC0000000）",d:"AXI SRAM 约有 320KB 可用，放 480&times;272 RGB565（261KB）勉强够但很挤。<strong>大屏用 SDRAM：容量大、成本低，但要注意 SDRAM 带宽（16 位 @100MHz = 200MB/s，够 800&times;480@60Hz）</strong>。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"显存 AXI SRAM 外部 SDRAM FMC 带宽 200MB/s 大屏"},
+]},
+]},
+{id:"dcmi",name:"DCMI 摄像头接口",badge:"外设",color:"#c98ae0",hdr:"stm32h7xx_hal_dcmi.h",desc:"数字摄像头并行接口，8/10/12/14 位数据宽度，硬件行场同步，支持裁剪窗口和 JPEG 直通。典型搭配 OV2640 / OV5640。H723 的 LQFP100 封装引脚较少，通常用 8 位模式。",cats:[
+{t:"初始化与采集",apis:[
+{n:"HAL_DCMI_Init",p:"HAL_StatusTypeDef HAL_DCMI_Init(DCMI_HandleTypeDef *hdcmi)",d:"初始化 DCMI：同步模式、数据宽度、时钟极性、行场有效电平、JPEG 模式、捕获率。",pm:"hdcmi: DCMI 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_DCMI_Init 初始化 同步 数据宽度 极性 JPEG"},
+{n:"HAL_DCMI_Start_DMA ★",p:"HAL_StatusTypeDef HAL_DCMI_Start_DMA(DCMI_HandleTypeDef *hdcmi, uint32_t DCMI_Mode, uint32_t pData, uint32_t Length)",d:"DMA 方式启动采集（SNAPSHOT 单帧 / CONTINUOUS 连续）。<strong>注意 pData 参数传的是「缓冲区的地址值」不是指针</strong>：要写 <code>(uint32_t)&amp;buffer</code>，这是最容易写错的地方。",pm:"hdcmi | DCMI_Mode | pData: (uint32_t)&buffer | Length: 字节数",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"star",kw:"Start_DMA 采集 单帧 连续 地址值 坑 &buffer"},
+{n:"HAL_DCMI_Stop / Suspend / Resume",p:"HAL_StatusTypeDef HAL_DCMI_Stop(DCMI_HandleTypeDef *hdcmi)",d:"停止 / 暂停 / 恢复采集。",pm:"hdcmi",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"DCMI_Stop Suspend Resume 停止 暂停 恢复"},
+{n:"HAL_DCMI_ConfigCrop / EnableCrop",p:"HAL_StatusTypeDef HAL_DCMI_ConfigCrop(DCMI_HandleTypeDef *hdcmi, uint32_t X0, uint32_t Y0, uint32_t XSize, uint32_t YSize)",d:"裁剪采集窗口（ROI）。<strong>640&times;480 只采中间 320&times;240 可省 4 倍带宽和内存</strong>，做目标追踪很实用。",pm:"hdcmi | X0,Y0 | XSize,YSize",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"ConfigCrop EnableCrop 裁剪 ROI 省带宽 目标追踪"},
+]},
+{t:"回调与要点",apis:[
+{n:"HAL_DCMI_FrameEventCallback ★",p:"__weak void HAL_DCMI_FrameEventCallback(DCMI_HandleTypeDef *hdcmi)",d:"一帧采集完成回调。<strong>在这里处理图像并重启下一帧采集。</strong>",pm:"hdcmi",r:"无",tag:"cb",kw:"FrameEventCallback 一帧 完成 回调 图像处理"},
+{n:"HAL_DCMI_ErrorCallback / LineEventCallback",p:"__weak void HAL_DCMI_ErrorCallback(DCMI_HandleTypeDef *hdcmi)",d:"错误回调 / 行事件回调。",pm:"hdcmi",r:"无",tag:"cb",kw:"ErrorCallback LineEventCallback 错误 行事件"},
+{n:"★ DCMI 的 Cache 问题",p:"一帧采完后 CPU 读图像前必须 Invalidate 缓冲区",d:"<strong>图像缓冲区通常很大，Cache 一致性问题非常明显</strong>：不 Invalidate 的话，CPU 读到的可能是上一帧的图。<br><strong>建议把图像缓冲区所在区域用 MPU 设为 Non-cacheable</strong>（或放到 SRAM4，但只有 16KB 不够）。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"DCMI Cache 图像 缓冲 Invalidate 上一帧 Non-cacheable MPU"},
+{n:"OV2640 / OV5640 配套",p:"控制走 SCCB（兼容 I2C，地址 0x60 写）&middot; XCLK 24MHz &middot; 数据线 8 位",d:"摄像头模块要先通过 SCCB 配置分辨率和输出格式（RGB565 / YUV / JPEG），才能开始 DCMI 采集。<br><strong>XCLK 可由 MCU 的 MCO 输出 24MHz</strong>（注意要开对应时钟）。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"OV2640 OV5640 SCCB I2C 0x60 XCLK 24MHz MCO RGB565 JPEG"},
+]},
+]},
+{id:"rng",name:"RNG 硬件随机数",badge:"安全",color:"#a3d977",hdr:"stm32h7xx_hal_rng.h",desc:"真随机数发生器（TRNG），基于模拟电路噪声。用于加密密钥、nonce、随机挑战。<strong>H723 有 TRNG，但没有 AES/HASH/PKA 等硬件加密模块</strong>（H743 才有）。",cats:[
+{t:"初始化与生成",apis:[
+{n:"HAL_RNG_Init",p:"HAL_StatusTypeDef HAL_RNG_Init(RNG_HandleTypeDef *hrng)",d:"初始化 RNG。调用前须开 RNG 时钟并在 <code>HAL_RCCEx_PeriphCLKConfig</code> 里选好 RngClockSelection（推荐 HSI48）。",pm:"hrng: RNG 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_RNG_Init 初始化 RNG 时钟 HSI48 RngClockSelection"},
+{n:"HAL_RNG_GenerateRandomNumber ★",p:"HAL_StatusTypeDef HAL_RNG_GenerateRandomNumber(RNG_HandleTypeDef *hrng, uint32_t *random32bit)",d:"生成 32 位随机数（阻塞）。内部会检查并清除种子错误(SEIS)/时钟错误(CEIS)，比直接读寄存器安全。",pm:"hrng | random32bit(返回)",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"GenerateRandomNumber 生成 32位 随机数 阻塞 种子错误"},
+{n:"HAL_RNG_GenerateRandomNumber_IT",p:"HAL_StatusTypeDef HAL_RNG_GenerateRandomNumber_IT(RNG_HandleTypeDef *hrng)",d:"中断方式生成，完成后进 <code>HAL_RNG_ReadyDataCallback</code>。",pm:"hrng",r:"HAL_OK / HAL_BUSY / HAL_ERROR",tag:"op",kw:"GenerateRandomNumber_IT 中断 生成"},
+{n:"HAL_RNG_ReadLastRandomNumber",p:"uint32_t HAL_RNG_ReadLastRandomNumber(RNG_HandleTypeDef *hrng)",d:"读上一次生成的随机数（中断模式在回调里取）。",pm:"hrng",r:"32 位随机数",tag:"query",kw:"ReadLastRandomNumber 读取 上次 随机数"},
+{n:"★ 一直返回 HAL_ERROR 排查",p:"① RNG 时钟没开 &rarr; ② RngClockSelection 配错 &rarr; ③ 时钟不稳定",d:"<strong>RNG 最挑时钟。</strong>排查顺序：<br>① 确认 <code>__HAL_RCC_RNG_CLK_ENABLE()</code> 调了；<br>② 确认 <code>HAL_RCCEx_PeriphCLKConfig</code> 里 <code>RngClockSelection = RCC_RNGCLKSOURCE_HSI48</code>；<br>③ 用 <code>HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_RNG)</code> 看实际频率。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"RNG HAL_ERROR 排查 时钟 没开 HSI48 GetPeriphCLKFreq"},
+]},
+{t:"H723 的安全能力边界",apis:[
+{n:"★ H723 没有硬件加密",p:"无 AES / DES / SHA / HMAC / PKA / OTFDEC / TrustZone",d:"<strong>H723 是「精简版 H7」：只有 TRNG，没有加密加速器和 TrustZone。</strong><br>需要硬件加密的应用要换 H743/H753/H573；或者用软件加密库（做 AES 软件实现会慢不少，550MHz 下勉强可用）。<br>⚠ 移植 H743 工程时，凡是调用 <code>HAL_CRYP_*</code>、<code>HAL_HASH_*</code>、<code>HAL_PKA_*</code> 的代码全部无处可去。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"没有 硬件加密 AES SHA PKA TrustZone H743 区别 软件库"},
+]},
+]},
+{id:"rtc",name:"RTC 实时时钟",badge:"定时",color:"#8060a0",hdr:"stm32h7xx_hal_rtc.h",desc:"RTC 由 LSE(32.768kHz) 或 LSI 驱动，支持日历、2 组闹钟、时间戳、周期唤醒、32&times;32 位备份寄存器。<strong>Standby 模式下继续运行</strong>，配 VBAT 可做掉电计时。",cats:[
+{t:"初始化与时间",apis:[
+{n:"HAL_RTC_Init",p:"HAL_StatusTypeDef HAL_RTC_Init(RTC_HandleTypeDef *hrtc)",d:"初始化 RTC：小时格式、异步/同步分频。LSE 32.768kHz 典型值 AsynchPrediv=127, SynchPrediv=255。<strong>操作 RTC 前必须先 HAL_PWR_EnableBkUpAccess()</strong>。",pm:"hrtc: RTC 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_RTC_Init 初始化 分频 LSE 32768 备份域访问"},
+{n:"HAL_RTC_SetTime / SetDate",p:"HAL_StatusTypeDef HAL_RTC_SetTime(RTC_HandleTypeDef *hrtc, RTC_TimeTypeDef *sTime, uint32_t Format)",d:"设置时间和日期。Format 用 <code>RTC_FORMAT_BIN</code> 可免去 BCD 转换。",pm:"hrtc | sTime/sDate | Format: RTC_FORMAT_BIN / BCD",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"SetTime SetDate 设置 时间 日期 BIN BCD"},
+{n:"★ HAL_RTC_GetTime + GetDate",p:"HAL_StatusTypeDef HAL_RTC_GetTime(RTC_HandleTypeDef *hrtc, RTC_TimeTypeDef *sTime, uint32_t Format)",d:"<strong>⚠ 必须成对调用：GetTime 之后一定要调 GetDate 才能解锁影子寄存器。</strong><br>只调 GetTime 不调 GetDate 的话，<strong>时间会「冻住」不再更新</strong> —— 这是 HAL 库最著名的坑之一，H7 上依然如此。",pm:"hrtc | sTime(返回) | Format",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"GetTime GetDate 必须 成对 影子寄存器 时间冻住 著名坑"},
+]},
+{t:"闹钟与唤醒",apis:[
+{n:"HAL_RTC_SetAlarm_IT",p:"HAL_StatusTypeDef HAL_RTC_SetAlarm_IT(RTC_HandleTypeDef *hrtc, RTC_AlarmTypeDef *sAlarm, uint32_t Format)",d:"设置闹钟并使能中断。AlarmMask 决定哪几个字段参与匹配（如掩掉时、分，只匹配秒 &rarr; 每分钟触发）。",pm:"hrtc | sAlarm | Format",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"SetAlarm_IT 闹钟 中断 AlarmMask 掩码 每分钟"},
+{n:"HAL_RTC_AlarmAEventCallback",p:"__weak void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)",d:"闹钟 A 回调。<strong>回调里必须调 GetTime + GetDate 才能清闹钟标志</strong>，否则会反复进中断。",pm:"hrtc",r:"无",tag:"cb",kw:"AlarmAEventCallback 闹钟 回调 清标志 GetTime GetDate 反复"},
+{n:"HAL_RTCEx_SetWakeUpTimer_IT ★",p:"HAL_StatusTypeDef HAL_RTCEx_SetWakeUpTimer_IT(RTC_HandleTypeDef *hrtc, uint32_t WakeUpCounter, uint32_t WakeUpClock)",d:"<strong>周期唤醒定时器：无需外部信号，可每 N 秒把 MCU 从 Stop 模式唤醒。</strong>低功耗定时采集的经典方案（如每 5 分钟醒来测一次温湿度发 LoRa）。",pm:"hrtc | WakeUpCounter | WakeUpClock",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"SetWakeUpTimer_IT 周期唤醒 Stop 低功耗 定时采集 LoRa"},
+{n:"HAL_RTCEx_WakeUpTimerEventCallback",p:"__weak void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)",d:"周期唤醒回调。",pm:"hrtc",r:"无",tag:"cb",kw:"WakeUpTimerEventCallback 唤醒 回调"},
+]},
+{t:"备份寄存器",apis:[
+{n:"HAL_RTCEx_BKUPWrite / BKUPRead",p:"void HAL_RTCEx_BKUPWrite(RTC_HandleTypeDef *hrtc, uint32_t BackupRegister, uint32_t Data)",d:"读写 32 个 32 位备份寄存器（VBAT 供电，掉电/待机保持）。<strong>存「上次重启原因」「运行计数」「校准参数」很合适。</strong>",pm:"hrtc | BackupRegister: RTC_BKP_DR0~DR31 | Data",r:"读: 32 位值",tag:"op",kw:"BKUPWrite BKUPRead 备份寄存器 BKP_DR 掉电保持 重启原因"},
+]},
+]},
+{id:"wdg",name:"IWDG / WWDG 看门狗",badge:"系统",color:"#a05040",hdr:"stm32h7xx_hal_iwdg.h / _wwdg.h",desc:"<strong>IWDG</strong> 由 LSI 驱动，独立于主时钟，一旦启动不可关闭；<strong>WWDG</strong> 由 APB 时钟驱动，可检测「喂狗过早」。产品固件建议默认开 IWDG。",cats:[
+{t:"IWDG 独立看门狗",apis:[
+{n:"HAL_IWDG_Init",p:"HAL_StatusTypeDef HAL_IWDG_Init(IWDG_HandleTypeDef *hiwdg)",d:"初始化 IWDG：预分频与重装载值。LSI 约 32kHz 下，超时 &asymp; (4 &times; 2^Prescaler &times; Reload) / 32000 秒。<strong>调用后立即生效，无法关闭</strong>（只能靠复位）。",pm:"hiwdg: IWDG 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_IWDG_Init 初始化 预分频 重装载 超时 无法关闭"},
+{n:"HAL_IWDG_Refresh ★",p:"HAL_StatusTypeDef HAL_IWDG_Refresh(IWDG_HandleTypeDef *hiwdg)",d:"喂狗。<strong>放在主循环末尾，不要放进定时器中断</strong> —— 放在中断里的话，主循环卡死了中断还在喂狗，看门狗就失去意义了。",pm:"hiwdg",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"Refresh 喂狗 主循环 不要 中断 失去意义"},
+]},
+{t:"WWDG 窗口看门狗",apis:[
+{n:"HAL_WWDG_Init",p:"HAL_StatusTypeDef HAL_WWDG_Init(WWDG_HandleTypeDef *hwwdg)",d:"初始化 WWDG：预分频、窗口值、计数器初值。<strong>喂狗必须在 [窗口值, 0x7F] 区间内</strong>，太早或太晚都复位。",pm:"hwwdg: WWDG 句柄",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"HAL_WWDG_Init 窗口看门狗 预分频 窗口值 区间"},
+{n:"HAL_WWDG_Refresh",p:"HAL_StatusTypeDef HAL_WWDG_Refresh(WWDG_HandleTypeDef *hwwdg)",d:"窗口喂狗。过早喂狗会复位，<strong>这正是它的价值：能发现「程序跳过了某些步骤」</strong>这种 IWDG 检测不到的故障。",pm:"hwwdg",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"WWDG Refresh 窗口 喂狗 过早 跳过 步骤 value"},
+{n:"HAL_WWDG_EarlyWakeupCallback ★",p:"__weak void HAL_WWDG_EarlyWakeupCallback(WWDG_HandleTypeDef *hwwdg)",d:"<strong>复位前最后机会：计数器掉到 0x40 时触发</strong>，可在这里保存现场数据到备份 SRAM / Flash，方便事后分析死因。",pm:"hwwdg",r:"无",tag:"cb",kw:"EarlyWakeupCallback 复位前 保存现场 备份SRAM 0x40 分析死因"},
+{n:"IWDG vs WWDG 怎么选",p:"IWDG: 时钟独立、时间可长、不可关  &middot;  WWDG: 窗口精确、可中断、复位前可存现场",d:"<strong>产品固件首选 IWDG</strong>（简单可靠）。需要检测流程完整性或想做复位前保存现场时加 WWDG。<br>重启后可用 <code>__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST / WWDGRST)</code> 区分是谁复位的。",pm:"&mdash;",r:"RCC_CSR 有对应复位标志",tag:"pin",kw:"IWDG WWDG 选型 区别 复位标志 RCC_CSR IWDGRSTF"},
+]},
+]},
+{id:"flash",name:"FLASH 闪存",badge:"存储",color:"#4080a0",hdr:"stm32h7xx_hal_flash.h / _flash_ex.h",desc:"<strong>1MB Flash，带 ECC。<span style='color:#f38ba8'>H723 的扇区是 128KB 一个（不是 F4 的 16KB/64KB/128KB 混合）</span>，所以存参数要做整块擦除。</strong>编程粒度是 256 位（32 字节）。",cats:[
+{t:"★ 与 F4 的关键差异",apis:[
+{n:"扇区大小 128KB",p:"1MB &divide; 128KB = <strong>8 个扇区</strong>（Sector 0~7）",d:"<strong>H723 的 Flash 是 8 个 128KB 的大扇区，最小擦除单位就是 128KB。</strong><br>这意味着「存 2 个参数的配置结构体」也要占用并擦除一整个 128KB 扇区 —— <strong>擦一次要好几百毫秒，期间 CPU 从 Flash 取指会停顿（除非代码跑在 TCM/外部 Flash）</strong>。",pm:"Sector 0: 0x08000000 &hellip; Sector 7: 0x080E0000",r:"128KB &times; 8 = 1MB",tag:"star",kw:"扇区 128KB 8个 擦除 大 参数 停顿 TCM"},
+{n:"编程粒度 256 位（32 字节）",p:"HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, addr, data)",d:"<strong>H7 不能按字节/半字编程，一次必须写 32 字节（FLASHWORD）。</strong>F4 支持的 BYTE/HALFWORD/WORD 编程类型在 H7 上只有 FLASHWORD。<br>所以数据缓冲区必须按 32 字节对齐，长度也要补齐到 32 的整数倍。",pm:"TypeProgram: FLASH_TYPEPROGRAM_FLASHWORD",r:"&mdash;",tag:"star",kw:"编程 256位 32字节 FLASHWORD 对齐 不能按字节 F4差异"},
+]},
+{t:"操作函数",apis:[
+{n:"HAL_FLASH_Unlock / Lock",p:"HAL_StatusTypeDef HAL_FLASH_Unlock(void)",d:"解锁 / 锁定 Flash 控制寄存器。擦写前解锁，完成后立刻锁定。",pm:"无",r:"HAL_OK / HAL_ERROR",tag:"op",kw:"HAL_FLASH_Unlock Lock 解锁 锁定"},
+{n:"HAL_FLASH_Program",p:"HAL_StatusTypeDef HAL_FLASH_Program(uint32_t TypeProgram, uint32_t FlashAddress, uint32_t DataAddress)",d:"编程 Flash（写入 32 字节）。<strong>DataAddress 传的是「源数据的地址」，不是数据本身</strong>。",pm:"TypeProgram: FLASH_TYPEPROGRAM_FLASHWORD | FlashAddress: 目标地址 | DataAddress: 源缓冲区地址",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"HAL_FLASH_Program 编程 写入 32字节 源地址"},
+{n:"HAL_FLASHEx_Erase ★",p:"HAL_StatusTypeDef HAL_FLASHEx_Erase(FLASH_EraseInitTypeDef *pEraseInit, uint32_t *SectorError)",d:"按扇区擦除。<strong>擦一个 128KB 扇区约需几百毫秒</strong>，做参数存储时要考虑这个停顿（要么用双扇区轮换，要么在空闲时擦）。",pm:"pEraseInit: TypeErase / Banks / Sector / NbSectors | SectorError(返回)",r:"HAL_OK / HAL_ERROR / HAL_BUSY",tag:"op",kw:"Erase 擦除 扇区 几百毫秒 停顿 轮换"},
+{n:"HAL_FLASHEx_OBProgram / OBGetConfig",p:"HAL_StatusTypeDef HAL_FLASHEx_OBProgram(FLASH_OBProgramInitTypeDef *pOBInit)",d:"编程选项字节：读保护级别、BOR 电平、看门狗硬件使能、启动地址。<strong>RDP 级别一旦提高不可逆</strong>，会锁死调试口，务必先看懂再动。",pm:"pOBInit: 选项字节配置",r:"HAL_OK / HAL_ERROR",tag:"cfg",kw:"OBProgram OBGetConfig 选项字节 读保护 RDP 不可逆 BOR"},
+{n:"★ 存参数的实用建议",p:"用一个完整扇区做配置区，前面放「魔数 + 版本 + 数据 + CRC32」，双扇区交替写",d:"<strong>因为每次擦除 128KB 且耗时长，推荐：</strong>① 扇区头部放魔数和 CRC，读到魔数不对就说明没写过；② 双扇区轮换（A 写满/损坏时切 B），降低擦除频率和掉电损坏风险；③ <strong>频繁改的参数放备份 SRAM 或 FRAM，别硬刚 Flash。</strong>",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"存参数 建议 魔数 CRC32 双扇区 轮换 掉电 备份SRAM"},
+]},
+{t:"回调",apis:[
+{n:"HAL_FLASH_EndOfOperationCallback",p:"__weak void HAL_FLASH_EndOfOperationCallback(uint32_t ReturnValue)",d:"操作完成回调（中断模式）。",pm:"ReturnValue",r:"无",tag:"cb",kw:"EndOfOperationCallback 完成 回调"},
+{n:"HAL_FLASH_OperationErrorCallback",p:"__weak void HAL_FLASH_OperationErrorCallback(uint32_t ReturnValue)",d:"操作错误回调。",pm:"ReturnValue",r:"无",tag:"cb",kw:"OperationErrorCallback 错误 回调"},
+]},
+]},
+{id:"pwr",name:"PWR 电源与低功耗",badge:"系统",color:"#5080a0",hdr:"stm32h7xx_hal_pwr.h / _pwr_ex.h",desc:"<strong>H7 的电源管理比 F4 复杂一层：内核要跑到 400MHz 以上必须切到 VOS0 档，供电可以选 LDO 或 SMPS，还有 D1/D2/D3 三个域各自独立的低功耗控制。</strong>",cats:[
+{t:"★ 必须先配对的电压与供电",apis:[
+{n:"HAL_PWREx_ConfigSupply",p:"HAL_StatusTypeDef HAL_PWREx_ConfigSupply(uint32_t SupplySource)",d:"<strong>选择供电方式，必须在配置时钟之前调用。</strong><br><code>PWR_LDO_SUPPLY</code>：用内部 LDO，简单，功耗略高；<br><code>PWR_DIRECT_SMPS_SUPPLY</code>：用内部 SMPS（开关电源），效率高、发热低，但<strong>硬件上必须接外部电感</strong>，板子没设计就不能选。",pm:"PWR_LDO_SUPPLY / PWR_DIRECT_SMPS_SUPPLY / PWR_EXTERNAL_SOURCE_SUPPLY",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"ConfigSupply 供电 LDO SMPS 电感 之前 必须"},
+{n:"★ HAL_PWREx_ControlVoltageScaling",p:"HAL_StatusTypeDef HAL_PWREx_ControlVoltageScaling(uint32_t VoltageScaling)",d:"<strong>设置电压档位 VOS。</strong>这是 H7 跑高频的前提：<br><code>VOS0</code>：最高档，CPU 可达 550MHz；<br><code>VOS1/2/3</code>：逐级降低，对应 CPU 最高频率逐级下降（约 400/300/200MHz）。<br><strong>⚠ 想让 CPU 跑 550MHz 却没切 VOS0，会直接死机或跑不起来。</strong>",pm:"PWR_REGULATOR_VOLTAGE_SCALE0 / _1 / _2 / _3",r:"HAL_OK / HAL_ERROR",tag:"init",kw:"ControlVoltageScaling VOS0 550MHz 电压档 必须 死机"},
+{n:"★ 550MHz 的正确配置顺序",p:"① HAL_PWREx_ConfigSupply(LDO/SMPS)  &rarr;  ② HAL_PWREx_ControlVoltageScaling(VOS0)  &rarr;  ③ HAL_RCC_OscConfig (PLL)  &rarr;  ④ HAL_RCC_ClockConfig",d:"<strong>顺序错了会卡在 ③ 或直接 HardFault。</strong>常见现象：CubeMX 里配了 550MHz 但实际只跑到 200MHz —— 就是忘了 VOS0。<br>另外 VOS0 下 Flash 等待周期要配 <code>FLASH_LATENCY_7</code>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"550MHz 顺序 VOS0 ConfigSupply 时钟 Flash 等待 7 卡 200MHz"},
+]},
+{t:"低功耗模式",apis:[
+{n:"HAL_PWR_EnterSLEEPMode",p:"void HAL_PWR_EnterSLEEPMode(uint32_t Regulator, uint8_t SLEEPEntry)",d:"Sleep 模式：只停 CPU 内核时钟，<strong>所有外设继续跑</strong>，任意中断唤醒。电流从几十 mA 降到十几 mA。",pm:"Regulator: PWR_MAINREGULATOR_ON | SLEEPEntry: PWR_SLEEPENTRY_WFI / WFE",r:"无",tag:"op",kw:"EnterSLEEPMode Sleep 睡眠 外设继续 中断唤醒"},
+{n:"HAL_PWR_EnterSTOPMode",p:"void HAL_PWR_EnterSTOPMode(uint32_t Regulator, uint8_t STOPEntry)",d:"Stop 模式（DStop）：<strong>大部分时钟停掉，SRAM 内容保留</strong>，电流降到几百 &micro;A 级。<br><strong>⚠ 唤醒后系统时钟会被切回 HSI，必须重新调用 SystemClock_Config() 恢复</strong> —— 这是最常见的 H7 低功耗坑。",pm:"Regulator | STOPEntry: WFI / WFE",r:"无 (唤醒后需重配时钟)",tag:"op",kw:"EnterSTOPMode Stop SRAM保留 唤醒 重配时钟 HSI 坑"},
+{n:"HAL_PWR_EnterSTANDBYMode",p:"void HAL_PWR_EnterSTANDBYMode(void)",d:"Standby 模式：<strong>除了备份域和 RTC，其他全部断电，SRAM 数据丢失</strong>，电流降到几 &micro;A。唤醒后等同于复位重启。",pm:"无",r:"无 (唤醒 = 复位重启)",tag:"op",kw:"EnterSTANDBYMode Standby 待机 SRAM丢失 复位 几微安"},
+{n:"★ 唤醒后必须做的事",p:"HAL_SuspendTick() &rarr; 进入 Stop &rarr; 唤醒后: HAL_ResumeTick() &rarr; SystemClock_Config() &rarr; 重新初始化被关闭的外设",d:"<strong>Stop 唤醒后 SysTick 和系统时钟都不可靠了。</strong>标准流程：<br>① 进入前 <code>HAL_SuspendTick()</code>（否则 SysTick 一直把你唤醒）；<br>② 唤醒后 <code>HAL_ResumeTick()</code>；<br>③ <strong>重新跑 SystemClock_Config()</strong>（时钟已切到 HSI）；<br>④ 重新配外设时钟（UART/SPI 等的内核时钟源可能变了）。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"唤醒 必须 SuspendTick ResumeTick SystemClock_Config 重配 外设时钟 Stop"},
+]},
+{t:"唤醒源与备份域",apis:[
+{n:"HAL_PWR_EnableWakeUpPin",p:"void HAL_PWR_EnableWakeUpPin(uint32_t WakeUpPinPolarity)",d:"使能 WKUP 唤醒引脚（含极性配置）。H7 有多个 WKUP 引脚（WKUP1~WKUP6，视封装而定）。",pm:"WakeUpPinPolarity: PWR_WAKEUP_PIN1_LOW / HIGH 等",r:"无",tag:"cfg",kw:"EnableWakeUpPin 唤醒引脚 WKUP1 WKUP6 极性"},
+{n:"HAL_RTCEx_SetWakeUpTimer_IT ★",p:"HAL_StatusTypeDef HAL_RTCEx_SetWakeUpTimer_IT(RTC_HandleTypeDef *hrtc, uint32_t WakeUpCounter, uint32_t WakeUpClock)",d:"<strong>RTC 周期唤醒是最实用的低功耗唤醒源</strong>，无需外部信号，可设几秒到几小时。配合 Stop/Standby 做超低功耗周期采集。",pm:"hrtc | WakeUpCounter | WakeUpClock",r:"HAL_OK / HAL_ERROR",tag:"star",kw:"RTC 周期唤醒 低功耗 Stop Standby 采集 实用"},
+{n:"HAL_PWR_EnableBkUpAccess",p:"void HAL_PWR_EnableBkUpAccess(void)",d:"使能备份域写访问（RTC / 备份寄存器 / BKPSRAM）。<strong>操作 RTC 前必须调用，否则写不进去</strong>。",pm:"无",r:"无",tag:"cfg",kw:"EnableBkUpAccess 备份域 RTC 写访问 必须"},
+{n:"HAL_PWREx_EnableUSBVoltageDetector",p:"void HAL_PWREx_EnableUSBVoltageDetector(void)",d:"使能 USB 电压检测器 + USB 稳压器（使用 USB 前需要）。H7 有独立的 VDD33USB 供电域。",pm:"无",r:"无",tag:"cfg",kw:"USB 电压检测器 稳压器 VDD33USB 使能"},
+{n:"HAL_PWREx_EnableBkUpReg",p:"void HAL_PWREx_EnableBkUpReg(void)",d:"使能备份域稳压器（使用备份 SRAM 时需要）。",pm:"无",r:"无",tag:"cfg",kw:"EnableBkUpReg 备份 稳压器 BKPSRAM"},
+]},
+]},
+{id:"pinout",name:"封装与引脚 (LQFP100)",badge:"引脚",color:"#5fd3c4",hdr:"DS13147 &sect; 5 Pinouts",desc:"<strong>LQFP100（14&times;14mm，0.5mm 脚距）共 100 脚，可用 I/O 80 个。</strong>H7 引脚功能密度很高，同一个脚往往能复用 4~6 种功能，规划时优先用 CubeMX。",cats:[
+{t:"封装与 IO",apis:[
+{n:"LQFP100 规格",p:"14&times;14&times;1.4mm &middot; 0.5mm 脚距 &middot; 100 脚 &middot; 80 个 I/O",d:"手工焊接难度不大（0.5mm 脚距可用拖焊），比 BGA 友好很多。<br>代价是 <strong>80 个 I/O 对于 H7 这种外设丰富的芯片偏紧</strong>：一旦用上 FMC + LTDC + DCMI，IO 立刻不够，这时就要换 LQFP144 的 H723ZG。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"LQFP100 14mm 0.5mm 100脚 80IO 焊接 不够 LQFP144"},
+{n:"可用 GPIO 端口",p:"GPIOA ~ GPIOK（其中 GPIOF/GPIOG/GPIOH 部分引脚不引出）",d:"实际可用：PA0~PA15、PB0~PB15、PC0~PC15、PD0~PD15、PE0~PE15 大部分，加 PF/PG/PH 的部分引脚，共 80 个。",pm:"&mdash;",r:"&mdash;",tag:"pin",kw:"GPIOA GPIOK PA0 PD0 PE PF PG PH 不引出 80"},
+{n:"★ 80 个 IO 够不够用",p:"粗算：以太网 RMII 9 + SD 卡 6 + QSPI 6 + 摄像头 11 + 串口 4 + SPI 4 + I2C 2 &asymp; 42 个",d:"<strong>单纯通信外设 42 个，还剩 38 个给 GPIO/ADC/定时器/显示</strong>。但如果再加 FMC（并口屏）就要 40+ 个，直接就爆了。<br>规划建议：<strong>显示优先用 SPI 屏而不是并口屏</strong>，能省 30 多根线。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"80 IO 够不够 预算 RMII SD QSPI DCMI FMC 并口屏 SPI屏 省"},
+]},
+{t:"★ 特殊功能引脚",apis:[
+{n:"PH0 / PH1 — HSE 晶振",p:"OSC_IN / OSC_OUT",d:"外部高速晶振输入输出。<strong>板上焊了晶振就不能当普通 IO</strong>。H723 的 HSE 支持 4~50MHz 宽范围。",pm:"常见 25MHz（配 PLL 好算）或 8MHz",r:"HSE 4~50MHz",tag:"pin",kw:"PH0 PH1 OSC_IN OSC_OUT HSE 晶振 25MHz 8MHz 不可复用"},
+{n:"NRST",p:"低电平复位，内部上拉",d:"建议外接 100nF 电容到地抗干扰。不要用长线接按键。",pm:"阈值约 0.4&times;VDD",r:"低有效",tag:"pin",kw:"NRST 复位 100nF 电容 抗干扰"},
+{n:"BOOT0",p:"BOOT0 = 0: 从 Flash 启动 &middot; BOOT0 = 1: 从系统 Bootloader 启动",d:"串口下载程序（USART3 或 USB DFU）需要拉高 BOOT0。设计时接 10k 下拉 + 跳线帽。",pm:"&mdash;",r:"低 = 正常 Flash 启动",tag:"pin",kw:"BOOT0 启动模式 Bootloader 串口下载 DFU 跳线"},
+{n:"VCAP 引脚",p:"内核 LDO 的稳定电容脚（需外接 2.2&micro;F 低 ESR 电容）",d:"<strong>不接或接错会导致随机死机 / 无法启动。</strong>这是 STM32H7 上非常常见的硬件故障原因，务必按数据手册的推荐值接。",pm:"2.2uF 低 ESR &times; 按手册要求",r:"&mdash;",tag:"star",kw:"VCAP 电容 2.2uF 死机 无法启动 常见 硬件故障 LDO"},
+{n:"VDDA / VSSA / VREF+",p:"模拟供电 / 模拟地 / ADC 基准",d:"<strong>要用 16 位 ADC，这两个必须干净</strong>：VDDA 与 VDD 之间加 LC 或磁珠滤波，VREF+ 可外接精密基准（如 REF3033）把 ADC 精度提到真实可用的水平。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"VDDA VSSA VREF 模拟 基准 滤波 REF3033 16位 ADC 精度"},
+{n:"VDD33USB",p:"USB 专用供电引脚",d:"使用 USB 功能时必须接 3.3V（或按设计独立供电）。不用 USB 可悬空/接 3.3V。",pm:"&mdash;",r:"3.0~3.6V",tag:"pin",kw:"VDD33USB USB 供电 3.3V"},
+{n:"★ CubeMX 引脚规划建议",p:"绿色 = 已分配 &middot; 黄色 = 有冲突警告 &middot; 用 Pinout view 的 Moves / Reset 功能自动重映射",d:"<strong>H7 引脚复用极其密集，人脑排布容易出错。</strong>在 CubeMX 里点任意引脚能看到它所有的可复用功能列表，并按优先级推荐。<br>如果某个外设死活分配不出来，往往就是 IO 不够，该换 LQFP144 了。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"CubeMX 引脚 规划 冲突 自动重映射 IO不够 LQFP144"},
+]},
+]},
+{id:"af",name:"复用功能 (AF) 速查",badge:"引脚",color:"#7fbf7f",hdr:"DS13147 Table — Alternate function mapping",desc:"<strong>⚠ H7 的 AF 编号与 F4 完全不同，不能照搬。</strong>每个 GPIO 通过 <code>GPIO_InitStruct.Alternate</code> 选 AF0~AF15。AF 号选错的表现是「初始化成功但引脚无波形 / 读到全 0/FF」。",cats:[
+{t:"AF 号总览（H7 编号）",apis:[
+{n:"AF0 — SYS",p:"JTAG / SWD / TRACE / MCO",d:"系统调试，复位后默认状态。",pm:"GPIO_AF0_SYS",r:"&mdash;",tag:"pin",kw:"AF0 SYS JTAG SWD MCO TRACE 默认"},
+{n:"AF1 / AF2 / AF3 — 定时器",p:"AF1: TIM1, TIM2  &middot;  AF2: TIM3, TIM4, TIM5  &middot;  AF3: TIM8, TIM12, TIM13, TIM14",d:"H7 的分配比 F4 更规整：TIM1/2 一组、TIM3/4/5 一组。",pm:"GPIO_AF1_TIM1/2 · AF2_TIM3/4/5 · AF3_TIM8/12/13/14",r:"&mdash;",tag:"pin",kw:"AF1 AF2 AF3 定时器 TIM1 TIM2 TIM3 TIM4 TIM5 TIM8 TIM12 H7"},
+{n:"AF4 — I2C",p:"I2C1 / I2C2 / I2C3 / I2C4",d:"四路 I2C 共用 AF4（F4 只有 3 路）。开漏输出 + 上拉。",pm:"GPIO_AF4_I2C1/2/3/4",r:"&mdash;",tag:"pin",kw:"AF4 I2C1 I2C2 I2C3 I2C4 开漏"},
+{n:"AF5 / AF6 — SPI / I2S / SAI",p:"AF5: SPI1/2/3/4/5/6  &middot;  AF6: SPI2/I2S2, SPI3/I2S3, SAI1",d:"<strong>H7 的 AF5 涵盖了所有 SPI</strong>，这点和 F4 不同（F4 的 SPI3 是 AF6）。",pm:"GPIO_AF5_SPI1~6 · AF6_SPI2/SPI3(I2S)/SAI1",r:"&mdash;",tag:"pin",kw:"AF5 AF6 SPI1 SPI5 SPI6 I2S SAI1 H7 所有SPI"},
+{n:"AF7 / AF8 — 串口",p:"AF7: USART1, USART2, USART3  &middot;  AF8: UART4, UART5, UART7, UART8, USART6, SDMMC2",d:"USART1/2/3 用 AF7；其余用 AF8。<strong>注意 AF8 上还挂了 SDMMC2</strong>。",pm:"GPIO_AF7_USART1/2/3 · AF8_UART4/5/7/8_USART6",r:"&mdash;",tag:"pin",kw:"AF7 AF8 USART1 UART4 UART7 USART6 SDMMC2 串口"},
+{n:"AF9 / AF10 — FDCAN / USB / OCTOSPI",p:"AF9: FDCAN1, FDCAN2, FDCAN3, TIM12/13/14  &middot;  AF10: OCTOSPI, USB OTG_FS/HS, SDMMC2",d:"<strong>H7 把 CAN 从 F4 的 AF9 移到了 AF9 但外设换成了 FDCAN</strong>；OCTOSPI 在 AF10（F4 的 QUADSPI 在 AF9）。",pm:"GPIO_AF9_FDCAN1/2/3 · AF10_QUADSPI/USB/SDMMC2",r:"&mdash;",tag:"pin",kw:"AF9 AF10 FDCAN OCTOSPI QUADSPI USB OTG SDMMC2"},
+{n:"AF11 / AF12 — ETH / FMC / SDMMC",p:"AF11: ETH, USB OTG_HS  &middot;  AF12: FMC, SDMMC1, OCTOSPIM_P1",d:"以太网固定 AF11；FMC 和 SDMMC1 在 AF12。",pm:"GPIO_AF11_ETH · AF12_FMC/SDMMC1",r:"&mdash;",tag:"pin",kw:"AF11 AF12 ETH 以太网 FMC SDMMC1 OCTOSPI"},
+{n:"AF13 / AF14 / AF15",p:"AF13: DCMI  &middot;  AF14: LTDC  &middot;  AF15: EVENTOUT",d:"<strong>H7 有 AF14 给 LTDC（F4 没有 LTDC）</strong>。DCMI 在 AF13。AF15 是事件输出引脚（调试用，比如把定时器溢出直接输出成波形）。",pm:"GPIO_AF13_DCMI · AF14_LTDC · AF15_EVENTOUT",r:"&mdash;",tag:"pin",kw:"AF13 AF14 AF15 DCMI LTDC EVENTOUT H7 独有"},
+]},
+{t:"配置模板",apis:[
+{n:"标准 AF 配置五要素",p:"GPIO_InitTypeDef g = {0};\ng.Pin       = GPIO_PIN_9 | GPIO_PIN_10;\ng.Mode      = GPIO_MODE_AF_PP;\ng.Pull      = GPIO_PULLUP;\ng.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;   /* H7 高速SPI/ETH 建议用 VERY_HIGH */\ng.Alternate = GPIO_AF7_USART1;\nHAL_GPIO_Init(GPIOA, &g);",d:"<strong>五要素缺一不可。</strong>最容易漏的是 <code>Alternate</code> —— 漏了引脚就是「配了复用但不知道复用啥」，没有输出。<br><strong>H7 上 Speed 建议调高</strong>：高速信号（SPI 50MHz、以太网 RMII、SDIO）用 LOW 速度会导致波形畸变通信失败。",pm:"Alternate: GPIO_AF0_SYS ~ GPIO_AF15_EVENTOUT",r:"&mdash;",tag:"flow",kw:"AF 配置 模板 五要素 Alternate Speed VERY_HIGH 波形 畸变"},
+{n:"Mode 的选择",p:"GPIO_MODE_AF_PP（推挽，SPI/UART/TIM）  &middot;  GPIO_MODE_AF_OD（开漏，I2C）",d:"<strong>I2C 必须用 AF_OD（开漏），用 PP 会短路</strong>；其他外设用 AF_PP。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"GPIO_MODE_AF_PP AF_OD 开漏 I2C 推挽"},
+{n:"释放 JTAG 引脚",p:"__HAL_AFIO_REMAP_SWJ_NOJTAG();",d:"想用 PA15 / PB3 / PB4（JTDI/JTDO/NJTRST）必须调用，<strong>H7 上宏名可能是 <code>__HAL_AFIO_REMAP_SWJ_NOJTAG()</code> 或需要直接配 SYSCFG</strong>，以具体 HAL 版本为准。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"AFIO REMAP SWJ NOJTAG PA15 PB3 PB4 释放 JTAG"},
+]},
+]},
+{id:"flow",name:"外设初始化流程速查",badge:"流程",color:"#e8a33d",hdr:"标准配置顺序",desc:"<strong>顺序错了会出现「配置成功但不工作」的诡异现象。</strong>H7 的顺序比 F4 多了「供电 → VOS → MPU → Cache」这些前置步骤。",cats:[
+{t:"★ H7 通用铁律",apis:[
+{n:"铁律 0：供电和电压档先配",p:"HAL_PWREx_ConfigSupply() &rarr; HAL_PWREx_ControlVoltageScaling(VOS0)  &rarr;  然后才能配时钟",d:"<strong>这是 H7 独有的前置步骤，F4 没有。</strong>想跑 550MHz 没切 VOS0 会直接跑不起来。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"铁律 供电 VOS0 前置 顺序 550MHz F4没有"},
+{n:"铁律 1：开时钟永远第一步",p:"__HAL_RCC_GPIOx_CLK_ENABLE()  &rarr;  __HAL_RCC_外设_CLK_ENABLE()",d:"不开时钟，后面写外设寄存器全部是哑操作。H7 上 GPIO 在 AHB4。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"开时钟 第一步 哑操作 AHB4 GPIO"},
+{n:"铁律 2：MPU 和 Cache 在 DMA 之前",p:"MPU_Config() &rarr; SCB_EnableICache() + SCB_EnableDCache() &rarr; 再初始化任何 DMA 外设",d:"<strong>先配 MPU 再开 Cache</strong>（MPU 改配置会清流水线）。Cache 必须在 DMA 使用前就绪，否则一致性无从管理。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"MPU Cache DMA 之前 顺序 铁律"},
+{n:"铁律 3：外设内核时钟别忘了选",p:"HAL_RCCEx_PeriphCLKConfig(&clk)",d:"<strong>H7 独有。漏配会导致串口波特率错、SPI 速率错、ADC 采样率错 —— 但代码能编译能跑，只是数据不对。</strong>",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"PeriphCLKConfig 外设 内核时钟 漏配 波特率 错"},
+{n:"铁律 4：DMA 请求用 DMAMUX",p:"hdma.Init.Request = DMA_REQUEST_USART1_TX;",d:"不是 F4 的 Channel 了。请求宏名格式 <code>DMA_REQUEST_外设_方向</code>。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"DMAMUX Request Channel 请求 外设 方向"},
+]},
+{t:"常用外设流程",apis:[
+{n:"GPIO",p:"① 开 AHB4 时钟  &rarr;  ② 填 GPIO_InitTypeDef（Mode/Pull/Speed/Alternate）  &rarr;  ③ HAL_GPIO_Init  &rarr;  ④ 设初值",d:"输出模式记得 Init 之后立刻设初值，避免上电瞬间误动作。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"GPIO 流程 步骤 AHB4 初值"},
+{n:"GPIO 外部中断",p:"① 开 GPIO + SYSCFG 时钟  &rarr;  ② Mode = GPIO_MODE_IT_FALLING  &rarr;  ③ NVIC 设优先级+使能  &rarr;  ④ 重写 HAL_GPIO_EXTI_Callback",d:"<strong>SYSCFG 时钟是最容易漏的</strong>，漏了中断永远不进。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"EXTI 流程 SYSCFG 时钟 漏 不进中断"},
+{n:"UART",p:"① 开 GPIO+USART 时钟  &rarr;  ② GPIO 配 AF7/AF8  &rarr;  ③ HAL_RCCEx_PeriphCLKConfig 选串口时钟源  &rarr;  ④ 填 huart.Init（波特率等）  &rarr;  ⑤ HAL_UART_Init  &rarr;  ⑥ 收发",d:"<strong>第 ③ 步 H7 独有</strong>。用 ReceiveToIdle_DMA 做不定长接收时，DMA 缓冲记得 Invalidate。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"UART 流程 步骤 PeriphCLKConfig 时钟源 ReceiveToIdle"},
+{n:"TIM PWM",p:"① 开 TIM+GPIO 时钟  &rarr;  ② GPIO 配 AF1/AF2  &rarr;  ③ htim.Init 设 PSC/ARR  &rarr;  ④ HAL_TIM_PWM_Init  &rarr;  ⑤ ConfigChannel  &rarr;  ⑥ HAL_TIM_PWM_Start",d:"频率 = TIM时钟 / ((PSC+1)&times;(ARR+1))。<strong>TIM1/TIM8 还要加 __HAL_TIM_MOE_ENABLE()</strong>。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"TIM PWM 流程 PSC ARR 频率 MOE 高级定时器"},
+{n:"ADC（16 位 + DMA）",p:"① 开 ADC+GPIO+DMA 时钟  &rarr;  ② GPIO 配 ANALOG  &rarr;  ③ PeriphCLKConfig 选 ADC 时钟源  &rarr;  ④ HAL_ADC_Init  &rarr;  ⑤ ConfigChannel  &rarr;  ⑥ HAL_ADCEx_Calibration_Start  &rarr;  ⑦ Start_DMA",d:"<strong>第 ⑥ 步校准不能省</strong>（16 位下不校准偏差明显）。多通道记得开 ScanConvMode。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"ADC 流程 校准 16位 ScanConvMode 时钟源"},
+{n:"SPI",p:"① 开 SPI+GPIO 时钟  &rarr;  ② GPIO 配 AF5  &rarr;  ③ PeriphCLKConfig 选 SPI 时钟源  &rarr;  ④ HAL_SPI_Init  &rarr;  ⑤ TransmitReceive",d:"NSS 用软件 GPIO 管理更可靠。收发前可先 <code>HAL_SPIEx_FlushRxFifo</code> 清 FIFO。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"SPI 流程 AF5 时钟源 FlushRxFifo NSS 软件"},
+{n:"I2C",p:"① 开 I2C+GPIO 时钟  &rarr;  ② GPIO 配 AF4_OD + 上拉  &rarr;  ③ PeriphCLKConfig 选 I2C 时钟源  &rarr;  ④ Timing 由 CubeMX 算好  &rarr;  ⑤ HAL_I2C_Init  &rarr;  ⑥ IsDeviceReady 探测",d:"<strong>改时钟源后 Timing 必须重算</strong>，否则 SCL 频率不对。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"I2C 流程 AF4_OD Timing 重算 探测 IsDeviceReady"},
+{n:"FDCAN",p:"① 开 FDCAN+GPIO 时钟  &rarr;  ② GPIO 配 AF9  &rarr;  ③ PeriphCLKConfig 选 FDCAN 时钟  &rarr;  ④ HAL_FDCAN_Init 位时序  &rarr;  ⑤ ConfigGlobalFilter（必配！）  &rarr;  ⑥ ConfigFilter  &rarr;  ⑦ Start  &rarr;  ⑧ ActivateNotification",d:"<strong>第 ⑤ 步不配就一个包都收不到</strong>。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"FDCAN 流程 GlobalFilter 必配 收不到 位时序"},
+{n:"SD 卡",p:"① 开 SDMMC+DMA+GPIO 时钟  &rarr;  ② GPIO 配 AF12  &rarr;  ③ PeriphCLKConfig 选 SDMMC 时钟  &rarr;  ④ HAL_SD_Init  &rarr;  ⑤ ConfigWideBus(4B)  &rarr;  ⑥ ReadBlocks_DMA（缓冲放 AXI SRAM）",d:"<strong>缓冲区必须放 AXI SRAM</strong>（SDMMC1 访问不到 SRAM1/2/DTCM）。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"SD 卡 流程 AXI SRAM 缓冲 4B ReadBlocks_DMA"},
+{n:"以太网 + LwIP",p:"① 开 ETH+GPIO 时钟  &rarr;  ② GPIO 配 AF11 (RMII)  &rarr;  ③ HAL_ETH_Init  &rarr;  ④ MPU 把描述符区设 Non-cacheable  &rarr;  ⑤ HAL_ETH_Start_IT  &rarr;  ⑥ MX_LWIP_Init  &rarr;  ⑦ RxCpltCallback 里喂 ethernetif_input",d:"先读 PHY 的 BMSR 确认网线连着，再调协议栈，否则会白折腾很久。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"以太网 LwIP 流程 RMII Non-cacheable Start_IT BMSR"},
+{n:"外部 SDRAM (FMC)",p:"① 开 FMC+GPIO 时钟  &rarr;  ② GPIO 配 AF12  &rarr;  ③ HAL_SDRAM_Init  &rarr;  ④ SendCommand 上电序列（时钟使能→预充电→刷新&times;8→模式寄存器）  &rarr;  ⑤ ProgramRefreshRate  &rarr;  ⑥ 指针访问 0xC0000000",d:"<strong>上电序列顺序不能错</strong>，刷新率算错会随机数据出错。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"SDRAM FMC 流程 上电序列 刷新率 0xC0000000"},
+]},
+{t:"main() 完整顺序",apis:[
+{n:"★ H7 标准 main 结构",p:"HAL_Init();\nSystemClock_Config();     // 内部已含 ConfigSupply + VOS + PLL + PeriphCLK\nMPU_Config();             // ① MPU 先\nSCB_EnableICache();       // ② 再开 Cache\nSCB_EnableDCache();\nMX_GPIO_Init();\nMX_DMA_Init();            // ③ DMA 靠前\nMX_USART1_UART_Init();    // ④ 各外设\n/* ... */\nwhile (1) { /* 业务逻辑 */ }",d:"<strong>CubeMX 生成的就是这个顺序，别手动调乱。</strong>尤其 MPU 必须在 Cache 之前、Cache 必须在 DMA 外设之前。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"main 顺序 HAL_Init SystemClock MPU Cache DMA GPIO 不要调乱"},
+{n:"SystemCoreClock 陷阱",p:"改完时钟后确认 SystemCoreClock == 550000000",d:"<strong>这个变量不对会导致 HAL_Delay 不准、波特率算错、DWT 延时不准。</strong>手动改 RCC 配置后务必 <code>SystemCoreClockUpdate()</code>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"SystemCoreClock 陷阱 延时 波特率 不准 Update"},
+{n:"中断优先级规划",p:"SysTick 最低(15) &middot; 电机/实时控制 (0~3) &middot; 通信 (5~7) &middot; 显示/低速 (10~13)",d:"<strong>控制类要高于通信类</strong>，否则串口收数据会打断 PWM 更新导致电机抖动。H7 外设多，中断源也多，规划尤其重要。",pm:"抢占优先级数值越小越高",r:"&mdash;",tag:"flow",kw:"中断 优先级 规划 SysTick 15 电机 通信 抖动 H7 多"},
+{n:"死机排查三板斧",p:"① 重写 HardFault_Handler 打印 CFSR/HFSR/BFAR  &rarr;  ② 关 D-Cache 复现判断是不是 Cache 问题  &rarr;  ③ 检查是不是访问了没开时钟的外设（BusFault）",d:"<strong>H7 上的死机排查比 F4 多一步「怀疑 Cache」。</strong>CFSR 的 IMPRECISERR 位基本就是野指针或 Cache 一致性问题的信号。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"死机 排查 HardFault CFSR Cache BusFault 三板斧 H7"},
+]},
+]},
+{id:"pitfall",name:"H7 专属坑点大全 ★",badge:"★必读",color:"#f38ba8",hdr:"血泪经验汇总",desc:"<strong>这些是从 F4 转到 H7 最容易踩、且症状最迷惑人的坑。每一个都在前面章节出现过，这里集中列出便于快速查阅。</strong>",cats:[
+{t:"前 5 大高频坑（按踩坑频率排序）",apis:[
+{n:"★ 坑 1：DMA 数据全错 / 全是 0",p:"症状: DMA 发出去的内容不对，或收到的数据是旧值/全 0",d:"<strong>原因：D-Cache 一致性。</strong><br>解决：① 发送前 <code>SCB_CleanDCache_by_Addr()</code>；② 接收后 <code>SCB_InvalidateDCache_by_Addr()</code>；③ <strong>最佳方案：MPU 把缓冲区设 Non-cacheable</strong>。",pm:"见 Cache 章节",r:"&mdash;",tag:"star",kw:"坑 DMA 数据 全错 全0 Cache 一致性 Clean Invalidate MPU"},
+{n:"★ 坑 2：DMA 不报错但数据不搬",p:"症状: HAL 返回 HAL_OK，但缓冲区没变化",d:"<strong>原因：缓冲区放错区域。</strong>BDMA 只能访问 SRAM4；SDMMC1 访问不到 SRAM1/2/DTCM；多数 DMA 访问不到 TCM。<br>解决：查「内存映射与域」章节的决策表，把缓冲区放到正确的区域。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 DMA 不搬 SRAM4 BDMA SDMMC1 区域 放错 TCM"},
+{n:"★ 坑 3：550MHz 跑不起来 / 只跑到 200MHz",p:"症状: CubeMX 配了 550MHz，实际 SystemCoreClock 是别的值",d:"<strong>原因：没配 VOS0。</strong><br>解决：<code>HAL_PWREx_ConfigSupply()</code> + <code>HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE0)</code>，且在配 PLL 之前调用。同时 Flash 等待周期要 <code>FLASH_LATENCY_7</code>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 550MHz 200MHz VOS0 ControlVoltageScaling Flash_LATENCY_7"},
+{n:"★ 坑 4：串口/SPI 波特率或速率不对",p:"症状: 能通信但波特率偏差大 / 高速 SPI 不通",d:"<strong>原因：没配外设内核时钟（HAL_RCCEx_PeriphCLKConfig）。</strong><br>解决：用 <code>HAL_RCCEx_GetPeriphCLKFreq()</code> 打出实际频率核对。这个坑最阴，因为代码能跑、能下载、就是数据不对。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 波特率 SPI 速率 不对 PeriphCLKConfig GetPeriphCLKFreq 阴"},
+{n:"★ 坑 5：EXTI 中断永远不进",p:"症状: GPIO 和 EXTI 都配对了，按键没反应",d:"<strong>原因：SYSCFG 时钟没开。</strong><br>解决：<code>__HAL_RCC_SYSCFG_CLK_ENABLE()</code>（APB4）。F4 时代往往被 CubeMX 默认带上，H7 上容易忽略。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 EXTI 不进 SYSCFG 时钟 APB4 按键"},
+]},
+{t:"其他常见陷阱",apis:[
+{n:"坑 6：FDCAN 一个包都收不到",p:"症状: 过滤器配了，Start 了，就是没中断",d:"<strong>原因：没配 GlobalFilter（不匹配的帧默认丢弃）。</strong><br>解决：<code>HAL_FDCAN_ConfigGlobalFilter(hfdcan, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT, FDCAN_REJECT)</code>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 FDCAN 收不到 GlobalFilter 默认丢弃 ACCEPT_IN_RX_FIFO0"},
+{n:"坑 7：RTC 时间冻住不走",p:"症状: 读出来的时间永远是同一个值",d:"<strong>原因：只调了 HAL_RTC_GetTime，没调 HAL_RTC_GetDate。</strong>HAL 用 GetDate 来解锁影子寄存器。<br>解决：两个必须成对调用。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 RTC 时间 冻住 GetTime GetDate 成对 影子寄存器"},
+{n:"坑 8：Stop 唤醒后串口不通",p:"症状: 低功耗唤醒后外设全乱了",d:"<strong>原因：Stop 唤醒后时钟被切回 HSI。</strong><br>解决：唤醒后必须重跑 <code>SystemClock_Config()</code>，并重新配置各外设的内核时钟源。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 Stop 唤醒 串口 不通 时钟 HSI 重配 SystemClock_Config"},
+{n:"坑 9：SPI 每次通信前几个字节不对",p:"症状: 时序看起来对，但每轮前 1~2 字节是垃圾",d:"<strong>原因：H7 的 32 深 RX FIFO 里有残留。</strong><br>解决：每轮通信前调 <code>HAL_SPIEx_FlushRxFifo(&hspi)</code>。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 SPI 前几个字节 垃圾 FIFO 残留 FlushRxFifo"},
+{n:"坑 10：I2C 完全不通（从 F4 移植）",p:"症状: 代码从 F4 拿过来，Init 返回 OK，但通信失败",d:"<strong>原因：H7 用 <code>Init.Timing</code> 而不是 <code>Init.ClockSpeed</code>。</strong><br>解决：让 CubeMX 生成 Timing 值，或改 I2C 时钟源后重新生成。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 I2C 不通 移植 F4 Timing ClockSpeed CubeMX"},
+{n:"坑 11：以太网 ping 不通",p:"症状: LwIP 初始化成功，但网络不通",d:"<strong>排查顺序：</strong>① 读 PHY 寄存器 BMSR(0x01) bit2 看链路是否 UP；② 检查 RMII 的 50MHz 参考时钟有没有；③ 检查 PHY 地址配置（LAN8720 常见 0 或 1）；④ 检查 MPU/Cache 配置；⑤ 最后才怀疑协议栈。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 以太网 ping不通 排查 BMSR 50MHz PHY地址 顺序"},
+{n:"坑 12：链接脚本写了 SRAM3 / 超了 SRAM1 尺寸",p:"症状: 编译通过，运行 HardFault 或数据错乱",d:"<strong>原因：从 H743 工程改过来的链接脚本。</strong>H723 没有 SRAM3，SRAM1/SRAM2 各只有 16KB。<br>解决：用 CubeMX 重新生成对应型号的 .ld / .sct。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 链接脚本 SRAM3 16KB 越界 HardFault H743 移植 CubeMX"},
+{n:"坑 13：移植 H743 工程报错找不到 CRYP/HASH",p:"症状: 编译错误，HAL_CRYP_xxx / HAL_HASH_xxx 未定义",d:"<strong>原因：H723 没有硬件加密模块。</strong><br>解决：删掉相关代码改用软件加密库；或确认项目是否该用 H743。",pm:"&mdash;",r:"&mdash;",tag:"star",kw:"坑 H743 移植 CRYP HASH 未定义 没有 加密 软件库"},
+]},
+{t:"调试利器",apis:[
+{n:"最快的二分定位：关 D-Cache",p:"// SCB_EnableDCache();  ← 临时注释掉",d:"<strong>怀疑是 Cache 问题时，注释掉这行重新跑。功能正常了就是 Cache 问题，范围立刻缩小到具体缓冲区。</strong><br>不要一开始就在代码里到处撒 Clean/Invalidate，那是治标。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"二分 定位 关 D-Cache 注释 缩小 范围 治标"},
+{n:"核对时钟实际值",p:"printf(\"SYSCLK=%lu HCLK=%lu PCLK1=%lu USART1=%lu\\r\\n\", HAL_RCC_GetSysClockFreq(), HAL_RCC_GetHCLKFreq(), HAL_RCC_GetPCLK1Freq(), HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_USART1));",d:"<strong>把它放在 main 开头打印一遍</strong>，几乎所有时钟类问题都能一眼看出来。",pm:"&mdash;",r:"&mdash;",tag:"flow",kw:"核对 时钟 printf SysClock HCLK PeriphCLK 打印 main"},
+{n:"用 MCO 引脚示波器量",p:"HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_SYSCLK, RCC_MCODIV_4);",d:"配不好时钟时最直接的办法：<strong>把 SYSCLK 输出到 PA8，用示波器量</strong>，频率对不对一目了然。",pm:"MCO1 = PA8 &middot; MCO2 = PC9",r:"&mdash;",tag:"flow",kw:"MCO 示波器 量 PA8 SYSCLK 最直接"},
+{n:"DWT 测代码耗时",p:"t0 = DWT->CYCCNT; func(); dt = DWT->CYCCNT - t0;",d:"性能优化必备。<strong>注意 Cache 冷热影响</strong>：第一次跑和之后跑差别可能好几倍。",pm:"&mdash;",r:"差值为周期数",tag:"flow",kw:"DWT 测 耗时 性能 Cache 冷热"},
+]},
+]},
+];
+
+const tagMap={init:["初始化","tag-init"],cfg:["配置","tag-cfg"],op:["操作","tag-op"],query:["查询","tag-query"],cb:["回调","tag-cb"],macro:["宏","tag-macro"],pin:["引脚","tag-pin"],flow:["流程","tag-flow"],star:["重点","tag-star"]};
+let totalAPIs=0;
+
+function render(){
+  let navHTML='',contentHTML='';
+  D.forEach(function(m){
+    var count=m.cats.reduce(function(s,c){return s+c.apis.length},0);
+    totalAPIs+=count;
+    navHTML+='<div class="nav-section"><div class="nav-section-title">'+m.name+'</div>';
+    navHTML+='<a class="nav-item" href="#'+m.id+'" data-sec="'+m.id+'"><span class="dot" style="background:'+m.color+'"></span>'+m.name+'<span class="badge">'+count+'</span></a>';
+    navHTML+='</div>';
+    contentHTML+='<div class="section" id="'+m.id+'" data-module="'+m.id+'">';
+    contentHTML+='<div class="section-header"><h2>'+m.name+'</h2><span class="sb" style="background:'+m.color+'">'+m.badge+'</span></div>';
+    contentHTML+='<div class="section-desc"><strong>头文件:</strong> <code>'+m.hdr+'</code><br>'+m.desc+'</div>';
+    m.cats.forEach(function(c){
+      contentHTML+='<div class="category"><div class="category-title">'+c.t+'</div>';
+      c.apis.forEach(function(a){
+        var tagInfo=tagMap[a.tag]||["",""];
+        contentHTML+='<div class="api-card" data-kw="'+a.kw+'">';
+        contentHTML+='<div class="api-card-header" onclick="toggleCard(this)"><span class="an">'+a.n+'</span><span class="at '+tagInfo[1]+'">'+tagInfo[0]+'</span></div>';
+        contentHTML+='<div class="api-card-body"><div class="proto">'+a.p+'</div><div class="desc">'+a.d+'</div>';
+        if(a.pm)contentHTML+='<div class="params">参数: <span>'+a.pm+'</span></div>';
+        if(a.r)contentHTML+='<div class="ret">返回: '+a.r+'</div>';
+        contentHTML+='</div></div>';
+      });
+      contentHTML+='</div>';
+    });
+    contentHTML+='</div>';
+  });
+  document.getElementById('nav').innerHTML=navHTML;
+  document.getElementById('content').innerHTML=contentHTML;
+  document.getElementById('stats').textContent='共 '+totalAPIs+' 个函数';
+  document.querySelectorAll('.nav-item').forEach(function(item){
+    item.addEventListener('click',function(e){
+      document.querySelectorAll('.nav-item').forEach(function(x){x.classList.remove('active')});
+      item.classList.add('active');
+    });
+  });
+}
+
+function toggleCard(el){
+  el.parentElement.classList.toggle('open');
+}
+
+function toggleAll(open){
+  document.querySelectorAll('.api-card').forEach(function(c){
+    if(open)c.classList.add('open');else c.classList.remove('open');
+  });
+}
+
+function filterAPIs(){
+  var q=document.getElementById('searchInput').value.toLowerCase().trim();
+  var visible=0;
+  document.querySelectorAll('.api-card').forEach(function(c){
+    var kw=(c.dataset.kw||'').toLowerCase();
+    var txt=c.textContent.toLowerCase();
+    if(!q||kw.indexOf(q)>=0||txt.indexOf(q)>=0){
+      c.style.display='';
+      if(q)c.classList.add('open');else c.classList.remove('open');
+      visible++;
+    }else{
+      c.style.display='none';
+      c.classList.remove('open');
+    }
+  });
+  document.querySelectorAll('.section').forEach(function(s){
+    var hasVisible=s.querySelectorAll('.api-card:not([style*="none"])').length>0;
+    s.style.display=hasVisible?'':'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    var sec=document.getElementById(n.dataset.sec);
+    if(sec)n.style.display=sec.style.display;
+  });
+  document.getElementById('noResults').style.display=visible>0?'none':'block';
+  document.getElementById('stats').textContent=q?('匹配 '+visible+' / '+totalAPIs+' 个函数'):('共 '+totalAPIs+' 个函数');
+}
+
+function clearSearch(){
+  document.getElementById('searchInput').value='';
+  filterAPIs();
+}
+
+window.addEventListener('scroll',function(){
+  var bt=document.getElementById('backTop');
+  bt.classList.toggle('visible',window.scrollY>400);
+  var tops={};
+  document.querySelectorAll('.section').forEach(function(s){tops[s.id]=s.offsetTop});
+  var cur='';
+  for(var id in tops){if(window.scrollY>=tops[id]-60)cur=id}
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    n.classList.toggle('active',n.dataset.sec===cur);
+  });
+});
+
+render();
+</script>
+</body>
+</html>

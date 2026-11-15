@@ -61,6 +61,7 @@ void TIM4_IRQHandler(void);
 void USART1_IRQHandler(void);
 void SPI6_IRQHandler(void);
 void BDMA_Channel0_IRQHandler(void);
+void FDCAN3_IT0_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */

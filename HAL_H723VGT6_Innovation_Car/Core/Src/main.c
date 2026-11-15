@@ -29,6 +29,7 @@
 #include "DM_BLDC_Motor.h"
 #include "UART_Data.h"
 #include "FourMotor_Coordination.h"
+#include "DM_IMU_L1_V1.0.h"
 
 /* USER CODE END Includes */
 
@@ -50,6 +51,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 FDCAN_HandleTypeDef hfdcan1;
+FDCAN_HandleTypeDef hfdcan3;
 
 SPI_HandleTypeDef hspi6;
 DMA_HandleTypeDef hdma_spi6_tx;
@@ -73,6 +75,7 @@ static void MX_SPI6_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_FDCAN3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -121,16 +124,24 @@ int main(void)
   MX_FDCAN1_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
+  MX_FDCAN3_Init();
   /* USER CODE BEGIN 2 */
+	//外设初始化
 	DM_CAN_Motor_Init();
+	DM_IMU_Init();
 	Time_Init();
 	UART_Init();
 	
+	//外部VCC开启
+	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_15,GPIO_PIN_SET);
+	
+	//电机先失能
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Disable);
 	HAL_Delay(1000);
+	//电机先使能
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Enable);
@@ -141,10 +152,15 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	uint8_t flag = 0;
-  float rad[] = {3.14f,0.0f,-7.14f};
+	float rad[] = {12.0f, -12.0f, -7.14f};
+	const float err_threshold = 0.1f;
   while (1) 
   {
-		FMC_PIVOT_REAR_RIGHT(3.14f,10.0f);
+//		DM_CAN_Motor_Velocity_Rad(&DM_Motor_4310P_StructData,1.0f);
+//		Red_DM_IMU_raw(&DM_Motor_IMU_StructData,Euler_angle_data);
+//		printf("%f,%f,%f\r\n",DM_Motor_IMU_StructData.Euler_f_pitch,DM_Motor_IMU_StructData.Euler_f_yaw,DM_Motor_IMU_StructData.Euler_f_roll);
+//		HAL_Delay(50);
+		
 		
 //		Motor_BackerData_Text();
 		
@@ -232,7 +248,7 @@ static void MX_FDCAN1_Init(void)
   hfdcan1.Instance = FDCAN1;
   hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
   hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
-  hfdcan1.Init.AutoRetransmission = DISABLE;
+  hfdcan1.Init.AutoRetransmission = ENABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
   hfdcan1.Init.ProtocolException = DISABLE;
   hfdcan1.Init.NominalPrescaler = 2;
@@ -270,6 +286,65 @@ static void MX_FDCAN1_Init(void)
   HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
 
   /* USER CODE END FDCAN1_Init 2 */
+
+}
+
+/**
+  * @brief FDCAN3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_FDCAN3_Init(void)
+{
+
+  /* USER CODE BEGIN FDCAN3_Init 0 */
+
+  /* USER CODE END FDCAN3_Init 0 */
+
+  /* USER CODE BEGIN FDCAN3_Init 1 */
+
+  /* USER CODE END FDCAN3_Init 1 */
+  hfdcan3.Instance = FDCAN3;
+  hfdcan3.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
+  hfdcan3.Init.Mode = FDCAN_MODE_NORMAL;
+  hfdcan3.Init.AutoRetransmission = ENABLE;
+  hfdcan3.Init.TransmitPause = DISABLE;
+  hfdcan3.Init.ProtocolException = DISABLE;
+  hfdcan3.Init.NominalPrescaler = 2;
+  hfdcan3.Init.NominalSyncJumpWidth = 1;
+  hfdcan3.Init.NominalTimeSeg1 = 8;
+  hfdcan3.Init.NominalTimeSeg2 = 3;
+  hfdcan3.Init.DataPrescaler = 1;
+  hfdcan3.Init.DataSyncJumpWidth = 1;
+  hfdcan3.Init.DataTimeSeg1 = 1;
+  hfdcan3.Init.DataTimeSeg2 = 1;
+  hfdcan3.Init.MessageRAMOffset = 0;
+  hfdcan3.Init.StdFiltersNbr = 1;
+  hfdcan3.Init.ExtFiltersNbr = 0;
+  hfdcan3.Init.RxFifo0ElmtsNbr = 8;
+  hfdcan3.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan3.Init.RxFifo1ElmtsNbr = 0;
+  hfdcan3.Init.RxFifo1ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan3.Init.RxBuffersNbr = 0;
+  hfdcan3.Init.RxBufferSize = FDCAN_DATA_BYTES_8;
+  hfdcan3.Init.TxEventsNbr = 0;
+  hfdcan3.Init.TxBuffersNbr = 0;
+  hfdcan3.Init.TxFifoQueueElmtsNbr = 8;
+  hfdcan3.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+  hfdcan3.Init.TxElmtSize = FDCAN_DATA_BYTES_8;
+  if (HAL_FDCAN_Init(&hfdcan3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN FDCAN3_Init 2 */
+	//过滤器配置
+	HAL_FDCAN_ConfigGlobalFilter(&hfdcan3, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT, FDCAN_REJECT);
+  //启动FDCAN外设
+	HAL_FDCAN_Start(&hfdcan3);
+	//开启中断接收
+  HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+
+  /* USER CODE END FDCAN3_Init 2 */
 
 }
 
@@ -453,14 +528,26 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

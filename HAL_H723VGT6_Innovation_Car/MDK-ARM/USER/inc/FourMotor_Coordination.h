@@ -13,7 +13,7 @@ void FMC_STRAFE_LEFT(float vel, float dist);
 /*右横移*/
 void FMC_STRAFE_RIGHT(float vel, float dist);
 /*左转掉头*/
-void FMC_TURN_LEFT_IN_PLACE_TURN_RIGHT_IN_PLACE(float vel, float dist);
+void FMC_TURN_LEFT_IN_PLACE(float vel, float dist);
 /*右转掉头*/
 void FMC_TURN_RIGHT_IN_PLACE(float vel, float dist);
 /*左前斜*/

@@ -56,6 +56,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern FDCAN_HandleTypeDef hfdcan1;
+extern FDCAN_HandleTypeDef hfdcan3;
 extern DMA_HandleTypeDef hdma_spi6_tx;
 extern SPI_HandleTypeDef hspi6;
 extern TIM_HandleTypeDef htim4;
@@ -285,6 +286,20 @@ void BDMA_Channel0_IRQHandler(void)
   /* USER CODE BEGIN BDMA_Channel0_IRQn 1 */
 
   /* USER CODE END BDMA_Channel0_IRQn 1 */
+}
+
+/**
+  * @brief This function handles FDCAN3 interrupt 0.
+  */
+void FDCAN3_IT0_IRQHandler(void)
+{
+  /* USER CODE BEGIN FDCAN3_IT0_IRQn 0 */
+
+  /* USER CODE END FDCAN3_IT0_IRQn 0 */
+  HAL_FDCAN_IRQHandler(&hfdcan3);
+  /* USER CODE BEGIN FDCAN3_IT0_IRQn 1 */
+
+  /* USER CODE END FDCAN3_IT0_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

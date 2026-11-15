@@ -20,7 +20,10 @@
 //							左前                           右前      
 //              0x01                           0x02              
 //      DM_Motor_4310P_Next_ID           DM_Motor_4310P_ID                                      
-//  DM_Motor_4310P_Next_StructData    DM_Motor_4310P_StructData               
+//  DM_Motor_4310P_Next_StructData    DM_Motor_4310P_StructData  
+
+
+
 //              左后                           右后              
 //              0x03                           0x04             
 //        DM_Motor_4310_ID              DM_Motor_4310_Next_ID  
@@ -31,14 +34,14 @@
   * @brief  底盘以指定速度   前进   指定距离
   * @param  vel-电机速度 dist-电机距离
   * @note		FORWARD-前进
-  * @retval 无
-  */
+  * @retval 无  
+	*/
 void FMC_FORWARD(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
 }
 
 /**
@@ -50,9 +53,9 @@ void FMC_FORWARD(float vel, float dist)
 void FMC_BACKWARD(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -64,9 +67,9 @@ void FMC_BACKWARD(float vel, float dist)
 void FMC_STRAFE_LEFT(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -78,9 +81,9 @@ void FMC_STRAFE_LEFT(float vel, float dist)
 void FMC_STRAFE_RIGHT(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
 }
 
 /**
@@ -89,12 +92,12 @@ void FMC_STRAFE_RIGHT(float vel, float dist)
   * @note		TURN_LEFT_IN_PLACE-左转掉头
   * @retval 无
   */
-void FMC_TURN_LEFT_IN_PLACE_TURN_RIGHT_IN_PLACE(float vel, float dist)
+void FMC_TURN_LEFT_IN_PLACE(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
 }
 
 /**
@@ -106,9 +109,9 @@ void FMC_TURN_LEFT_IN_PLACE_TURN_RIGHT_IN_PLACE(float vel, float dist)
 void FMC_TURN_RIGHT_IN_PLACE(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -119,8 +122,10 @@ void FMC_TURN_RIGHT_IN_PLACE(float vel, float dist)
   */
 void FMC_FORWARD_LEFT(float vel, float dist)
 {
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -131,7 +136,9 @@ void FMC_FORWARD_LEFT(float vel, float dist)
   */
 void FMC_FORWARD_RIGHT(float vel, float dist)
 {
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,-dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
@@ -144,7 +151,9 @@ void FMC_FORWARD_RIGHT(float vel, float dist)
 void FMC_BACKWARD_LEFT(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -155,8 +164,10 @@ void FMC_BACKWARD_LEFT(float vel, float dist)
   */
 void FMC_BACKWARD_RIGHT(float vel, float dist)
 {
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -167,7 +178,9 @@ void FMC_BACKWARD_RIGHT(float vel, float dist)
   */
 void FMC_PIVOT_FRONT_LEFT(float vel, float dist)
 {
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,-dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
@@ -179,8 +192,10 @@ void FMC_PIVOT_FRONT_LEFT(float vel, float dist)
   */
 void FMC_PIVOT_FRONT_RIGHT(float vel, float dist)
 {
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -191,8 +206,10 @@ void FMC_PIVOT_FRONT_RIGHT(float vel, float dist)
   */
 void FMC_PIVOT_REAR_LEFT(float vel, float dist)
 {
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
 /**
@@ -204,6 +221,8 @@ void FMC_PIVOT_REAR_LEFT(float vel, float dist)
 void FMC_PIVOT_REAR_RIGHT(float vel, float dist)
 {
 	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_Next_StructData,vel,dist);
-	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,-dist);
+	DM_CAN_Motor_Position_Speed(&DM_Motor_4310P_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_StructData,vel,dist);
+//	DM_CAN_Motor_Position_Speed(&DM_Motor_4310_Next_StructData,vel,dist);
 }
 
