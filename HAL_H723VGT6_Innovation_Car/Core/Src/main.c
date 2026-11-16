@@ -30,6 +30,10 @@
 #include "UART_Data.h"
 #include "FourMotor_Coordination.h"
 #include "DM_IMU_L1_V1.0.h"
+#include "Chassis.h"
+#include "Attitude.h"
+#include "Nav.h"
+#include "Debug.h"
 
 /* USER CODE END Includes */
 
@@ -126,45 +130,49 @@ int main(void)
   MX_TIM4_Init();
   MX_FDCAN3_Init();
   /* USER CODE BEGIN 2 */
-	//外设初始化
+	//电机初始化
 	DM_CAN_Motor_Init();
 	DM_IMU_Init();
-	Time_Init();
+
+	//底盘 / 姿态 / 导航 / 调试 初始化
+	Chassis_Init();
+	Attitude_Init();
+	Nav_Init();
+	Debug_Init();
 	UART_Init();
-	
-	//外部VCC开启
+
+	//外部VCC供电
 	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_15,GPIO_PIN_SET);
-	
-	//电机先失能
+
+	//静止标定陀螺 z 轴零偏 (这 400ms 车必须完全不动)
+	Attitude_Calibrate(400);
+
+	//开 1ms 节拍, 之后 5ms 控制自动跑
+	Time_Init();
+
+	//电机失能
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Disable);
 	HAL_Delay(1000);
-	//电机先使能
+	//电机使能
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Enable);
 
-  /* USER CODE END 2 */
+	//位姿置到下方启停区中心 (row45,col45), 车头方向 = 世界 +x
+	Nav_ResetPose(45, 45);
+
+	printf("\r\n# 工创小车底盘就绪, 输入 ? 看命令\r\n");
+	/* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	uint8_t flag = 0;
-	float rad[] = {12.0f, -12.0f, -7.14f};
-	const float err_threshold = 0.1f;
-  while (1) 
-  {
-//		DM_CAN_Motor_Velocity_Rad(&DM_Motor_4310P_StructData,1.0f);
-//		Red_DM_IMU_raw(&DM_Motor_IMU_StructData,Euler_angle_data);
-//		printf("%f,%f,%f\r\n",DM_Motor_IMU_StructData.Euler_f_pitch,DM_Motor_IMU_StructData.Euler_f_yaw,DM_Motor_IMU_StructData.Euler_f_roll);
-//		HAL_Delay(50);
-		
-		
-//		Motor_BackerData_Text();
-		
-   
+	while (1)
+	{
+		Debug_Task();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

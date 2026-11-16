@@ -87,6 +87,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		
 		if(huart->Instance == USART1)
     {
+      UART1_RX_Fifo[UART1_RX_idx++] = UART1_RX_Buf[0];
+      if(UART1_RX_idx >= 128) UART1_RX_idx = 0;
       HAL_UART_Receive_IT(&huart1, UART1_RX_Buf, 1);
 			if(UART1_RX_Buf[0] == 'G')
 			{

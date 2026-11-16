@@ -43,3 +43,6 @@ hal_h723vgt6_template\time.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_
 hal_h723vgt6_template\time.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h
 hal_h723vgt6_template\time.o: ./USER/inc/2812LED.h
 hal_h723vgt6_template\time.o: ./USER/inc/DMA.h
+hal_h723vgt6_template\time.o: ./USER/inc/Attitude.h
+hal_h723vgt6_template\time.o: ./USER/inc/Chassis.h
+hal_h723vgt6_template\time.o: ./USER/inc/Nav.h

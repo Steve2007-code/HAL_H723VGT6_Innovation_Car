@@ -35,6 +35,11 @@
 "hal_h723vgt6_template\time.o"
 "hal_h723vgt6_template\fourmotor_coordination.o"
 "hal_h723vgt6_template\dm_imu_l1_v1.0.o"
+"hal_h723vgt6_template\chassis.o"
+"hal_h723vgt6_template\attitude.o"
+"hal_h723vgt6_template\astar.o"
+"hal_h723vgt6_template\nav.o"
+"hal_h723vgt6_template\debug.o"
 --library_type=microlib --strict --scatter "HAL_H723VGT6_Template\HAL_H723VGT6_Template.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

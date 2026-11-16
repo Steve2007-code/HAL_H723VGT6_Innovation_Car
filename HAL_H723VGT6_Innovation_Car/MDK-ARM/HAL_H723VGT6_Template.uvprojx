@@ -839,6 +839,31 @@
               <FileType>5</FileType>
               <FilePath>.\USER\inc\DM_IMU_L1_V1.0.h</FilePath>
             </File>
+            <File>
+              <FileName>Chassis.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\Chassis.h</FilePath>
+            </File>
+            <File>
+              <FileName>Attitude.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\Attitude.h</FilePath>
+            </File>
+            <File>
+              <FileName>AStar.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\AStar.h</FilePath>
+            </File>
+            <File>
+              <FileName>Nav.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\Nav.h</FilePath>
+            </File>
+            <File>
+              <FileName>Debug.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\Debug.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -883,6 +908,31 @@
               <FileName>DM_IMU_L1_V1.0.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\src\DM_IMU_L1_V1.0.c</FilePath>
+            </File>
+            <File>
+              <FileName>Chassis.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\Chassis.c</FilePath>
+            </File>
+            <File>
+              <FileName>Attitude.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\Attitude.c</FilePath>
+            </File>
+            <File>
+              <FileName>AStar.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\AStar.c</FilePath>
+            </File>
+            <File>
+              <FileName>Nav.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\Nav.c</FilePath>
+            </File>
+            <File>
+              <FileName>Debug.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\Debug.c</FilePath>
             </File>
           </Files>
         </Group>

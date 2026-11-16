@@ -52,3 +52,7 @@ hal_h723vgt6_template\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 hal_h723vgt6_template\main.o: ./USER/inc/FourMotor_Coordination.h
 hal_h723vgt6_template\main.o: ./USER/inc/DM_IMU_L1_V1.0.h
 hal_h723vgt6_template\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+hal_h723vgt6_template\main.o: ./USER/inc/Chassis.h
+hal_h723vgt6_template\main.o: ./USER/inc/Attitude.h
+hal_h723vgt6_template\main.o: ./USER/inc/Nav.h
+hal_h723vgt6_template\main.o: ./USER/inc/Debug.h
