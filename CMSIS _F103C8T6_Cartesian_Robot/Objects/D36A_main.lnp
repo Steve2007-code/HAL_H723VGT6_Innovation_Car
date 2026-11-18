@@ -1,6 +1,9 @@
 --cpu Cortex-M3
 ".\objects\stepper.o"
 ".\objects\main.o"
+".\objects\vision.o"
+".\objects\pid.o"
+".\objects\track.o"
 ".\objects\startup_stm32f10x_md.o"
 ".\objects\system_stm32f10x.o"
 --strict --scatter ".\Objects\D36A_main.sct"

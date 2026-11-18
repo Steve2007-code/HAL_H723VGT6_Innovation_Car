@@ -21,22 +21,16 @@ Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V3.2.0.0
 Dialog DLL:      TCM.DLL V1.56.4.0
  
 <h2>Project:</h2>
-C:\Users\13687\Desktop\D36A\D36A_main.uvprojx
-Project File Date:  11/16/2026
+C:\Users\13687\Desktop\MCU\Project\STM32H723\2027Innovation_Car\HLA_F103C8T6_Cartesian_Robot\D36A_main.uvprojx
+Project File Date:  11/18/2026
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'D:\Keil_v5\ARM\ARMCC\Bin'
-Rebuild target 'Target 1'
-assembling startup_stm32f10x_md.s...
-compiling system_stm32f10x.c...
-compiling main.c...
-main.c(41): warning:  #177-D: function "led_off"  was declared but never referenced
-  static void led_off(void) { GPIOC->BSRR = (1U << 13); }
-main.c: 1 warning, 0 errors
-compiling stepper.c...
+Build target 'Target 1'
+compiling vision.c...
 linking...
-Program Size: Code=2904 RO-data=332 RW-data=20 ZI-data=1716  
-".\Objects\D36A_main.axf" - 0 Error(s), 1 Warning(s).
+Program Size: Code=6236 RO-data=332 RW-data=48 ZI-data=1904  
+".\Objects\D36A_main.axf" - 0 Error(s), 0 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -63,10 +57,10 @@ Package Vendor: Keil
    * Component: ARM::CMSIS:CORE@5.6.0
 
    * Component: Keil::Device:Startup@1.0.0
-      Source file:   Device/Source/system_stm32f10x.c
-      Include file:  RTE_Driver/Config/RTE_Device.h
-      Source file:   Device/Source/ARM/startup_stm32f10x_md.s
       Source file:   Device/Source/ARM/STM32F1xx_OPT.s
+      Source file:   Device/Source/system_stm32f10x.c
+      Source file:   Device/Source/ARM/startup_stm32f10x_md.s
+      Include file:  RTE_Driver/Config/RTE_Device.h
 Build Time Elapsed:  00:00:01
 </pre>
 </body>

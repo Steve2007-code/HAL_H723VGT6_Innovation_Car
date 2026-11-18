@@ -1,0 +1,14 @@
+.\objects\track.o: track.c
+.\objects\track.o: track.h
+.\objects\track.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\stm32f10x.h
+.\objects\track.o: .\RTE\_Target_1\RTE_Components.h
+.\objects\track.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\core_cm3.h
+.\objects\track.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\track.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_version.h
+.\objects\track.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_compiler.h
+.\objects\track.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_armcc.h
+.\objects\track.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\system_stm32f10x.h
+.\objects\track.o: track_config.h
+.\objects\track.o: stepper.h
+.\objects\track.o: vision.h
+.\objects\track.o: pid.h

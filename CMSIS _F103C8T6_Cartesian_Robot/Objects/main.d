@@ -8,3 +8,6 @@
 .\objects\main.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_armcc.h
 .\objects\main.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\system_stm32f10x.h
 .\objects\main.o: stepper.h
+.\objects\main.o: track_config.h
+.\objects\main.o: track.h
+.\objects\main.o: vision.h
