@@ -60,6 +60,7 @@ static uint8_t s_need_frame(char cmd)
     {
     case 'v': case 's': case 'd': case 'g': case 'z':
     case 'p': case 'r': case 'k': case 'h': case 'c': case 'w':
+    case 'f':
         return 1;
     }
     return 0;
@@ -90,6 +91,7 @@ static void s_help(void)
     printf(" h <kp> <kd>        航向环\r\n");
     printf(" c <scale>          里程计比例\r\n");
     printf(" w <0|1>            手动看门狗开关\r\n");
+    printf(" f <deg>            到点后对准朝向 (999=取消)\r\n");
     printf("------------------------------------------\r\n");
 }
 
@@ -249,6 +251,14 @@ static void s_exec(char *ln, uint8_t framed)
         int on = s_atoi(&p);
         Nav_SetManualWd((uint8_t)(on != 0));
         printf("# manual watchdog %d\r\n", on != 0);
+        break;
+    }
+
+    case 'f':
+    {
+        float d = s_atof(&p);
+        Nav_SetDockYaw(d);
+        printf("# dock yaw %.0f deg %s\r\n", d, (d < -360.0f || d > 360.0f) ? "off" : "on");
         break;
     }
 

@@ -162,7 +162,7 @@ int main(void)
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Enable);
 
-	//位姿置到下方启停区中心 (row45,col45), 车头方向 = 世界 +x
+	//位姿置到下方启停区中心 (row45,col45), 上电时车头须朝地图上方(+y)
 	Nav_ResetPose(45, 45);
 
 	printf("\r\n# 工创小车底盘就绪, 输入 ? 看命令\r\n");

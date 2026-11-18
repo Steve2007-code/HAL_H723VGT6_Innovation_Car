@@ -17,7 +17,12 @@ static float   s_wpx[NAV_WP_MAX];
 static float   s_wpy[NAV_WP_MAX];
 static uint8_t s_wpn = 0;
 static uint8_t s_wpi = 0;
-static float   s_yaw_t = 0.0f;          /* 锁定航向 */
+static float   s_yaw_t = 0.0f;          /* 当前段目标航向 */
+static float   s_yaw_off = NAV_YAW_INIT; /* IMU yaw -> 地图 yaw 偏置 */
+static float   s_seg_x0 = 0.0f;         /* 当前段起点 */
+static float   s_seg_y0 = 0.0f;
+static float   s_dock_yaw = 0.0f;       /* 到点后对准的朝向 (rad) */
+static uint8_t s_dock_on  = 0;
 
 /* 规划临时区 (主循环用) */
 static uint8_t s_cells[MAP_CELLS * 2];
@@ -26,6 +31,11 @@ static int16_t s_py[MAP_CELLS];
 static float   s_tx[NAV_WP_MAX];
 static float   s_ty[NAV_WP_MAX];
 static uint8_t s_tn = 0;
+
+/* 正交化临时缓冲 */
+#define NAV_WP_BUF   (NAV_WP_MAX * 2)
+static float   s_ox[NAV_WP_BUF];
+static float   s_oy[NAV_WP_BUF];
 
 /* 手动模式看门狗: v 命令无刷新超过该时长自动停 */
 uint8_t  g_nav_manual_wd = 1;
@@ -104,8 +114,9 @@ void Nav_Init(void)
     /* 默认车放在下方启停区中心 (row45, col45) */
     r = 45;  c = 45;
     s_cell_to_xy(r, c, &g_pose.x, &g_pose.y);
-    g_pose.yaw = 0.0f;
-    s_yaw_t    = 0.0f;
+    g_pose.yaw = NAV_YAW_INIT;          /* 初始车头朝地图上方(+y) */
+    s_yaw_off  = NAV_YAW_INIT;
+    s_yaw_t    = NAV_YAW_INIT;
     g_nav_state = NAV_IDLE;
     s_wpn = 0;  s_wpi = 0;
 }
@@ -113,9 +124,10 @@ void Nav_Init(void)
 void Nav_ResetPose(uint8_t row, uint8_t col)
 {
     s_cell_to_xy(row, col, &g_pose.x, &g_pose.y);
-    g_pose.yaw = 0.0f;
-    Attitude_ZeroYaw();
-    s_yaw_t = 0.0f;
+    Attitude_ZeroYaw();                 /* 摆车时车头须朝地图上方 */
+    s_yaw_off  = NAV_YAW_INIT;
+    g_pose.yaw = NAV_YAW_INIT;
+    s_yaw_t    = NAV_YAW_INIT;
     __disable_irq();
     g_nav_state = NAV_IDLE;
     s_wpn = 0;  s_wpi = 0;
@@ -128,6 +140,24 @@ void Nav_Stop(void)
     g_nav_state = NAV_IDLE;
     s_wpn = 0;  s_wpi = 0;
     Chassis_Hold();
+}
+
+/**
+  * @brief  设定到点后对准的朝向
+  * @param  deg  地图坐标角度(度): 0=右(+x) 90=上(+y) 180/-180=左 -90=下
+  *              传 999 或超出 +-360 表示取消
+  */
+void Nav_SetDockYaw(float deg)
+{
+    if (deg < -360.0f || deg > 360.0f)
+    {
+        s_dock_on = 0;
+        return;
+    }
+    while (deg > 180.0f)  deg -= 360.0f;
+    while (deg < -180.0f) deg += 360.0f;
+    s_dock_yaw = deg * 0.0174532925f;
+    s_dock_on  = 1;
 }
 
 void Nav_SetGains(float kp, float kd, float kpy, float kdy)
@@ -156,12 +186,43 @@ void Odom_Update(void)
 
     g_pose.x += (vx * c - vy * s) * 5.0f;       /* 0.005s * 1000mm/m */
     g_pose.y += (vx * s + vy * c) * 5.0f;
-    g_pose.yaw = Attitude_WrapPi(g_att.yaw);
+    g_pose.yaw = Attitude_WrapPi(g_att.yaw + s_yaw_off);
 }
 
 /*-----------------------------------------------------------------*
- *  跟随: 航向锁定 + 车体系 P 控 + 速度阻尼
+ *  跟随: 车头对准段方向, 拐点先原地转向再前进
  *-----------------------------------------------------------------*/
+
+/* 段航向: 从段起点指向段终点 (世界系, rad) */
+static float s_seg_yaw(float x0, float y0, float x1, float y1)
+{
+    float dx = x1 - x0, dy = y1 - y0;
+    if (dx * dx + dy * dy < 1.0f) return s_yaw_t;   /* 段长<1mm 保持原航向 */
+    return atan2f(dy, dx);
+}
+
+/* 推进到下一航点: 新段起点=刚过的航点, 更新段航向 */
+static void s_wp_next(void)
+{
+    s_wpi++;
+    g_nav_wp_index = s_wpi;
+    if (s_wpi >= s_wpn)
+    {
+        s_wpn = 0;
+        Chassis_Hold();
+        if (s_dock_on)                  /* 到点后先对准指定朝向 */
+        {
+            g_nav_state = NAV_ALIGN;
+            return;
+        }
+        g_nav_state = NAV_DONE;
+        return;
+    }
+    s_seg_x0 = s_wpx[s_wpi - 1];
+    s_seg_y0 = s_wpy[s_wpi - 1];
+    s_yaw_t  = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[s_wpi], s_wpy[s_wpi]);
+}
+
 void Nav_Update(void)
 {
     float ex, ey, d, c, s, bx, by, vx, vy, wz, yaw_err, vlim, vn;
@@ -174,13 +235,35 @@ void Nav_Update(void)
             return;
     }
 
-    /* ---- 航向环 (任何状态都保持锁定航向) ---- */
+    /* ---- 到点后对准指定朝向 ---- */
+    if (g_nav_state == NAV_ALIGN)
+    {
+        yaw_err = Attitude_WrapPi(s_dock_yaw - g_pose.yaw);
+        wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
+        if (fabsf(yaw_err) < 0.030f)
+        {
+            Chassis_Hold();
+            g_nav_state = NAV_DONE;
+            return;
+        }
+        Chassis_SetBodyVel(0.0f, 0.0f, wz);
+        return;
+    }
+
+    /* ---- 航向环: 目标 = 当前段方向 ---- */
     yaw_err = Attitude_WrapPi(s_yaw_t - g_pose.yaw);
     wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
 
     if (g_nav_state != NAV_RUN || s_wpn == 0)
     {
         if (fabsf(yaw_err) < 0.035f) wz = 0.0f;     /* 静止 2 度死区, 防蠕动 */
+        Chassis_SetBodyVel(0.0f, 0.0f, wz);
+        return;
+    }
+
+    /* ---- 拐点: 段航向未对准先原地转向, 不平移 ---- */
+    if (fabsf(yaw_err) > NAV_TURN_GATE)
+    {
         Chassis_SetBodyVel(0.0f, 0.0f, wz);
         return;
     }
@@ -193,13 +276,7 @@ void Nav_Update(void)
     /* ---- 到点/越过判据 ---- */
     if (d < ((s_wpi + 1 >= s_wpn) ? NAV_FINAL_MM : NAV_ARRIVE_MM))
     {
-        s_wpi++;
-        if (s_wpi >= s_wpn)
-        {
-            g_nav_state = NAV_DONE;
-            s_wpn = 0;
-            Chassis_Hold();
-        }
+        s_wp_next();
         Chassis_SetBodyVel(0.0f, 0.0f, wz);
         return;
     }
@@ -213,7 +290,7 @@ void Nav_Update(void)
             ux /= ul;  uy /= ul;
             if (((-ex) * ux + (-ey) * uy) > NAV_PASS_MM)
             {
-                s_wpi++;
+                s_wp_next();
                 Chassis_SetBodyVel(0.0f, 0.0f, wz);
                 return;
             }
@@ -226,7 +303,7 @@ void Nav_Update(void)
     bx = ( ex * c + ey * s) * 0.001f;
     by = (-ex * s + ey * c) * 0.001f;
 
-    /* ---- 位置环 + 速度阻尼 ---- */
+    /* ---- 位置环 + 速度阻尼 (vy 只做小的横向纠偏) ---- */
     vx = s_kp_pos * bx - s_kd_pos * g_chassis.fb_vx;
     vy = s_kp_pos * by - s_kd_pos * g_chassis.fb_vy;
 
@@ -241,7 +318,6 @@ void Nav_Update(void)
     }
 
     Chassis_SetBodyVel(vx, vy, wz);
-    g_nav_wp_index = s_wpi;
 }
 
 /*-----------------------------------------------------------------*/
@@ -259,8 +335,105 @@ static void s_commit(void)
     s_wpi = 0;
     g_nav_wp_total = s_tn;
     g_nav_wp_index = 0;
+    s_seg_x0 = g_pose.x;
+    s_seg_y0 = g_pose.y;
+    s_yaw_t = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[0], s_wpy[0]);
     g_nav_state = NAV_RUN;
     __enable_irq();
+}
+
+/*-----------------------------------------------------------------*
+ *  正交化: 把斜线段折成 L 形(两条正交腿),
+ *  拐角优先延续当前车头方向, 并合并共线航点.
+ *  结果: 所有航段都平行于地图轴, 拐点全是 90 度
+ *-----------------------------------------------------------------*/
+static void s_emit(uint8_t *m, float x, float y)
+{
+    if (*m >= NAV_WP_MAX) return;               /* 容量保护 */
+
+    /* 合并共线: 与上一点方向相同则覆盖上一点 */
+    if (*m >= 2)
+    {
+        float ax = s_ox[*m - 1] - s_ox[*m - 2];
+        float ay = s_oy[*m - 1] - s_oy[*m - 2];
+        float bx = x - s_ox[*m - 1];
+        float by = y - s_oy[*m - 1];
+        float la = sqrtf(ax * ax + ay * ay);
+        float lb = sqrtf(bx * bx + by * by);
+        if (la > 0.5f && lb > 0.5f)
+        {
+            float cr = (ax * by - ay * bx) / (la * lb);
+            if (fabsf(cr) < 0.03f && (ax * bx + ay * by) > 0.0f) (*m)--;
+        }
+    }
+    s_ox[*m] = x;
+    s_oy[*m] = y;
+    (*m)++;
+}
+
+static void s_ortho(void)
+{
+    uint8_t i, m;
+    float cur;
+
+    if (s_tn == 0) return;
+
+    cur = g_pose.yaw;                           /* 起步沿当前车头方向 */
+    s_ox[0] = s_tx[0];
+    s_oy[0] = s_ty[0];
+    m = 1;
+
+    for (i = 1; i < s_tn; i++)
+    {
+        float x0 = s_tx[i - 1], y0 = s_ty[i - 1];
+        float x1 = s_tx[i],     y1 = s_ty[i];
+        float ax = x1 - x0, ay = y1 - y0;
+
+        if (fabsf(ax) < 0.5f || fabsf(ay) < 0.5f)       /* 已是正交段 */
+        {
+            s_emit(&m, x1, y1);
+            cur = atan2f(ay, ax);
+        }
+        else                                            /* 斜段: 折成 L */
+        {
+            float c1x, c1y, c2x, c2y;
+            if (fabsf(sinf(cur)) > fabsf(cosf(cur)))    /* 当前竖向: 先竖后横 */
+            {
+                c1x = x0;  c1y = y1;
+                c2x = x1;  c2y = y0;
+            }
+            else                                        /* 当前横向: 先横后竖 */
+            {
+                c1x = x1;  c1y = y0;
+                c2x = x0;  c2y = y1;
+            }
+
+            if (s_los(x0, y0, c1x, c1y) && s_los(c1x, c1y, x1, y1))
+            {
+                s_emit(&m, c1x, c1y);
+                s_emit(&m, x1, y1);
+                cur = atan2f(y1 - c1y, x1 - c1x);
+            }
+            else if (s_los(x0, y0, c2x, c2y) && s_los(c2x, c2y, x1, y1))
+            {
+                s_emit(&m, c2x, c2y);
+                s_emit(&m, x1, y1);
+                cur = atan2f(y1 - c2y, x1 - c2x);
+            }
+            else                                        /* 两条 L 都不通: 退让保留斜线 */
+            {
+                s_emit(&m, x1, y1);
+                cur = atan2f(ay, ax);
+            }
+        }
+    }
+
+    for (i = 0; i < m; i++)
+    {
+        s_tx[i] = s_ox[i];
+        s_ty[i] = s_oy[i];
+    }
+    s_tn = m;
 }
 
 /* 格序列 -> 毫米点 + 视线简化 */
@@ -293,6 +466,8 @@ static void s_build_from_cells(int n)
             s_tn++;
         }
     }
+
+    s_ortho();                          /* 斜线折 L, 全段正交化 */
 }
 
 /**
@@ -391,12 +566,33 @@ uint8_t Nav_PlanToMm(float x_mm, float y_mm)
     s_xy_to_cell(x_mm, y_mm, &r, &c);
     if (!Nav_PlanToCell((uint8_t)r, (uint8_t)c)) return 0;
 
-    /* 精确点替换最后一个航点 */
+    /* 精确点替换最后一个航点; 若因此变成斜段, 补一个 L 拐角 */
     __disable_irq();
     if (s_wpn > 0)
     {
-        s_wpx[s_wpn - 1] = x_mm;
-        s_wpy[s_wpn - 1] = y_mm;
+        uint8_t last = (uint8_t)(s_wpn - 1);
+        s_wpx[last] = x_mm;
+        s_wpy[last] = y_mm;
+
+        if (s_wpn >= 2)
+        {
+            float x0 = s_wpx[s_wpn - 2], y0 = s_wpy[s_wpn - 2];
+            float ax = x_mm - x0, ay = y_mm - y0;
+            if (fabsf(ax) > 0.5f && fabsf(ay) > 0.5f && s_wpn < NAV_WP_MAX)
+            {
+                float c1x = x0,   c1y = y_mm;   /* 先竖后横 */
+                float c2x = x_mm, c2y = y0;     /* 先横后竖 */
+                float cx, cy;
+                if (s_los(x0, y0, c1x, c1y)) { cx = c1x;  cy = c1y; }
+                else                         { cx = c2x;  cy = c2y; }
+                s_wpx[s_wpn] = x_mm;
+                s_wpy[s_wpn] = y_mm;
+                s_wpx[last]  = cx;
+                s_wpy[last]  = cy;
+                s_wpn++;
+                g_nav_wp_total = s_wpn;
+            }
+        }
     }
     __enable_irq();
     return 1;

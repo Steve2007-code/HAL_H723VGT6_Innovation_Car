@@ -1,0 +1,62 @@
+#include "stm32f10x.h"
+#include "stepper.h"
+
+/* 粗延时，72MHz 下约 1ms（不精确，够用） */
+static void delay_ms(uint32_t ms)
+{
+    uint32_t i;
+    volatile uint32_t j;
+
+    for (i = 0; i < ms; i++) {
+        for (j = 0; j < 8000; j++) {
+        }
+    }
+}
+
+/* 蓝 Pill 的 PC13 LED，低电平亮，用来做“程序在跑”的心跳 */
+static void led_init(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+    GPIOC->CRH &= ~(0xFU << 20);        /* PC13 */
+    GPIOC->CRH |=  (0x2U << 20);        /* 2MHz 推挽输出 */
+    GPIOC->BSRR = (1U << 13);           /* 先灭 */
+}
+
+static void led_toggle(void)
+{
+    if (GPIOC->ODR & (1U << 13)) GPIOC->BRR  = (1U << 13);
+    else                         GPIOC->BSRR = (1U << 13);
+}
+
+int main(void)
+{
+    Stepper_Init();
+    led_init();
+
+    Stepper_Enable(AXIS_A, 1);
+    Stepper_Enable(AXIS_B, 1);
+
+    delay_ms(500);
+
+    while (1) {
+        led_toggle();
+
+        /* 两路同时启动：A 快、B 慢，验证独立调速 */
+        Stepper_Move(AXIS_A,  400, 400);    /* 正转，400 步/秒 */
+        Stepper_Move(AXIS_B, -400, 200);    /* 反转，200 步/秒 */
+
+        while (Stepper_IsBusy(AXIS_A) || Stepper_IsBusy(AXIS_B)) {
+        }
+
+        delay_ms(800);
+
+        /* 反向再来一次 */
+        Stepper_Move(AXIS_A, -400, 400);
+        Stepper_Move(AXIS_B,  400, 200);
+
+        while (Stepper_IsBusy(AXIS_A) || Stepper_IsBusy(AXIS_B)) {
+        }
+
+        delay_ms(800);
+    }
+}

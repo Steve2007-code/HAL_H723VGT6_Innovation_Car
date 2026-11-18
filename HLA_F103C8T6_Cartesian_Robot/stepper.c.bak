@@ -1,0 +1,208 @@
+/******************************************************************************
+ * stepper.c  --  双路步进电机驱动（TIM2 中断发脉冲，非阻塞）
+ *
+ * 接线：
+ *   电机A: ST1=PA7  DIR1=PA6  EN1=PA5
+ *   电机B: ST2=PB0  DIR2=PB1  EN2=PB10
+ *   驱动板 GND <-> STM32 GND
+ ******************************************************************************/
+
+#include "stepper.h"
+
+/* ------------------------- 现场可调参数 ------------------------- */
+#define STEP_IDLE_LEVEL   1        /* 空闲电平：1=高。光耦共阳时，脉冲=低 */
+#define STEP_PULSE_LEVEL  0        /* 脉冲电平（和上面相反） */
+#define EN_ACTIVE_HIGH    1        /* EN 高=使能；如果手能拧动轴，改成 0 */
+#define PULSE_TICKS       2        /* 脉冲宽度 = 2 * 50us = 100us */
+#define TICK_HZ           20000UL  /* 中断频率 20kHz */
+#define MIN_PERIOD        4        /* 最小 4 tick => 最大 5000 步/秒 */
+
+/* ------------------------- 引脚定义 ------------------------- */
+typedef struct {
+    GPIO_TypeDef *st_port;  uint8_t st_pin;
+    GPIO_TypeDef *dir_port; uint8_t dir_pin;
+    GPIO_TypeDef *en_port;  uint8_t en_pin;
+} StepperPins;
+
+static const StepperPins pins[2] = {
+    { GPIOA, 7,  GPIOA, 6,  GPIOA, 5  },   /* 电机A */
+    { GPIOB, 0,  GPIOB, 1,  GPIOB, 10 }    /* 电机B */
+};
+
+/* ------------------------- 运行状态 ------------------------- */
+typedef struct {
+    volatile int32_t  steps_left;   /* 0=停, -1=连续转 */
+    volatile uint32_t period;       /* 每步多少个 tick */
+    volatile uint32_t acc;          /* tick 累加器 */
+    volatile uint8_t  pulse;        /* 脉冲剩余 tick */
+    volatile uint8_t  busy;
+    volatile uint8_t  dir;
+    volatile int32_t  pos;
+} StepperState;
+
+static StepperState st[2] = {
+    { 0, 1, 0, 0, 0, 0, 0 },
+    { 0, 1, 0, 0, 0, 0, 0 }
+};
+
+/* ------------------------- 底层操作 ------------------------- */
+static void pin_out_init(GPIO_TypeDef *port, uint8_t pin)
+{
+    if (pin < 8) {
+        port->CRL &= ~(0xFU << (pin * 4));
+        port->CRL |=  (0x3U << (pin * 4));      /* 50MHz 推挽输出 */
+    } else {
+        port->CRH &= ~(0xFU << ((pin - 8) * 4));
+        port->CRH |=  (0x3U << ((pin - 8) * 4));
+    }
+}
+
+static void pin_write(GPIO_TypeDef *port, uint8_t pin, uint8_t level)
+{
+    if (level) port->BSRR = (uint32_t)1 << pin;
+    else       port->BRR  = (uint32_t)1 << pin;
+}
+
+static void st_write(StepperAxis a, uint8_t level)
+{
+    pin_write(pins[a].st_port, pins[a].st_pin, level);
+}
+
+/* ------------------------- 初始化 ------------------------- */
+void Stepper_Init(void)
+{
+    uint8_t i;
+
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN;
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+
+    for (i = 0; i < 2; i++) {
+        pin_out_init(pins[i].st_port,  pins[i].st_pin);
+        pin_out_init(pins[i].dir_port, pins[i].dir_pin);
+        pin_out_init(pins[i].en_port,  pins[i].en_pin);
+
+        st_write((StepperAxis)i, STEP_IDLE_LEVEL);
+        pin_write(pins[i].dir_port, pins[i].dir_pin, 0);
+        /* 上电先不使能，由 Stepper_Enable() 打开 */
+        pin_write(pins[i].en_port,  pins[i].en_pin, !EN_ACTIVE_HIGH);
+        st[i].busy = 0;
+    }
+
+    /* TIM2: 计数 1MHz，更新 20kHz */
+    TIM2->PSC = (uint16_t)((SystemCoreClock / 1000000U) - 1U);
+    TIM2->ARR = (uint16_t)((1000000U / TICK_HZ) - 1U);
+    TIM2->CNT = 0;
+    TIM2->SR  = 0;
+    TIM2->DIER |= TIM_DIER_UIE;
+    TIM2->CR1  |= TIM_CR1_CEN;
+
+    NVIC_SetPriority(TIM2_IRQn, 1);
+    NVIC_EnableIRQ(TIM2_IRQn);
+}
+
+/* ------------------------- 对外函数 ------------------------- */
+void Stepper_Enable(StepperAxis a, uint8_t enable)
+{
+    if (a > AXIS_B) return;
+    pin_write(pins[a].en_port, pins[a].en_pin,
+              enable ? EN_ACTIVE_HIGH : !EN_ACTIVE_HIGH);
+}
+
+void Stepper_SetDir(StepperAxis a, StepperDir dir)
+{
+    if (a > AXIS_B) return;
+    st[a].dir = (uint8_t)dir;
+    pin_write(pins[a].dir_port, pins[a].dir_pin, dir ? 1 : 0);
+}
+
+/* 走指定步数，非阻塞；steps 正负表示方向 */
+void Stepper_Move(StepperAxis a, int32_t steps, uint32_t pps)
+{
+    uint32_t period;
+
+    if (a > AXIS_B || steps == 0 || pps == 0) return;
+
+    period = TICK_HZ / pps;
+    if (period < MIN_PERIOD) period = MIN_PERIOD;
+
+    Stepper_SetDir(a, (steps > 0) ? DIR_CW : DIR_CCW);
+    st[a].period     = period;
+    st[a].acc        = 0;
+    st[a].steps_left = (steps > 0) ? steps : -steps;
+    st[a].busy       = 1;
+}
+
+/* 连续转，直到 Stepper_Stop */
+void Stepper_Run(StepperAxis a, StepperDir dir, uint32_t pps)
+{
+    uint32_t period;
+
+    if (a > AXIS_B || pps == 0) return;
+
+    period = TICK_HZ / pps;
+    if (period < MIN_PERIOD) period = MIN_PERIOD;
+
+    Stepper_SetDir(a, dir);
+    st[a].period     = period;
+    st[a].acc        = 0;
+    st[a].steps_left = -1;
+    st[a].busy       = 1;
+}
+
+/* 当前脉冲发完就停 */
+void Stepper_Stop(StepperAxis a)
+{
+    if (a > AXIS_B) return;
+    st[a].steps_left = 0;
+}
+
+uint8_t Stepper_IsBusy(StepperAxis a)
+{
+    if (a > AXIS_B) return 0;
+    return st[a].busy;
+}
+
+int32_t Stepper_GetPos(StepperAxis a)
+{
+    if (a > AXIS_B) return 0;
+    return st[a].pos;
+}
+
+/* ------------------------- 20kHz 中断里调用 ------------------------- */
+void Stepper_Task(void)
+{
+    uint8_t i;
+
+    for (i = 0; i < 2; i++) {
+        /* 脉冲结束，拉回空闲电平 */
+        if (st[i].pulse) {
+            if (--st[i].pulse == 0) {
+                st_write((StepperAxis)i, STEP_IDLE_LEVEL);
+            }
+        }
+
+        /* 该发下一步了吗 */
+        if (st[i].steps_left != 0) {
+            if (++st[i].acc >= st[i].period) {
+                st[i].acc = 0;
+                st_write((StepperAxis)i, STEP_PULSE_LEVEL);
+                st[i].pulse = PULSE_TICKS;
+                st[i].pos += (st[i].dir == DIR_CW) ? 1 : -1;
+                if (st[i].steps_left > 0) {
+                    st[i].steps_left--;
+                }
+            }
+        } else {
+            st[i].busy = 0;
+        }
+    }
+}
+
+/* ------------------------- TIM2 中断 ------------------------- */
+void TIM2_IRQHandler(void)
+{
+    if (TIM2->SR & TIM_SR_UIF) {
+        TIM2->SR = (uint16_t)~TIM_SR_UIF;
+        Stepper_Task();
+    }
+}

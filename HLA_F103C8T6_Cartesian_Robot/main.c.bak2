@@ -1,0 +1,78 @@
+/******************************************************************************
+ * main.c  --  双路步进电机测试（慢速，先 A 后 B）
+ *
+ * 现象：
+ *   LED 亮 = 正在测 A 路：200 步正转（50 步/秒，约 4 秒），停 1 秒，再反转。
+ *   LED 灭 = 正在测 B 路：同样慢速。
+ ******************************************************************************/
+
+#include "stm32f10x.h"
+#include "stepper.h"
+
+/* 粗延时，72MHz 下约 1ms（不精确，够用） */
+static void delay_ms(uint32_t ms)
+{
+    uint32_t i;
+    volatile uint32_t j;
+
+    for (i = 0; i < ms; i++) {
+        for (j = 0; j < 8000; j++) {
+        }
+    }
+}
+
+/* 蓝 Pill 的 PC13 LED，低电平亮 */
+static void led_init(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+    GPIOC->CRH &= ~(0xFU << 20);        /* PC13 */
+    GPIOC->CRH |=  (0x2U << 20);        /* 2MHz 推挽输出 */
+    GPIOC->BSRR = (1U << 13);           /* 先灭 */
+}
+
+static void led_on(void)
+{
+    GPIOC->BRR = (1U << 13);
+}
+
+static void led_off(void)
+{
+    GPIOC->BSRR = (1U << 13);
+}
+
+int main(void)
+{
+    Stepper_Init();
+    led_init();
+
+    Stepper_Enable(AXIS_A, 1);
+    Stepper_Enable(AXIS_B, 1);
+
+    delay_ms(1000);
+
+    while (1) {
+        /* ---------- A 路：LED 亮 ---------- */
+        led_on();
+        Stepper_Move(AXIS_A, 200, 50);
+        while (Stepper_IsBusy(AXIS_A)) {
+        }
+        delay_ms(1000);
+
+        Stepper_Move(AXIS_A, -200, 50);
+        while (Stepper_IsBusy(AXIS_A)) {
+        }
+        delay_ms(1000);
+
+        /* ---------- B 路：LED 灭 ---------- */
+        led_off();
+        Stepper_Move(AXIS_B, 200, 50);
+        while (Stepper_IsBusy(AXIS_B)) {
+        }
+        delay_ms(1000);
+
+        Stepper_Move(AXIS_B, -200, 50);
+        while (Stepper_IsBusy(AXIS_B)) {
+        }
+        delay_ms(1000);
+    }
+}
