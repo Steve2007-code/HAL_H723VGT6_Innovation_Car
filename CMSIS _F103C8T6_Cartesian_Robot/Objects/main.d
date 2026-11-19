@@ -11,3 +11,6 @@
 .\objects\main.o: track_config.h
 .\objects\main.o: track.h
 .\objects\main.o: vision.h
+.\objects\main.o: link_config.h
+.\objects\main.o: mcu_link.h
+.\objects\main.o: yaw_track.h

@@ -12,6 +12,7 @@ DM_Motor_Data DM_Motor_4310_StructData;//4310参数定义结构体
 DM_Motor_Data DM_Motor_4310P_StructData;//4340参数定义结构体
 DM_Motor_Data DM_Motor_4310_Next_StructData;//4310next参数定义结构体
 DM_Motor_Data DM_Motor_4310P_Next_StructData;//4340next参数定义结构体
+DM_Motor_Data DM_Motor_4340P_Yaw_StructData;//4340Yaw轴参数定义结构体
 
 /*
   * @brief  DM电机结构体初始化
@@ -41,6 +42,7 @@ void DM_CAN_Motor_Init(void)
 	DM_Motor_4310_StructData.Velocity_min = -30;
 	
 	DM_Motor_4310_StructData.BackID = DM_Motor_4310_BackID;
+	
 	/*4310P数据初始化*/
 	DM_Motor_4310P_StructData.hcan = &hfdcan1;
 	DM_Motor_4310P_StructData.ID = DM_Motor_4310P_ID;
@@ -82,6 +84,7 @@ void DM_CAN_Motor_Init(void)
 	DM_Motor_4310_Next_StructData.Velocity_min = -30;
 	
 	DM_Motor_4310_Next_StructData.BackID = DM_Motor_4310_Next_BackID;
+	
 	/*4310P_Next数据初始化*/
 	DM_Motor_4310P_Next_StructData.hcan = &hfdcan1;
 	DM_Motor_4310P_Next_StructData.ID = DM_Motor_4310P_Next_ID;
@@ -102,6 +105,27 @@ void DM_CAN_Motor_Init(void)
 	DM_Motor_4310P_Next_StructData.Velocity_min = -30;
 	
 	DM_Motor_4310P_Next_StructData.BackID = DM_Motor_4310P_Next_BackID;
+	
+	/*4340Yaw轴数据初始化*/
+	DM_Motor_4340P_Yaw_StructData.hcan = &hfdcan1;
+	DM_Motor_4340P_Yaw_StructData.ID = DM_Motor_4340_Yaw_ID;
+	DM_Motor_4340P_Yaw_StructData.Kd = 2;
+	DM_Motor_4340P_Yaw_StructData.Kd_max = 5;
+	DM_Motor_4340P_Yaw_StructData.Kd_min = 0;
+	DM_Motor_4340P_Yaw_StructData.Kp = 20;
+	DM_Motor_4340P_Yaw_StructData.Kp_max = 500;
+	DM_Motor_4340P_Yaw_StructData.Kp_min = 0;
+	DM_Motor_4340P_Yaw_StructData.Position = 0;
+	DM_Motor_4340P_Yaw_StructData.Position_max = 12;
+	DM_Motor_4340P_Yaw_StructData.Position_min = -12;
+	DM_Motor_4340P_Yaw_StructData.Torque = 0;
+	DM_Motor_4340P_Yaw_StructData.Torque_max = 10;
+	DM_Motor_4340P_Yaw_StructData.Torque_min = -10;
+	DM_Motor_4340P_Yaw_StructData.Velocity = 0;
+	DM_Motor_4340P_Yaw_StructData.Velocity_max = 30;
+	DM_Motor_4340P_Yaw_StructData.Velocity_min = -30;
+	
+	DM_Motor_4340P_Yaw_StructData.BackID = DM_Motor_4340_Yaw_BackID;
 }
 
 /*
@@ -436,6 +460,10 @@ void Motor_UpdateData(uint8_t* pData, uint8_t Back_ID)
 		case DM_Motor_4310P_Next_BackID:
 			memcpy(DM_Motor_4310P_Next_StructData.UpData, pData, 8);
 			DM_IMU_Update4310P(&DM_Motor_4310P_Next_StructData);
+			break;
+		case DM_Motor_4340_Yaw_BackID:
+			memcpy(DM_Motor_4340P_Yaw_StructData.UpData, pData, 8);
+			DM_IMU_Update4310P(&DM_Motor_4340P_Yaw_StructData);
 			break;
 	}
 	//IMU回传数据解析分配函数

@@ -56,3 +56,4 @@ hal_h723vgt6_template\main.o: ./USER/inc/Chassis.h
 hal_h723vgt6_template\main.o: ./USER/inc/Attitude.h
 hal_h723vgt6_template\main.o: ./USER/inc/Nav.h
 hal_h723vgt6_template\main.o: ./USER/inc/Debug.h
+hal_h723vgt6_template\main.o: ./USER/inc/Link.h

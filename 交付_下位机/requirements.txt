@@ -1,0 +1,9 @@
+# ????????pip install -r requirements.txt
+# torch ????? CPU ??
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+numpy>=1.23
+opencv-python>=4.8
+ultralytics>=8.3
+torch>=2.0
+pyserial>=3.5

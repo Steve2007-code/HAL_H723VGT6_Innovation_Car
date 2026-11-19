@@ -1,4 +1,7 @@
 #include "UART_Data.h"
+#include "Link.h"
+
+uint8_t UART7_RX_Buf[1];
 
 /*串口发/接数据定义*/
 //volatile uint8_t UART1_TX_Buf[64];//发送缓冲区
@@ -26,6 +29,7 @@ uint8_t UART1_TX_Busy = 0;//串口1发送忙标志
 void UART_Init(void)
 {
 	HAL_UART_Receive_IT(&huart1, UART1_RX_Buf, 1);
+	HAL_UART_Receive_IT(&huart7, UART7_RX_Buf, 1);
 	//HAL_UART_Receive_IT(&huart6, UART6_RX_Buf, 1);
 }
 
@@ -77,6 +81,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
   */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+	if(huart->Instance == UART7)
+    {
+        Link_FeedByte(UART7_RX_Buf[0]);
+        HAL_UART_Receive_IT(&huart7, UART7_RX_Buf, 1);
+        return;
+    }
 	//串口1输入的数据存入接收缓存区
 //    if(huart->Instance == USART1)
 //    {
@@ -120,6 +130,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
+    if (huart->Instance == UART7)
+        HAL_UART_Receive_IT(&huart7, UART7_RX_Buf, 1);
 //    if (huart->Instance == USART6)
 //        HAL_UART_Receive_IT(&huart6, UART6_RX_Buf, 1);
     if (huart->Instance == USART1)

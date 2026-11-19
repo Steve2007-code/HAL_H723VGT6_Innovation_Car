@@ -16,4 +16,9 @@ void Track_Timer_Init(void);                  /* TIM3，10ms 中断只置标志 */
 void Track_Init(void);                        /* PID 与状态初始化 */
 void Track_Update(void);                      /* 主循环每 10ms 调一次 */
 
+/* 只读访问器：供 yaw 极角跟随取最近一帧误差 */
+int16_t Track_GetDx(void);
+int16_t Track_GetDy(void);
+uint8_t Track_GetValid(void);
+
 #endif

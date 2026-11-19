@@ -29,7 +29,7 @@
 /* 速度内部用 0.1 步/秒 为单位，避免整除误差 */
 #define SPEED_UNIT         10
 #define MIN_PPS            10u          /* 最低启动速度 10 步/秒 */
-#define MAX_PPS            4000u        /* 最高 4000 步/秒（12V 下别超过这个） */
+#define MAX_PPS            6000u        /* 最高 6000 步/秒 (4000->6000; 12V 下 6000 有丢步风险) */
 #define MIN_SPEED_U        ((int32_t)MIN_PPS * SPEED_UNIT)
 
 /* 脉冲累加器阈值：每 1/50kHz 加一次 speed，累加到该值就发一步 */

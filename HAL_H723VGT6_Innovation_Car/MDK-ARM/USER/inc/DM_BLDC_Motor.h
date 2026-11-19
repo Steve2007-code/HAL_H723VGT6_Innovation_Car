@@ -36,21 +36,24 @@ typedef struct
 	
 
 /*达妙电机结构体声明*/
-extern DM_Motor_Data DM_Motor_4310P_StructData;
-extern DM_Motor_Data DM_Motor_4310_StructData;
-extern DM_Motor_Data DM_Motor_4310_Next_StructData;//4310next参数定义结构体
-extern DM_Motor_Data DM_Motor_4310P_Next_StructData;//4340next参数定义结构体
+extern DM_Motor_Data DM_Motor_4310P_StructData;//速度模式
+extern DM_Motor_Data DM_Motor_4310_StructData;//速度模式
+extern DM_Motor_Data DM_Motor_4310_Next_StructData;//4310next参数定义结构体//速度模式
+extern DM_Motor_Data DM_Motor_4310P_Next_StructData;//4340next参数定义结构体//速度模式
+extern DM_Motor_Data DM_Motor_4340P_Yaw_StructData;//4340Yaw轴参数定义结构体//位置速度模式
 
 /*电机ID*/
 #define DM_Motor_4310P_Next_ID 0x01
 #define DM_Motor_4310P_ID 0x02
 #define DM_Motor_4310_ID 0x03
 #define DM_Motor_4310_Next_ID 0x04
+#define DM_Motor_4340_Yaw_ID 0x05
 /*电机回传ID*/
 #define DM_Motor_4310P_Next_BackID 0x11
 #define DM_Motor_4310P_BackID 0x12
 #define DM_Motor_4310_BackID 0x13
 #define DM_Motor_4310_Next_BackID 0x14
+#define DM_Motor_4340_Yaw_BackID 0x15
 
 /*CAN数据帧声明*/
 extern uint8_t DM_Mototr_Enable[8];
@@ -76,7 +79,7 @@ HAL_StatusTypeDef DM_CAN_Motor_Rotation_deg(DM_Motor_Data *ax, float Position);
 HAL_StatusTypeDef DM_CAN_Motor_Velocity_Rad(DM_Motor_Data *ax, float vel);
 /*CAN发送电机MIT(TIM报文)*/
 HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, float kp, float kd, float tor);
-/*位置速度模式控制电机*/
+/*位置速度模式控制电机(位置速度模式)*/
 HAL_StatusTypeDef DM_CAN_Motor_Position_Speed(DM_Motor_Data *ax, float vel, float pos);
 
 /*解收电机数据解析分配函数*/

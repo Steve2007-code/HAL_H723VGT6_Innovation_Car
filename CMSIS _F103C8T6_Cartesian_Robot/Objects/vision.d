@@ -11,3 +11,4 @@
 .\objects\vision.o: track.h
 .\objects\vision.o: track_config.h
 .\objects\vision.o: stepper.h
+.\objects\vision.o: frame.h

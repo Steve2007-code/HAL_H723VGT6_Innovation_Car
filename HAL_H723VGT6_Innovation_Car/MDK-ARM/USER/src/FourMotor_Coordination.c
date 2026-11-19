@@ -21,9 +21,12 @@
 //              0x01                           0x02              
 //      DM_Motor_4310P_Next_ID           DM_Motor_4310P_ID                                      
 //  DM_Motor_4310P_Next_StructData    DM_Motor_4310P_StructData  
-
-
-
+//
+//
+// 					yaw轴左边中间
+//			DM_Motor_4340_Yaw_ID
+//	DM_Motor_4340P_Yaw_StructData
+//
 //              左后                           右后              
 //              0x03                           0x04             
 //        DM_Motor_4310_ID              DM_Motor_4310_Next_ID  

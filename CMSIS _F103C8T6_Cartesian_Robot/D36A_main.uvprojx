@@ -409,6 +409,21 @@
               <FileType>1</FileType>
               <FilePath>.\track.c</FilePath>
             </File>
+            <File>
+              <FileName>frame.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\frame.c</FilePath>
+            </File>
+            <File>
+              <FileName>mcu_link.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\mcu_link.c</FilePath>
+            </File>
+            <File>
+              <FileName>yaw_track.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\yaw_track.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -438,6 +453,26 @@
               <FileName>track.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\track.h</FilePath>
+            </File>
+            <File>
+              <FileName>frame.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\frame.h</FilePath>
+            </File>
+            <File>
+              <FileName>mcu_link.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\mcu_link.h</FilePath>
+            </File>
+            <File>
+              <FileName>link_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\link_config.h</FilePath>
+            </File>
+            <File>
+              <FileName>yaw_track.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\yaw_track.h</FilePath>
             </File>
           </Files>
         </Group>

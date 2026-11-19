@@ -34,6 +34,7 @@
 #include "Attitude.h"
 #include "Nav.h"
 #include "Debug.h"
+#include "Link.h"
 
 /* USER CODE END Includes */
 
@@ -62,7 +63,9 @@ DMA_HandleTypeDef hdma_spi6_tx;
 
 TIM_HandleTypeDef htim4;
 
+UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_uart7_rx;
 DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
@@ -80,6 +83,7 @@ static void MX_FDCAN1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_FDCAN3_Init(void);
+static void MX_UART7_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -129,6 +133,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
   MX_FDCAN3_Init();
+  MX_UART7_Init();
   /* USER CODE BEGIN 2 */
 	//电机初始化
 	DM_CAN_Motor_Init();
@@ -155,24 +160,30 @@ int main(void)
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Disable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Disable);
+	DM_CAN_Motor_SetEnable(DM_Motor_4340_Yaw_ID,DM_Mototr_Disable);
 	HAL_Delay(1000);
 	//电机使能
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310P_Next_ID,DM_Mototr_Enable);
 	DM_CAN_Motor_SetEnable(DM_Motor_4310_Next_ID,DM_Mototr_Enable);
+	/* 4340 yaw 改由板间 <<E,1>> 使能, 上电保持失能 (Link.c) */
 
 	//位姿置到下方启停区中心 (row45,col45), 上电时车头须朝地图上方(+y)
 	Nav_ResetPose(45, 45);
 
+	/* 板间链路放到所有阻塞初始化之后: 避免上电 1.4s 内 UART7 环形缓冲被 Y 帧冲爆 */
+	Link_Init();
+
 	printf("\r\n# 工创小车底盘就绪, 输入 ? 看命令\r\n");
-	/* USER CODE END 2 */
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1)
 	{
 		Debug_Task();
+		Link_Poll();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -450,6 +461,54 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief UART7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_UART7_Init(void)
+{
+
+  /* USER CODE BEGIN UART7_Init 0 */
+
+  /* USER CODE END UART7_Init 0 */
+
+  /* USER CODE BEGIN UART7_Init 1 */
+
+  /* USER CODE END UART7_Init 1 */
+  huart7.Instance = UART7;
+  huart7.Init.BaudRate = 115200;
+  huart7.Init.WordLength = UART_WORDLENGTH_8B;
+  huart7.Init.StopBits = UART_STOPBITS_1;
+  huart7.Init.Parity = UART_PARITY_NONE;
+  huart7.Init.Mode = UART_MODE_TX_RX;
+  huart7.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart7.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart7.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart7.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart7.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart7, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart7, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN UART7_Init 2 */
+
+  /* USER CODE END UART7_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -526,6 +585,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 
 }
 
@@ -545,6 +607,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */

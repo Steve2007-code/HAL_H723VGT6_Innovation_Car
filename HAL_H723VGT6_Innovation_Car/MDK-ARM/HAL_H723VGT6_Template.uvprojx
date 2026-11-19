@@ -864,6 +864,11 @@
               <FileType>5</FileType>
               <FilePath>.\USER\inc\Debug.h</FilePath>
             </File>
+            <File>
+              <FileName>Link.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\USER\inc\Link.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -933,6 +938,11 @@
               <FileName>Debug.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\src\Debug.c</FilePath>
+            </File>
+            <File>
+              <FileName>Link.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\src\Link.c</FilePath>
             </File>
           </Files>
         </Group>

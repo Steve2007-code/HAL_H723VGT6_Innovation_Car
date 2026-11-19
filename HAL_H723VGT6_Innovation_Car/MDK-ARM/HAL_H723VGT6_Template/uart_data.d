@@ -45,3 +45,4 @@ hal_h723vgt6_template\uart_data.o: ./USER/inc/2812LED.h
 hal_h723vgt6_template\uart_data.o: ./USER/inc/DMA.h
 hal_h723vgt6_template\uart_data.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 hal_h723vgt6_template\uart_data.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+hal_h723vgt6_template\uart_data.o: ./USER/inc/Link.h

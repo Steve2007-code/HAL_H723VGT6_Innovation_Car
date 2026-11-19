@@ -1,0 +1,94 @@
+#ifndef __DM_BLDC_Motor_H__
+#define __DM_BLDC_Motor_H__
+
+#include "main.h"
+
+/*达妙电机MIT模式下的参数*/
+typedef struct
+	{
+		FDCAN_HandleTypeDef *hcan;       /*电机所接的CAN线*/
+		uint16_t ID;										/*电机ID*/
+		float Position;									/*电机位置*/
+		float Position_max;							/*电机位置_max*/
+		float Position_min;							/*电机位置_min*/
+		float Velocity;									/*电机转速*/
+		float Velocity_max;							/*电机转速_max*/
+		float Velocity_min;							/*电机转速_min*/
+		float Kp;												/*Kp*/
+		float Kp_max;										/*Kp_max*/
+		float Kp_min;										/*Kp_min*/
+		float Kd;												/*Kd*/
+		float Kd_max;										/*Kd_max*/
+		float Kd_min;										/*Kd_min*/
+		float Torque;										/*转矩*/
+		float Torque_max;								/*转矩_max*/
+		float Torque_min;								/*转矩_min*/
+		
+		uint8_t UpData[8];							/*电机回传数据原始数据*/
+		uint8_t BackID;									/*电机回传帧头ID*/
+		uint8_t ID_or_ERR;							/*电机回传第一位ID or 错误数据*/
+		float POS;											/*电机位置信息*/
+		float VEL;											/*电机速度信息*/
+		float T;												/*电机扭矩信息*/
+		float T_MOS;										/*MOS温度*/
+		float TRotorl;									/*线圈温度*/
+	}DM_Motor_Data;
+	
+
+/*达妙电机结构体声明*/
+extern DM_Motor_Data DM_Motor_4310P_StructData;//速度模式
+extern DM_Motor_Data DM_Motor_4310_StructData;//速度模式
+extern DM_Motor_Data DM_Motor_4310_Next_StructData;//4310next参数定义结构体//速度模式
+extern DM_Motor_Data DM_Motor_4310P_Next_StructData;//4340next参数定义结构体//速度模式
+extern DM_Motor_Data DM_Motor_4340P_Yaw_StructData;//4340Yaw轴参数定义结构体//位置速度模式
+
+/*电机ID*/
+#define DM_Motor_4310P_Next_ID 0x01
+#define DM_Motor_4310P_ID 0x02
+#define DM_Motor_4310_ID 0x03
+#define DM_Motor_4310_Next_ID 0x04
+#define DM_Motor_4340_Yaw_ID 0x05
+/*电机回传ID*/
+#define DM_Motor_4310P_Next_BackID 0x11
+#define DM_Motor_4310P_BackID 0x12
+#define DM_Motor_4310_BackID 0x13
+#define DM_Motor_4310_Next_BackID 0x14
+#define DM_Motor_4340_Yaw_BackID 0x15
+
+/*CAN数据帧声明*/
+extern uint8_t DM_Mototr_Enable[8];
+extern uint8_t DM_Mototr_Disable[8];
+
+/*常量定义*/
+#ifndef PI
+#define PI 3.141592653579f
+#endif
+
+/*函数声明*/
+/*DM电机初始化*/
+void DM_CAN_Motor_Init(void);
+/*CAN发送一帧数据给电机*/
+HAL_StatusTypeDef DM_CAN_Motor_Send_Data(FDCAN_HandleTypeDef *hcan, uint16_t id, uint8_t *data, uint8_t len);
+/*CAM发送电机使/失能*/
+HAL_StatusTypeDef DM_CAN_Motor_SetEnable(uint16_t id, uint8_t *data);
+/*CAN发送电机旋转数据帧(弧度制)(定位置控制)(TIM报文)*/
+HAL_StatusTypeDef DM_CAN_Motor_Rotation_Rad(DM_Motor_Data *ax, float Position);
+/*CAN发送电机旋转数据帧(角度制)(定位置控制)(TIM报文)*/
+HAL_StatusTypeDef DM_CAN_Motor_Rotation_deg(DM_Motor_Data *ax, float Position);
+/*CAN发送电机旋转数据帧(CAN发送电机旋转数据帧(弧度制)(定速度控制)(速度模式报文)*/
+HAL_StatusTypeDef DM_CAN_Motor_Velocity_Rad(DM_Motor_Data *ax, float vel);
+/*CAN发送电机MIT(TIM报文)*/
+HAL_StatusTypeDef DM_CAN_Motor_MIT(DM_Motor_Data *ax, float vel, float pos, float kp, float kd, float tor);
+/*位置速度模式控制电机(位置速度模式)*/
+HAL_StatusTypeDef DM_CAN_Motor_Position_Speed(DM_Motor_Data *ax, float vel, float pos);
+
+/*解收电机数据解析分配函数*/
+void Motor_UpdateData(uint8_t* pData, uint8_t Back_ID);
+/*输出电机数据*/
+void Motor_Printf_UpdateData(DM_Motor_Data* pData);
+/*printf输出4电机数据*/
+void Motor_Printf_Dour_UpdateData(void);
+/*电机回传一键测试函数*/
+void Motor_BackerData_Text(void);
+
+#endif

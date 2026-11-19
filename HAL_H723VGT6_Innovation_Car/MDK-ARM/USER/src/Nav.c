@@ -250,16 +250,17 @@ void Nav_Update(void)
         return;
     }
 
-    /* ---- 航向环: 目标 = 当前段方向 ---- */
-    yaw_err = Attitude_WrapPi(s_yaw_t - g_pose.yaw);
-    wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
-
+    /* ---- 非运行态(IDLE/DONE/FAIL): 一律硬停, 不做航向保持 ----
+       否则 s_yaw_t 保留上一段航向 + IMU 零偏漂移 -> 持续输出 wz -> 车原地自转 */
     if (g_nav_state != NAV_RUN || s_wpn == 0)
     {
-        if (fabsf(yaw_err) < 0.035f) wz = 0.0f;     /* 静止 2 度死区, 防蠕动 */
-        Chassis_SetBodyVel(0.0f, 0.0f, wz);
+        Chassis_Hold();
         return;
     }
+
+    /* ---- 航向环: 目标 = 当前段方向 (仅运行段工作) ---- */
+    yaw_err = Attitude_WrapPi(s_yaw_t - g_pose.yaw);
+    wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
 
     /* ---- 拐点: 段航向未对准先原地转向, 不平移 ---- */
     if (fabsf(yaw_err) > NAV_TURN_GATE)

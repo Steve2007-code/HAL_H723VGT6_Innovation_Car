@@ -1,6 +1,9 @@
 /******************************************************************************
  * track.c  --  跟随调度：取最新帧 -> 低通 -> PID -> 连续速度指令
  *
+ * A 轴跟随 dy（y 像素误差）：前后伸缩把目标拉到画面水平中线；
+ * dx 只提供给 yaw_track.c 做 yaw 闭环（两轴解耦，互不干扰）。
+ *
  * 全程非阻塞：串口收字节在 USART1 中断，发脉冲在 TIM2 中断，
  * 这里只在主循环里被 10ms 标志触发，不做任何忙等。
  ******************************************************************************/
@@ -17,8 +20,9 @@ volatile uint8_t  g_track_valid;
 
 static PID_t   s_pid;
 static int16_t s_dx;
+static int16_t s_dy;
 static uint8_t s_valid;
-static float   s_dx_f;
+static float   s_dy_f;
 
 void Track_Timer_Init(void)
 {
@@ -53,8 +57,9 @@ void Track_Init(void)
     s_pid.integ_max = TRACK_INTEG_MAX;
 
     s_dx     = 0;
+    s_dy     = 0;
     s_valid  = 0;
-    s_dx_f   = 0.0f;
+    s_dy_f   = 0.0f;
     g_last_frame_ms = 0;
     g_track_valid   = 0;
 }
@@ -67,13 +72,14 @@ void Track_Update(void)
     /* 把缓冲里所有帧读完，取最后一帧（最新值） */
     while (Vision_Poll(&f)) {
         s_dx    = f.dx;
+        s_dy    = f.dy;
         s_valid = f.valid;
     }
 
     /* 丢失目标：9999 哨兵或通信超时 */
     if (!s_valid || Vision_AgeMs() > TRACK_TIMEOUT_MS) {
         PID_Reset(&s_pid);
-        s_dx_f = 0.0f;
+        s_dy_f = 0.0f;
         g_track_valid = 0;
         Stepper_SetVel(TRACK_AXIS, 0);     /* 平滑减速停住，不硬停 */
         return;
@@ -81,9 +87,27 @@ void Track_Update(void)
 
     g_track_valid = 1;
 
-    /* 一阶低通抑制像素抖动 */
-    s_dx_f += TRACK_LPF_ALPHA * ((float)s_dx - s_dx_f);
+    /* 一阶低通抑制像素抖动 (A 轴跟 dy) */
+    s_dy_f += TRACK_LPF_ALPHA * ((float)s_dy - s_dy_f);
 
-    v = PID_Calc(&s_pid, (int16_t)s_dx_f, (float)TRACK_PERIOD_MS / 1000.0f);
+    v = PID_Calc(&s_pid, (int16_t)s_dy_f, (float)TRACK_PERIOD_MS / 1000.0f);
+
+    /* 小误差保底速度: 纯比例项在误差很小时输出接近于 0, 表现为蹭着走很慢。
+       死区外强制至少 TRACK_MIN_PPS, 由速度斜坡平滑加速, 不会突变。 */
+    if (v > 0 && v <  TRACK_MIN_PPS) v =  TRACK_MIN_PPS;
+    if (v < 0 && v > -TRACK_MIN_PPS) v = -TRACK_MIN_PPS;
+
     Stepper_SetVel(TRACK_AXIS, (int32_t)TRACK_SIGN * v);
+}
+
+/* ---------- 只读访问器：供 yaw 跟随取最近一帧误差 ---------- */
+int16_t Track_GetDx(void) { return s_dx; }
+int16_t Track_GetDy(void) { return s_dy; }
+
+/* 与 Track_Update 的丢失判定保持一致：帧有效且未超时 */
+uint8_t Track_GetValid(void)
+{
+    if (!s_valid) return 0;
+    if (Vision_AgeMs() > TRACK_TIMEOUT_MS) return 0;
+    return 1;
 }

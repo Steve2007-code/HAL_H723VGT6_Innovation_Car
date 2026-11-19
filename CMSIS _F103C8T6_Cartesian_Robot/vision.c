@@ -1,29 +1,28 @@
 /******************************************************************************
- * vision.c  --  USART1 接收 + 帧解析状态机，全程非阻塞
+ * vision.c  --  USART1 摄像头帧接收，全程非阻塞
  *
- * 中断只负责把字节塞进环形缓冲，主循环调用 Vision_Poll() 取帧。
+ * 成帧交给通用 frame.c 的 s_cam 实例；本文件只负责 <<X,dx,Y,dy>> 四字段解析。
+ * 板间链路用另一个 FrameRx_t 实例（mcu_link.c 的 s_link），两者互不串帧。
+ * 中断只负责把字节喂进实例，主循环调用 Vision_Poll() 取帧。
  * 半包、粘包、非法字符、超长帧都能自动恢复。
  ******************************************************************************/
 #include "vision.h"
 #include "track.h"
 #include "track_config.h"
+#include "frame.h"
 
-#define RX_SZ    128         /* 必须是 2 的幂 */
-#define BODY_SZ  24
+#define BODY_SZ  FR_BODY_SZ
 
-static volatile uint8_t  rx[RX_SZ];
-static volatile uint16_t wr;
-static uint16_t          rd;
+static FrameRx_t s_cam;         /* 只此一路：USART1 摄像头 */
 
 /* 时基由 track.c 提供 */
 extern volatile uint32_t g_ms;
 extern volatile uint32_t g_last_frame_ms;
 
-static uint8_t has_byte(void) { return (uint16_t)(wr - rd) != 0; }
-static uint8_t get_byte(void) { return rx[rd++ & (RX_SZ - 1U)]; }
-
 void Vision_Init(uint32_t baud)
 {
+    Frame_Init(&s_cam);
+
     /* PA9 = USART1_TX 复用推挽 50MHz，PA10 = USART1_RX 浮空输入 */
     RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_USART1EN;
 
@@ -43,88 +42,33 @@ void USART1_IRQHandler(void)
 {
     if (USART1->SR & (1U << 5)) {       /* RXNE */
         uint8_t c = (uint8_t)(USART1->DR & 0xFFU);
-        rx[wr++ & (RX_SZ - 1U)] = c;
+        Frame_FeedByte(&s_cam, c);
     }
 }
 
-/* 解析有符号十进制整数，成功返回 1 并推进指针 */
-static uint8_t parse_i(const char **pp, int32_t *v)
-{
-    const char *p = *pp;
-    int32_t s = 1, n = 0;
-    uint8_t got = 0;
-
-    if (*p == '-') { s = -1; p++; }
-    else if (*p == '+') p++;
-
-    while (*p >= '0' && *p <= '9') {
-        n = n * 10 + (*p - '0');
-        p++;
-        got = 1;
-    }
-    if (!got) return 0;
-
-    *v = s * n;
-    *pp = p;
-    return 1;
-}
-
+/* 跳过所有非法帧，返回第一帧有效的 <<X,dx,Y,dy>>；没凑齐整帧也立刻返回 0 */
 uint8_t Vision_Poll(VisionFrame_t *f)
 {
-    static uint8_t st = 0;             /* 0=等< 1=等第二个< 2=收数据 3=等> */
-    static char body[BODY_SZ];
-    static uint8_t n;
+    char body[BODY_SZ];
 
-    while (has_byte()) {
-        uint8_t c = get_byte();
+    while (Frame_Poll(&s_cam, body, BODY_SZ)) {
+        const char *p = body;
+        int32_t vx, vy;
 
-        switch (st) {
-        case 0:
-            if (c == '<') st = 1;
-            break;
+        if (p[0] != 'X' || p[1] != ',') continue;
+        p += 2;
+        if (!parse_i(&p, &vx)) continue;
+        if (*p++ != ',' || *p++ != 'Y' || *p++ != ',') continue;
+        if (!parse_i(&p, &vy) || *p != 0) continue;
 
-        case 1:
-            st = (c == '<') ? 2 : 0;
-            n = 0;
-            break;
-
-        case 2:
-            if (c == '>') {
-                st = 3;
-                body[n] = 0;
-            } else if (c == '<' && n == 0) {
-                /* 多余包头（例如 <<<），忽略后继续等数据，增强容错 */
-            } else if (n < BODY_SZ - 1U) {
-                body[n++] = (char)c;
-            } else {
-                st = 0;                 /* 超长，丢帧 */
-                n = 0;
-            }
-            break;
-
-        case 3:
-            st = (c == '<') ? 1 : 0;   /* 粘包时下一个包头不丢 */
-            if (c != '>') break;
-            {
-                const char *p = body;
-                int32_t vx, vy;
-
-                if (p[0] != 'X' || p[1] != ',') break;
-                p += 2;
-                if (!parse_i(&p, &vx)) break;
-                if (*p++ != ',' || *p++ != 'Y' || *p++ != ',') break;
-                if (!parse_i(&p, &vy) || *p != 0) break;
-
-                f->dx = (int16_t)vx;
-                f->dy = (int16_t)vy;
-                f->valid = (vx != LOST_SENTINEL && vy != LOST_SENTINEL);
-                f->stamp_ms = g_ms;
-                g_last_frame_ms = g_ms;
-                return 1;
-            }
-        }
+        f->dx = (int16_t)vx;
+        f->dy = (int16_t)vy;
+        f->valid = (vx != LOST_SENTINEL && vy != LOST_SENTINEL);
+        f->stamp_ms = g_ms;
+        g_last_frame_ms = g_ms;
+        return 1;
     }
-    return 0;                           /* 没凑齐整帧也立刻返回 */
+    return 0;
 }
 
 uint32_t Vision_AgeMs(void)

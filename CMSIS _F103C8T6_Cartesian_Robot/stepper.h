@@ -8,8 +8,8 @@
 #define AXIS_B   1u
 
 /* ---------- 软件限位（单位：微步，闭区间） ---------- */
-#define AXIS_A_POS_MIN    0
-#define AXIS_A_POS_MAX    5000
+#define AXIS_A_POS_MIN    0         /* A 轴上电在行程 0 位 */
+#define AXIS_A_POS_MAX    6000      /* 行程 0~6000 步 */
 #define AXIS_B_POS_MIN    0
 #define AXIS_B_POS_MAX    20000
 
