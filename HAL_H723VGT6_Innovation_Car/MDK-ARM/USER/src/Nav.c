@@ -26,6 +26,9 @@ static uint8_t s_dock_on  = 0;
 
 /* 强制横移: 1 = 本段锁定车头, 只平移不转向 */
 uint8_t g_force_strafe = 0;
+static float   s_goal_x = 0.0f, s_goal_y = 0.0f;   /* <<p>> 的精确终点 */
+static uint8_t s_goal_exact = 0;
+volatile uint8_t g_nav_fail_why = 0;   /* 1=IMU失效 2=转向超时 3=规划失败 4=不可规划 */
 /* 内置路线状态 */
 static uint8_t s_route_on = 0;
 static uint8_t s_route_i  = 0;
@@ -279,6 +282,7 @@ void Nav_Update(void)
     if (g_imu_dead && (g_nav_state == NAV_RUN || g_nav_state == NAV_ALIGN))
     {
         Chassis_Hold();
+        g_nav_fail_why = 1;
         g_nav_state = NAV_FAIL;
         s_turn_ms = 0;
         return;
@@ -303,6 +307,7 @@ void Nav_Update(void)
         {
             s_turn_ms = 0;
             Chassis_Hold();
+            g_nav_fail_why = 2;
             g_nav_state = NAV_FAIL;
             return;
         }
@@ -335,6 +340,7 @@ void Nav_Update(void)
         {
             s_turn_ms = 0;
             Chassis_Hold();
+            g_nav_fail_why = 2;
             g_nav_state = NAV_FAIL;
             return;
         }
@@ -412,8 +418,28 @@ static void s_commit(void)
     g_nav_wp_index = 0;
     s_seg_x0 = g_pose.x;
     s_seg_y0 = g_pose.y;
-    s_yaw_t = g_force_strafe ? g_pose.yaw
-                              : s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[0], s_wpy[0]);
+
+    /* 若首个航点就在脚下(<=40mm), 跳过它, 改用第二点的方向定航向.
+       否则 s_yaw_t 会指成'到格心'的斜角, 车先原地乱转一大圈才开始走. */
+    if (s_wpn >= 2)
+    {
+        float d0x = s_wpx[0] - g_pose.x;
+        float d0y = s_wpy[0] - g_pose.y;
+        if (d0x * d0x + d0y * d0y < 1600.0f)
+        {
+            s_wpi = 1;
+            g_nav_wp_index = 1;
+            s_seg_x0 = s_wpx[0];
+            s_seg_y0 = s_wpy[0];
+        }
+    }
+
+    if (g_force_strafe)
+        s_yaw_t = g_pose.yaw;
+    else if (s_wpi == 1)
+        s_yaw_t = s_seg_yaw(s_wpx[0], s_wpy[0], s_wpx[1], s_wpy[1]);
+    else
+        s_yaw_t = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[0], s_wpy[0]);
     g_nav_state = NAV_RUN;
     __enable_irq();
 
@@ -438,6 +464,27 @@ static void s_commit(void)
  *  拐角优先延续当前车头方向, 并合并共线航点.
  *  结果: 所有航段都平行于地图轴, 拐点全是 90 度
  *-----------------------------------------------------------------*/
+/* 去掉与前一点距离 < minmm 的中间点(首尾保留) */
+static void s_drop_short(float minmm)
+{
+    uint8_t i, m = 1;
+    float lx = s_tx[0], ly = s_ty[0];
+    float lim = minmm * minmm;
+
+    for (i = 1; i < s_tn; i++)
+    {
+        float dx = s_tx[i] - lx, dy = s_ty[i] - ly;
+        if ((i == s_tn - 1) || (dx * dx + dy * dy) > lim)
+        {
+            s_tx[m] = s_tx[i];
+            s_ty[m] = s_ty[i];
+            lx = s_tx[i];  ly = s_ty[i];
+            m++;
+        }
+    }
+    s_tn = m;
+}
+
 static void s_emit(uint8_t *m, float x, float y)
 {
     if (*m >= NAV_WP_MAX) return;               /* 容量保护 */
@@ -539,9 +586,19 @@ static void s_build_from_cells(int n)
         s_px[i] = (int16_t)x;
         s_py[i] = (int16_t)y;
     }
-    /* 起点 */
-    s_tx[0] = (float)s_px[0];
-    s_ty[0] = (float)s_py[0];
+    /* 精确终点: 用 <<p>> 请求的 mm 取代最后一个格心(仍在同一格内),
+       让后面的视线简化与正交化自然折 L, 不会事后多插一段倒退小段. */
+    if (s_goal_exact && n > 1)
+    {
+        s_px[n - 1] = (int16_t)s_goal_x;
+        s_py[n - 1] = (int16_t)s_goal_y;
+    }
+    /* 起点: 用车的真实位姿, 不用格心.
+       用格心会凭空多出一段'先走到格心'的斜线, 初始航向被算成斜角 -> 原地乱转. */
+    s_px[0] = (int16_t)g_pose.x;
+    s_py[0] = (int16_t)g_pose.y;
+    s_tx[0] = g_pose.x;
+    s_ty[0] = g_pose.y;
     s_tn = 1;
     i = 0;
     while (i < n - 1)
@@ -559,27 +616,28 @@ static void s_build_from_cells(int n)
     }
 
     s_ortho();                          /* 斜线折 L, 全段正交化 */
+    s_drop_short(25.0f);                /* 合并 <25mm 的碎腿(精确终点常见), 避免多余的 90 度转向 */
 }
 
 /**
   * @brief  规划到指定格子
   * @retval 1 成功  0 失败
   */
-uint8_t Nav_PlanToCell(uint8_t row, uint8_t col)
+static uint8_t s_plan_cells(uint8_t row, uint8_t col)
 {
     int sr, sc, gr, gc, n;
 
     s_xy_to_cell(g_pose.x, g_pose.y, &sr, &sc);
-    if (!s_find_free(&sr, &sc)) { g_nav_state = NAV_FAIL; return 0; }
+    if (!s_find_free(&sr, &sc)) { g_nav_fail_why = 4; g_nav_state = NAV_FAIL; return 0; }
 
     gr = row;  gc = col;
-    if (!s_find_free(&gr, &gc)) { g_nav_state = NAV_FAIL; return 0; }
+    if (!s_find_free(&gr, &gc)) { g_nav_fail_why = 4; g_nav_state = NAV_FAIL; return 0; }
 
     n = AStar_Search(sr, sc, gr, gc, s_cells, MAP_CELLS);
-    if (n <= 0) { g_nav_state = NAV_FAIL; return 0; }
+    if (n <= 0) { g_nav_fail_why = 3; g_nav_state = NAV_FAIL; return 0; }
 
     s_build_from_cells(n);
-    if (s_tn == 0) { g_nav_state = NAV_FAIL; return 0; }
+    if (s_tn == 0) { g_nav_fail_why = 3; g_nav_state = NAV_FAIL; return 0; }
     if (s_tn == 1)                       /* 已经在该格 */
     {
         g_nav_state = NAV_DONE;
@@ -587,6 +645,12 @@ uint8_t Nav_PlanToCell(uint8_t row, uint8_t col)
     }
     s_commit();
     return 1;
+}
+
+uint8_t Nav_PlanToCell(uint8_t row, uint8_t col)
+{
+    s_goal_exact = 0;                 /* 按格心规划 */
+    return s_plan_cells(row, col);
 }
 
 /**
@@ -647,6 +711,7 @@ uint8_t Nav_DockCell(uint8_t kind, uint8_t idx, uint8_t *row, uint8_t *col)
 uint8_t Nav_PlanToMm(float x_mm, float y_mm)
 {
     int r, c;
+    uint8_t ok;
     float lim = (float)MAP_N * MAP_CELL_MM;
 
     if (x_mm < 0.0f)      x_mm = 0.0f;
@@ -655,38 +720,17 @@ uint8_t Nav_PlanToMm(float x_mm, float y_mm)
     if (y_mm > lim)       y_mm = lim;
 
     s_xy_to_cell(x_mm, y_mm, &r, &c);
-    if (!Nav_PlanToCell((uint8_t)r, (uint8_t)c)) return 0;
-
-    /* 精确点替换最后一个航点; 若因此变成斜段, 补一个 L 拐角 */
-    __disable_irq();
-    if (s_wpn > 0)
-    {
-        uint8_t last = (uint8_t)(s_wpn - 1);
-        s_wpx[last] = x_mm;
-        s_wpy[last] = y_mm;
-
-        if (s_wpn >= 2)
-        {
-            float x0 = s_wpx[s_wpn - 2], y0 = s_wpy[s_wpn - 2];
-            float ax = x_mm - x0, ay = y_mm - y0;
-            if (fabsf(ax) > 0.5f && fabsf(ay) > 0.5f && s_wpn < NAV_WP_MAX)
-            {
-                float c1x = x0,   c1y = y_mm;   /* 先竖后横 */
-                float c2x = x_mm, c2y = y0;     /* 先横后竖 */
-                float cx, cy;
-                if (s_los(x0, y0, c1x, c1y)) { cx = c1x;  cy = c1y; }
-                else                         { cx = c2x;  cy = c2y; }
-                s_wpx[s_wpn] = x_mm;
-                s_wpy[s_wpn] = y_mm;
-                s_wpx[last]  = cx;
-                s_wpy[last]  = cy;
-                s_wpn++;
-                g_nav_wp_total = s_wpn;
-            }
-        }
-    }
-    __enable_irq();
-    return 1;
+    /* 精确终点: 先把目标 mm 交给 s_build_from_cells, 让它参与正交化.
+       早先的做法是规划完再把最后一个航点改成 mm 并补一个 L 拐角,
+       若精确点在来向后方, 这个 L 会造出 20mm 的倒退段 ->
+       车到点后先原地掉头 180 度再走, 看起来就是「乱转」. */
+    s_goal_x = x_mm;
+    s_goal_y = y_mm;
+    s_goal_exact = 1;
+    ok = s_plan_cells((uint8_t)r, (uint8_t)c);
+    s_goal_exact = 0;
+    if (ok) g_nav_fail_why = 0;
+    return ok;
 }
 
 uint8_t Nav_PlanToZone(uint8_t kind, uint8_t idx)
@@ -717,21 +761,21 @@ void Nav_PrintInfo(void)
  *  路线来源: 工创地图\路线规划器.html 导出后人工确认
  *    - 每点是一段独立 A* 规划的目标
  *    - strafe=1 表示该段锁定车头纯平移(横移), 不转向
- *    - 已校验: 16 段全部可规划, 转弯处离障碍最小余量 106mm
+ *    - 已校验: 15 段全部可规划; 转向点最小余量 56mm (不再走中间走廊里掉头)
  *=================================================================*/
-#define NAV_ROUTE_N   16
+#define NAV_ROUTE_N   15
 
 static const float s_route_x[NAV_ROUTE_N] = {
-    2175, 2175, 2175, 1225, 1225,  275,  275,  275,
-    1225, 1225,  275,  275, 1175, 2175, 2175, 2275
+    2195, 2195, 2195, 1205, 1205,  305,  305,  305,
+    1215, 1215,  305,  315, 2195, 2205, 2255
 };
 static const float s_route_y[NAV_ROUTE_N] = {
-     175, 1225, 2225, 2225,  225,  225, 1225, 2175,
-    2175,  275,  275, 1175, 1175, 1175,  425,  175
+     705, 1195, 2155, 2155,  285,  295, 1185, 2155,
+    2155,  275,  275, 1185, 1205,  705,  145
 };
 /* 1 = 横移(锁车头), 0 = 车头跟随行进方向 */
 static const uint8_t s_route_s[NAV_ROUTE_N] = {
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+       0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0
 };
 
 void Nav_RouteStart(uint8_t on)
@@ -771,7 +815,7 @@ void Nav_RoutePoll(void)
         s_route_on = 0;
         s_route_settle_ms = 0;
         g_force_strafe = 0;
-        printf("# route FAIL at %d\r\n", s_route_i + 1);
+        printf("# route FAIL at %d  why=%d\r\n", s_route_i + 1, g_nav_fail_why);
         return;
     }
     if (g_nav_state != NAV_DONE)
