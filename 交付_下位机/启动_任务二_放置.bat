@@ -7,6 +7,8 @@ set "PY=D:\programming\python\python.exe"
 set "COM_PORT=COM12"
 set "BAUD=115200"
 set "CAM=1"
+rem 640x480 -> 30fps ; 1280x720 -> only 10fps (usb2 bandwidth limit)
+set "RES=640x480"
 rem ========================
 
 cd /d "%~dp0"
@@ -42,7 +44,7 @@ echo   COM  = %COM_PORT%  @ %BAUD%
 echo   CAM  = %CAM%
 echo.
 
-"%PY%" zones_yolo.py --weights dial_v3.pt --cam %CAM% --link serial --com %COM_PORT% --baud %BAUD%
+"%PY%" zones_yolo.py --weights dial_v3.pt --cam %CAM% --res %RES% --link serial --com %COM_PORT% --baud %BAUD%
 
 echo.
 echo [exited] code %errorlevel%

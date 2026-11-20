@@ -190,7 +190,9 @@ def main():
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--out", default="live_shot.jpg")
-    ap.add_argument("--tol", type=float, default=20.0, help="顶心与画面中心相差多少像素内算重合")
+    ap.add_argument("--tol", type=float, default=20.0, help="顶心与目标点相差多少像素内算重合")
+    ap.add_argument("--target-up", type=float, default=100.0,
+                    help="目标点相对画面中心上移多少像素（屏上红叉；偏差与对准都以它为基准）")
     ap.add_argument("--lock-frames", type=int, default=3, help="连续几帧重合才发信号")
     ap.add_argument("--motion-tol", type=float, default=8.0,
                     help="帧间位移小于此像素算静止；分辨率减半时应同步减半")
@@ -337,6 +339,7 @@ def main():
     else:
         print(f"信号通道：{lk.describe()}   模板 {args.msg!r}")
     print(f"容差 {args.tol:.0f}px   连 {args.lock_frames} 帧才发")
+    print(f"目标点 = 画面中心上移 {args.target_up:.0f}px（屏上红叉），偏差与对准均以它为准")
 
     # ---- 屏上显示真正发出去的原始报文（最近 4 帧 + 实际发送速率）
     tx_hist = []
@@ -383,6 +386,8 @@ def main():
 
         # ---------------- 顶心与画面中心的重合判定 → 发信号
         cx0, cy0 = vis.shape[1] / 2.0, vis.shape[0] / 2.0
+        # 目标点（红叉）= 画面中心上移 --target-up 像素。爪子不在光轴上时对准它
+        tx0, ty0 = cx0, cy0 - args.target_up
         best = None
         tops = votes.get("_tops", [])
         if tracker is not None:
@@ -396,7 +401,7 @@ def main():
         for cid, tc, bb, cf in tops:
             # 标定点 = 顶心 + 偏移；对准它，爪子才落在料上（相机不在爪子正中）
             ax, ay = tc[0] + aim_x, tc[1] + aim_y
-            d = ((ax - cx0) ** 2 + (ay - cy0) ** 2) ** 0.5
+            d = ((ax - tx0) ** 2 + (ay - ty0) ** 2) ** 0.5
             if best is None or d < best[0]:
                 best = (d, cid, tc, (ax, ay))
 
@@ -421,14 +426,14 @@ def main():
         sending = False
         if args.wire == "offs":
             # 协议：<<X,±dx,Y,±dy>>；无目标 <<X,9999,Y,9999>>
-            # 差值一律取"标定点 - 画面中心"，四舍五入成整数，不带小数点
+            # 差值一律取"目标点(红叉) - 标定点"，四舍五入成整数，不带小数点
             ok_now = locked and locked_n >= args.lock_frames
             if ok_now:
-                # 符号已反转：改为"中心 - 标定点"，即下位机需要移动的量
-                # dx>0 → 目标在画面中心左侧，要往左走 dx 像素才对准
-                # dy>0 → 目标在画面中心上方，要往上走 dy 像素才对准
-                ix = int(round(cx0 - best[3][0]))
-                iy = int(round(cy0 - best[3][1]))
+                # 符号已反转：改为"目标点 - 标定点"，即下位机需要移动的量
+                # dx>0 → 目标在红叉左侧，要往左走 dx 像素才对准
+                # dy>0 → 目标在红叉上方，要往上走 dy 像素才对准
+                ix = int(round(tx0 - best[3][0]))
+                iy = int(round(ty0 - best[3][1]))
                 if now - last_send > 0.05:             # 约 20Hz
                     _tx(f"<<X,{ix},Y,{iy}>>")
                     last_send = now
@@ -443,7 +448,7 @@ def main():
         elif locked and locked_n >= args.lock_frames:
             if now - last_send > 0.05:                 # 约 20Hz 上限，别把串口灌满
                 _tx(args.msg.format(id=best[1],
-                                    dx=cx0 - best[2][0], dy=cy0 - best[2][1]))
+                                    dx=tx0 - best[2][0], dy=ty0 - best[2][1]))
                 last_send = now
             sending = True
             if locked_n == args.lock_frames:
@@ -454,8 +459,15 @@ def main():
                     (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         # 注：OpenCV 是 BGR，(0,0,255)=红，(0,255,255)=黄，(0,255,0)=绿
 
-        # 相机中心：绿十字
+        # 相机中心：绿十字（仅作参考）
         cv2.drawMarker(vis, (int(cx0), int(cy0)), (0, 255, 0), cv2.MARKER_CROSS, 30, 2)
+        # 目标点：红十字（中心上移 target_up 像素）——偏差与对准都以它为准
+        cv2.drawMarker(vis, (int(tx0), int(ty0)), (0, 0, 255),
+                       cv2.MARKER_TILTED_CROSS, 34, 2)
+        cv2.line(vis, (int(cx0), int(cy0)), (int(tx0), int(ty0)), (0, 0, 255), 1)
+        cv2.putText(vis, f"TARGET -{args.target_up:.0f}px",
+                    (int(tx0) + 14, int(ty0) - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
         if tracker is not None:
             tg = tracker.target()
             if tg is None:

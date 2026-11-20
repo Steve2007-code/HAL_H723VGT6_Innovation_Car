@@ -19,6 +19,7 @@ zones_yolo.py —— YOLO 找盘 / 读号（可选），传统法精求中心
 """
 
 import argparse
+import json
 from pathlib import Path
 
 import cv2
@@ -211,13 +212,73 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
     cap.set(cv2.CAP_PROP_AUTO_WB, 0)
+
+    # ---- 相机参数（曝光/亮度/gamma/增益）存盘，下次启动自动恢复
+    cfg_path = here / "camera_settings_zones.json"
+
+    def _load_cfg():
+        try:
+            return json.loads(cfg_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _save_cfg(d):
+        try:
+            cfg_path.write_text(json.dumps(d, ensure_ascii=False, indent=2),
+                                encoding="utf-8")
+        except Exception as e:
+            print("  参数存不下来：", e)
+
+    cfg = _load_cfg()
+    for key, prop in (("exposure", cv2.CAP_PROP_EXPOSURE),
+                      ("brightness", cv2.CAP_PROP_BRIGHTNESS),
+                      ("gamma", cv2.CAP_PROP_GAMMA),
+                      ("gain", cv2.CAP_PROP_GAIN)):
+        if key in cfg:
+            cap.set(prop, float(cfg[key]))
+
+    exp = cap.get(cv2.CAP_PROP_EXPOSURE)
+    bri = cap.get(cv2.CAP_PROP_BRIGHTNESS)
+    gai = cap.get(cv2.CAP_PROP_GAIN)
+    gam = cap.get(cv2.CAP_PROP_GAMMA)
+    if gam is None or gam < 0:          # 驱动没暴露 gamma 时给个安全默认
+        gam = 100.0
+    print(f"初值：EXPOSURE={exp:.1f}  GAMMA={gam:.0f}  BRIGHTNESS={bri:.0f}  "
+          f"GAIN={gai:.0f}  分辨率 {w}x{h}")
+
+    def remember():
+        _save_cfg({"cam": args.cam, "res": f"{w}x{h}",
+                   "exposure": round(float(exp), 2),
+                   "brightness": round(float(bri), 1),
+                   "gamma": round(float(gam), 1),
+                   "gain": round(float(gai), 1)})
+
     lk = Link(args.link, com=args.com, baud=args.baud, host=args.udp_host, port=args.udp_port)
     print(f"信号通道：{lk.describe()}   协议 <<N,号码,X,dx,Y,dy>>（无目标 <<N,0,X,9999,Y,9999>>）")
     last_send = 0.0
     import time as _t
+
+    # ---- 屏上显示真正发出去的原始报文（最近 4 帧 + 实际发送速率）
+    tx_hist = []
+    tx_n, tx_t0, tx_hz = 0, _t.time(), 0.0
+
+    def _tx(msg):
+        nonlocal tx_n, tx_t0, tx_hz
+        lk.send(msg)
+        tx_hist.append(msg)
+        if len(tx_hist) > 4:
+            del tx_hist[0]
+        tx_n += 1
+        el = _t.time() - tx_t0
+        if el >= 1.0:
+            tx_hz = tx_n / el
+            tx_n, tx_t0 = 0, _t.time()
+
     print("q 退出   s 存帧并保存偏移   j/l 左移/右移标定点   i/k 上移/下移")
+    print("e/E 曝光   m/M gamma   b/B 亮度   w 锁白平衡")
     print("红十=盘心，橙十/绿十=标定点（绿=已对准），绿十=画面中心")
 
+    fps, prev_t = 0.0, _t.time()
     while True:
         ok, frame = cap.read()
         if not ok or frame is None:
@@ -227,22 +288,27 @@ def main():
         vis, pts, best = annotate(frame, dials, tpl, args.digit_from, (aim_x, aim_y), args.tol)
         mn = float(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).mean())
         warn = "  太暗:补光" if mn < 80 else ("  过曝" if mn > 235 else "")
-        cv2.putText(vis, f"dials {len(pts)}  mean {mn:.0f}{warn}  aim({aim_x:+.0f},{aim_y:+.0f})",
-                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         now = _t.time()
+        dt = now - prev_t
+        prev_t = now
+        if dt > 1e-6:
+            inst = 1.0 / dt
+            fps = inst if fps == 0.0 else 0.9 * fps + 0.1 * inst
+        cv2.putText(vis, f"fps {fps:.1f}  dials {len(pts)}  exp {exp:.0f} gam {gam:.0f} "
+                         f"mean {mn:.0f}{warn}  aim({aim_x:+.0f},{aim_y:+.0f})",
+                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         if best is not None:
             num, cx, cy, how, cf, agree, mname, ax, ay, d = best
             icx, icy = vis.shape[1] / 2.0, vis.shape[0] / 2.0
-            ix, iy = int(round(ax - icx)), int(round(ay - icy))
-            if d <= args.tol:
-                if now - last_send > 0.05:            # 对准了：约 20Hz
-                    lk.send(f"<<N,{num},X,{ix},Y,{iy}>>")
-                    last_send = now
-            elif now - last_send > 0.10:              # 有盘但没对准：10Hz 发无效帧
-                lk.send("<<N,0,X,9999,Y,9999>>")
+            # 符号已反转：改为"画面中心 - 标定点"，即下位机需要移动的量
+            # dx>0 → 盘在中心左侧，要往左走 dx 像素；dy>0 → 要往上走
+            ix, iy = int(round(icx - ax)), int(round(icy - ay))
+            # 看到盘就发真实偏差，不再等对准（死区交给下位机）
+            if now - last_send > 0.05:                    # 约 20Hz
+                _tx(f"<<N,{num},X,{ix},Y,{iy}>>")
                 last_send = now
-        elif now - last_send > 0.10:                  # 一个盘也没检出
-            lk.send("<<N,0,X,9999,Y,9999>>")
+        elif now - last_send > 0.10:                      # 一个盘也没检出
+            _tx("<<N,0,X,9999,Y,9999>>")
             last_send = now
         if best is not None:
             num, cx, cy, how, cf, agree, mname, ax, ay, d = best
@@ -250,6 +316,18 @@ def main():
             cv2.putText(vis, f"AIM {num}号  {ok_txt}",
                         (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                         (0, 255, 0) if d <= args.tol else (0, 165, 255), 2)
+
+        # ---- 左下角：真正发出去的原始报文（最新一帧在最下面）
+        base = vis.shape[0] - 12
+        box_top = max(0, base - 108)
+        cv2.rectangle(vis, (0, box_top), (300, min(vis.shape[0] - 1, base + 8)),
+                      (0, 0, 0), -1)
+        cv2.putText(vis, f"TX  {tx_hz:.1f} Hz", (10, base - 88),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        for i, _m in enumerate(reversed(tx_hist)):
+            _c = (0, 255, 255) if "9999" in _m else (0, 255, 0)
+            cv2.putText(vis, _m, (10, base - i * 22),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.58, _c, 2)
         cv2.imshow("zones_yolo  (q quit)", vis)
         k = cv2.waitKey(1) & 0xFF
         if k in (ord("q"), 27):
@@ -262,6 +340,31 @@ def main():
             aim_y -= 2
         elif k == ord("k"):
             aim_y += 2
+        elif k == ord("e"):
+            exp -= 1.0
+            cap.set(cv2.CAP_PROP_EXPOSURE, exp)
+        elif k == ord("E"):
+            exp += 1.0
+            cap.set(cv2.CAP_PROP_EXPOSURE, exp)
+        elif k == ord("m"):
+            gam = max(72.0, gam - 20.0)
+            cap.set(cv2.CAP_PROP_GAMMA, gam)
+            print(f"  GAMMA={gam:.0f}")
+        elif k == ord("M"):
+            gam = min(500.0, gam + 20.0)
+            cap.set(cv2.CAP_PROP_GAMMA, gam)
+            print(f"  GAMMA={gam:.0f}")
+        elif k == ord("b"):
+            bri = max(0.0, bri - 5.0)
+            cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
+        elif k == ord("B"):
+            bri = min(255.0, bri + 5.0)
+            cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
+        elif k == ord("w"):
+            cap.set(cv2.CAP_PROP_AUTO_WB, 0)
+            print("  白平衡已锁定")
+        if k in (ord("e"), ord("E"), ord("b"), ord("B"), ord("m"), ord("M")):
+            remember()                      # 每调一次便落盘，万一强退也不丢
         if k == ord("s"):
             cv2.imwrite(args.out, vis)
             _save_aim(args.aim_file, aim_x, aim_y)
@@ -271,6 +374,7 @@ def main():
             print(f"  已存 {args.out}；偏移 dx={aim_x:+.0f} dy={aim_y:+.0f} → {args.aim_file}")
 
     _save_aim(args.aim_file, aim_x, aim_y)
+    remember()
     lk.close()
     cap.release()
     cv2.destroyAllWindows()
