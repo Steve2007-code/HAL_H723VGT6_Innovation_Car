@@ -64,4 +64,10 @@ void    Nav_GetGains(float *kp, float *kd, float *kpy, float *kdy);
 uint8_t Nav_DockCell(uint8_t kind, uint8_t idx, uint8_t *row, uint8_t *col);
 void    Nav_PrintInfo(void);
 
+/* 内置路线: <<R 1>> 一键跑图, <<R 0>> 停止 */
+void    Nav_RouteStart(uint8_t on);
+void    Nav_RoutePoll(void);        /* 主循环调用: 到点后推进下一点 */
+uint8_t Nav_RouteBusy(void);
+uint8_t Nav_RouteIndex(void);
+
 #endif

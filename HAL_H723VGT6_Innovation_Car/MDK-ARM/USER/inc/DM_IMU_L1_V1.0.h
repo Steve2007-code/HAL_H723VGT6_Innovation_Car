@@ -86,6 +86,12 @@ extern DM_IMU_Data DM_Motor_IMU_StructData;//达妙参数定义结构体
 #define DM_Motor_IMU_ID 0x06 //IMUID
 #define DM_Motor_IMU_BackID 0x16 //IMUID
 
+/*---------- IMU 链路诊断计数器 ----------*/
+extern volatile uint32_t g_imu_rx_total;   /* 收到的 IMU 回帧总数 */
+extern volatile uint32_t g_imu_rx_gyro;    /* 其中角速度帧数量 */
+extern volatile uint32_t g_imu_tx_err;     /* 请求帧发送失败次数 */
+extern volatile uint8_t  g_imu_last_g[8];  /* 最近一帧角速度原始 8 字节 */
+
 
 /*----------外部可调用函数声明----------*/
 //达妙IMU初始化

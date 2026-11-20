@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>工创小车 · 路线规划器</title>
+<style>
+  :root{
+    --bg:#1e1e2e; --panel:#282838; --line:#3a3a50; --fg:#e6e6f0; --dim:#9a9ab0;
+    --accent:#4da3ff; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font:13px/1.5 "Microsoft YaHei","Segoe UI",sans-serif}
+  #app{display:flex;height:100%}
+  #side{width:330px;min-width:330px;background:var(--panel);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;overflow:hidden}
+  #side h1{font-size:15px;margin:0;padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+  #side h1 small{display:block;font-weight:400;color:var(--dim);font-size:11px;margin-top:4px}
+  .sec{padding:12px 16px;border-bottom:1px solid var(--line)}
+  .sec h2{font-size:12px;margin:0 0 8px;color:var(--dim);font-weight:600;letter-spacing:.5px}
+  .row{display:flex;gap:6px;flex-wrap:wrap}
+  button{background:#34344a;color:var(--fg);border:1px solid var(--line);border-radius:6px;
+    padding:6px 10px;cursor:pointer;font-size:12px}
+  button:hover{background:#3f3f5a}
+  button.primary{background:#2b5fa8;border-color:#3f7fd0}
+  button.primary:hover{background:#3570c0}
+  button.danger{background:#5a2b2b;border-color:#8a3a3a}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  input[type=number]{width:52px;background:#1b1b28;color:var(--fg);border:1px solid var(--line);
+    border-radius:5px;padding:4px 6px;font-size:12px}
+  .kv{display:flex;justify-content:space-between;padding:2px 0;color:var(--dim)}
+  .kv b{color:var(--fg);font-weight:600}
+  #segs{flex:1;overflow:auto;padding:0 16px 12px}
+  #segs .item{display:flex;gap:8px;align-items:center;padding:5px 6px;border-radius:5px;
+    font-size:11.5px;cursor:pointer}
+  #segs .item:hover{background:#33334a}
+  #segs .item.bad{background:#4a2626}
+  #segs .idx{width:20px;height:20px;flex:0 0 20px;border-radius:50%;background:#3d5a80;
+    display:flex;align-items:center;justify-content:center;font-size:10px}
+  #segs .item.bad .idx{background:#a03232}
+  #segs .txt{flex:1;color:var(--dim)}
+  #segs .txt b{color:var(--fg)}
+  #out{width:100%;height:120px;background:#15151f;color:#9ae6a0;border:1px solid var(--line);
+    border-radius:6px;padding:8px;font:12px/1.5 Consolas,monospace;resize:vertical}
+  #stage{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;
+    background:#14141e;position:relative}
+  canvas{background:#fff;border-radius:4px;box-shadow:0 0 0 1px #000,0 8px 30px rgba(0,0,0,.6)}
+  #hud{position:fixed;left:346px;bottom:10px;background:rgba(20,20,30,.88);
+    border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--dim)}
+  #hud b{color:var(--fg)}
+  .tip{color:var(--dim);font-size:11px;line-height:1.7}
+  kbd{background:#1b1b28;border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:10.5px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <h1>工创小车 · 路线规划器
+      <small>48×48 / 50mm 一格 / 全图 2400×2400mm</small>
+    </h1>
+
+    <div class="sec">
+      <h2>起点</h2>
+      <div class="row" style="align-items:center">
+        row <input type="number" id="sr" min="0" max="47" value="45">
+        col <input type="number" id="sc" min="0" max="47" value="45">
+        <button id="setStart">应用</button>
+      </div>
+      <div class="tip" style="margin-top:6px">车头默认朝地图上方（+y，90°）</div>
+    </div>
+
+    <div class="sec">
+      <h2>操作</h2>
+      <div class="row">
+        <button id="undo">撤销</button>
+        <button id="clear" class="danger">清空航点</button>
+        <button id="demo">示例路线</button>
+      </div>
+      <div class="tip" style="margin-top:8px">
+        <kbd>左键</kbd> 加航点（吸附格心）　<kbd>右键航点</kbd> 删除<br>
+        <kbd>拖拽</kbd> 移动航点　<kbd>Shift+左键</kbd> 设为起点
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>统计</h2>
+      <div class="kv"><span>航点</span><b id="kWp">0</b></div>
+      <div class="kv"><span>总路程</span><b id="kLen">0 mm</b></div>
+      <div class="kv"><span>转向次数</span><b id="kTurn">0</b></div>
+      <div class="kv"><span>合法性</span><b id="kOk">—</b></div>
+    </div>
+
+    <div class="sec">
+      <h2>分段明细</h2>
+    </div>
+    <div id="segs"><div class="tip" style="padding:0 16px">还没有航点。</div></div>
+
+    <div class="sec">
+      <h2>串口命令（复制到终端逐条发）</h2>
+      <textarea id="out" readonly></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="copy">复制</button>
+        <button id="save">导出 JSON</button>
+        <button id="load">导入 JSON</button>
+        <input type="file" id="file" accept=".json" style="display:none">
+      </div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+  </div>
+  <div id="hud">格 <b id="hCell">—</b>　坐标 <b id="hMm">—</b></div>
+</div>
+
+<script>
+/* ================= 地图数据（与 AStar.c 的 MAP_DATA 完全一致） ================= */
+const MAP = [
+  "000000000000000000004444444400000000000000222222",
+  "000000000000000000000444444000000000000000222222",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "333000000001111111110000000011111111100000000000",
+  "333000000001111111110000000011111111100000000000",
+  "333000000000000000000000000000000000000000000000",
+  "333000000000000000000000000000000000000000000005",
+  "333000000000000000000000000000000000000000000005",
+  "333000000000000000000000000000000000000000000005",
+  "333000000000000000000000000000000000000000000005",
+  "333000000000000000000000000000000000000000000005",
+  "333000000000000000000000000000000000000000000005",
+  "333000000000000000000000000000000000000000000000",
+  "333000000001111111110000000011111111100000000000",
+  "333000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000001111111110000000011111111100000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000000000",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000000000000000000000000000222222",
+  "000000000000000000333333333333000000000000222222",
+  "000000000000000000333333333333000000000000222222",
+  "000000000000000000333333333333000000000000222222"
+];
+
+const N = 48, CELL = 14, PAD = 24;
+const KIND = MAP.map(s => s.split('').map(Number));
+
+/* 8 邻域 BFS：到最近实体障碍(1) 的切比雪夫格数 */
+const DIST = Array.from({length:N}, () => new Array(N).fill(99));
+{
+  const q = [];
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (KIND[r][c]===1){ DIST[r][c]=0; q.push([r,c]); }
+  let h=0;
+  while (h<q.length){
+    const [r,c] = q[h++];
+    for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++){
+      if (!dr && !dc) continue;
+      const nr=r+dr, nc=c+dc;
+      if (nr<0||nr>=N||nc<0||nc>=N) continue;
+      if (DIST[nr][nc]===99){ DIST[nr][nc]=DIST[r][c]+1; q.push([nr,nc]); }
+    }
+  }
+}
+/* 可规划：非 1/3/4/5 且 距障碍 >= 4 格（与固件 NAV_CLEAR_CELLS 一致） */
+const CLEAR = 4;
+const FREE = Array.from({length:N}, (_,r) =>
+  Array.from({length:N}, (_,c) => (KIND[r][c]!==1 && KIND[r][c]!==3 && KIND[r][c]!==4 && KIND[r][c]!==5) && DIST[r][c]>=CLEAR));
+
+const cellX = c => (c + 0.5) * 50;
+const cellY = r => (47 - r + 0.5) * 50;
+
+/* ================= 状态 ================= */
+let start = {r:45, c:45};
+let wps = [];
+let drag = -1, hover = null, selected = -1;
+
+/* ================= 画布 ================= */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = N*CELL, H = N*CELL;
+const DPR = window.devicePixelRatio || 1;
+cv.width = (W + PAD*2) * DPR;
+cv.height = (H + PAD*2) * DPR;
+cv.style.width = (W + PAD*2) + 'px';
+cv.style.height = (H + PAD*2) + 'px';
+ctx.scale(DPR, DPR);
+
+const C = {
+  floor:'#e9e9ef', obs:'#f6f0cf', start:'#3050e0', mat:'#ffffff',
+  grab:'#f0a040', scan:'#3fc060', grid:'#cfcfda', grid4:'#b8b8c8'
+};
+
+function cellRect(r,c){ return [PAD + c*CELL, PAD + r*CELL, CELL, CELL]; }
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle = '#14141e';
+  ctx.fillRect(0,0,W+PAD*2,H+PAD*2);
+
+  /* 底色 */
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+    const k = KIND[r][c];
+    ctx.fillStyle = k===1?C.obs : k===2?C.start : k===3?C.mat : k===4?C.grab : k===5?C.scan : C.floor;
+    const [x,y,w,h] = cellRect(r,c);
+    ctx.fillRect(x,y,w+0.5,h+0.5);
+  }
+
+  /* 不可规划区：半透明斜纹（车中心不能进） */
+  ctx.save();
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+    if (FREE[r][c]) continue;
+    const [x,y,w,h] = cellRect(r,c);
+    ctx.fillStyle = 'rgba(20,20,35,.30)';
+    ctx.fillRect(x,y,w,h);
+  }
+  ctx.restore();
+
+  /* 网格 */
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  for (let i=0;i<=N;i++){
+    ctx.moveTo(PAD + i*CELL, PAD); ctx.lineTo(PAD + i*CELL, PAD+H);
+    ctx.moveTo(PAD, PAD + i*CELL); ctx.lineTo(PAD+W, PAD + i*CELL);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = C.grid4; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i=0;i<=N;i+=4){
+    ctx.moveTo(PAD + i*CELL, PAD); ctx.lineTo(PAD + i*CELL, PAD+H);
+    ctx.moveTo(PAD, PAD + i*CELL); ctx.lineTo(PAD+W, PAD + i*CELL);
+  }
+  ctx.stroke();
+
+  /* 区域标注 */
+  ctx.font = '11px "Microsoft YaHei"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const label = (r,c,t,col)=>{ ctx.fillStyle = col; ctx.fillText(t, PAD+c*CELL, PAD+r*CELL); };
+  label(3, 45, '启停', 'rgba(255,255,255,.85)');
+  label(45, 45, '启停', 'rgba(255,255,255,.85)');
+  label(24, 1.5, '物料', 'rgba(60,60,60,.75)');
+  label(46, 23.5, '物料', 'rgba(60,60,60,.75)');
+  label(1, 23.5, '夹取', 'rgba(90,50,0,.8)');
+  label(24, 47, '扫码', 'rgba(255,255,255,.9)');
+
+  /* 路径 */
+  const pts = [start, ...wps];
+  const segs = [];
+  for (let i=1;i<pts.length;i++){
+    const a = pts[i-1], b = pts[i];
+    const ok = segFree(a,b);
+    segs.push(ok);
+    const x1 = PAD + (a.c+0.5)*CELL, y1 = PAD + (a.r+0.5)*CELL;
+    const x2 = PAD + (b.c+0.5)*CELL, y2 = PAD + (b.r+0.5)*CELL;
+    ctx.strokeStyle = ok ? '#1f6fd0' : '#e03030';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+
+  /* 起点 */
+  {
+    const x = PAD + (start.c+0.5)*CELL, y = PAD + (start.r+0.5)*CELL;
+    ctx.fillStyle = '#e03030';
+    ctx.beginPath(); ctx.arc(x,y,6,0,7); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('S', x, y+0.5);
+  }
+
+  /* 航点 */
+  wps.forEach((p,i)=>{
+    const x = PAD + (p.c+0.5)*CELL, y = PAD + (p.r+0.5)*CELL;
+    ctx.beginPath(); ctx.arc(x,y,6,0,7);
+    ctx.fillStyle = segs[i] || segs[i]===undefined ? '#1f6fd0' : '#e03030';
+    if (i>0 && segs[i-1]===false) ctx.fillStyle = '#e03030';
+    ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(String(i+1), x, y+0.5);
+  });
+
+  /* 悬停高亮 */
+  if (hover){
+    const [x,y,w,h] = cellRect(hover.r, hover.c);
+    ctx.strokeStyle = 'rgba(77,163,255,.9)'; ctx.lineWidth = 2;
+    ctx.strokeRect(x+1,y+1,w-2,h-2);
+  }
+
+  /* 坐标轴刻度 */
+  ctx.fillStyle = '#8a8aa0'; ctx.font = '10px Consolas,monospace';
+  ctx.textAlign = 'center';
+  for (let c=0;c<N;c+=8) ctx.fillText('c'+c, PAD + (c+0.5)*CELL, PAD - 10);
+  ctx.textAlign = 'right';
+  for (let r=0;r<N;r+=8) ctx.fillText('r'+r, PAD - 6, PAD + (r+0.5)*CELL);
+
+  updateSide(pts, segs);
+}
+
+/* 线段是否全程落在可规划格 */
+function segFree(a,b){
+  const n = Math.max(Math.abs(b.r-a.r), Math.abs(b.c-a.c), 1) * 4;
+  for (let i=0;i<=n;i++){
+    const t = i/n;
+    const r = Math.round(a.r + (b.r-a.r)*t);
+    const c = Math.round(a.c + (b.c-a.c)*t);
+    if (r<0||r>=N||c<0||c>=N||!FREE[r][c]) return false;
+  }
+  return true;
+}
+
+function dirName(a,b){
+  const dr = b.r-a.r, dc = b.c-a.c;
+  const ang = Math.atan2(-dr, dc) * 180/Math.PI;   // 世界系：x 向右、y 向上
+  return ang;
+}
+function dirText(ang){
+  const a = ((ang % 360)+360)%360;
+  if (Math.abs(a-0)<12 || Math.abs(a-360)<12) return '→ 右';
+  if (Math.abs(a-90)<12) return '↑ 上';
+  if (Math.abs(a-180)<12) return '← 左';
+  if (Math.abs(a-270)<12) return '↓ 下';
+  return '斜 ' + a.toFixed(0) + '°';
+}
+
+/* ================= 侧栏 ================= */
+function updateSide(pts, segs){
+  document.getElementById('kWp').textContent = wps.length;
+  let len = 0, turns = 0, ok = true;
+  let prevAng = null;
+  const list = [];
+
+  for (let i=1;i<pts.length;i++){
+    const a = pts[i-1], b = pts[i];
+    const d = Math.hypot(b.r-a.r, b.c-a.c) * 50;
+    len += d;
+    const ang = dirName(a,b);
+    const good = segs[i-1];
+    if (!good) ok = false;
+    let turnMark = '';
+    if (prevAng !== null){
+      let dd = ((ang - prevAng) % 360 + 540) % 360 - 180;
+      if (Math.abs(dd) > 15){ turns++; turnMark = dd>0 ? ' ↺' : ' ↻'; }
+    }
+    prevAng = ang;
+    list.push({i, a, b, d, ang, good, turnMark});
+  }
+
+  document.getElementById('kLen').textContent = len.toFixed(0) + ' mm';
+  document.getElementById('kTurn').textContent = turns;
+  const kOk = document.getElementById('kOk');
+  if (pts.length < 2){ kOk.textContent = '—'; kOk.style.color = 'var(--dim)'; }
+  else if (ok){ kOk.textContent = '通过'; kOk.style.color = 'var(--ok)'; }
+  else { kOk.textContent = '穿障碍'; kOk.style.color = 'var(--bad)'; }
+
+  const box = document.getElementById('segs');
+  if (!list.length){ box.innerHTML = '<div class="tip" style="padding:0 16px">还没有航点。</div>'; return; }
+  box.innerHTML = list.map(s => `
+    <div class="item ${s.good?'':'bad'}" data-i="${s.i}">
+      <div class="idx">${s.i}</div>
+      <div class="txt">
+        (${s.a.r},${s.a.c}) → (${s.b.r},${s.b.c})　<b>${s.d.toFixed(0)}mm</b><br>
+        ${dirText(s.ang)}${s.turnMark}　车头→<b>${s.ang.toFixed(0)}°</b>
+        ${s.good?'':'　<span style="color:#f87171">穿障碍!</span>'}
+      </div>
+    </div>`).join('');
+  box.querySelectorAll('.item').forEach(el=>{
+    el.onclick = ()=>{ selected = +el.dataset.i; };
+    el.onmouseenter = ()=>{ selected = +el.dataset.i; draw(); };
+  });
+
+  /* 命令输出：每个航点一条 <<p x y>> */
+  const out = wps.map(p => `<<p ${cellX(p.c).toFixed(0)} ${cellY(p.r).toFixed(0)}>>`).join('\n');
+  document.getElementById('out').value = out || '（先点几个航点）';
+}
+
+/* ================= 交互 ================= */
+function pos(e){
+  const b = cv.getBoundingClientRect();
+  const x = e.clientX - b.left - PAD;
+  const y = e.clientY - b.top - PAD;
+  const c = Math.floor(x / CELL), r = Math.floor(y / CELL);
+  if (r<0||r>=N||c<0||c>=N) return null;
+  return {r,c,x,y};
+}
+function nearWp(p, rad){
+  for (let i=0;i<wps.length;i++){
+    if (Math.hypot(wps[i].r-p.r, wps[i].c-p.c) * CELL <= rad) return i;
+  }
+  if (Math.hypot(start.r-p.r, start.c-p.c) * CELL <= rad) return -2;
+  return -1;
+}
+
+cv.addEventListener('mousemove', e=>{
+  const p = pos(e);
+  if (!p){ hover = null; draw(); return; }
+  hover = p;
+  document.getElementById('hCell').textContent = `(${p.r},${p.c})`;
+  document.getElementById('hMm').textContent = `(${cellX(p.c).toFixed(0)}, ${cellY(p.r).toFixed(0)})mm`;
+  if (drag >= 0 && drag < wps.length){
+    wps[drag] = {r:p.r, c:p.c};
+  }
+  draw();
+});
+cv.addEventListener('mouseleave', ()=>{ hover = null; drag = -1; draw(); });
+
+cv.addEventListener('mousedown', e=>{
+  const p = pos(e);
+  if (!p) return;
+  if (e.button === 2) return;
+  const i = nearWp(p, CELL*0.55);
+  if (e.shiftKey){ start = {r:p.r, c:p.c}; draw(); return; }
+  if (i >= 0){ drag = i; return; }
+  if (i === -2) return;
+  wps.push({r:p.r, c:p.c});
+  draw();
+});
+cv.addEventListener('mouseup', ()=>{ drag = -1; });
+cv.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+  const p = pos(e); if (!p) return;
+  const i = nearWp(p, CELL*0.8);
+  if (i >= 0){ wps.splice(i,1); draw(); }
+});
+
+document.getElementById('undo').onclick = ()=>{ wps.pop(); draw(); };
+document.getElementById('clear').onclick = ()=>{ wps = []; draw(); };
+document.getElementById('setStart').onclick = ()=>{
+  const r = clamp(+document.getElementById('sr').value);
+  const c = clamp(+document.getElementById('sc').value);
+  start = {r,c}; document.getElementById('sr').value=r; document.getElementById('sc').value=c; draw();
+};
+function clamp(v){ return Math.max(0, Math.min(47, isFinite(v)?Math.round(v):0)); }
+
+document.getElementById('copy').onclick = async ()=>{
+  const t = document.getElementById('out').value;
+  try{ await navigator.clipboard.writeText(t); }catch(e){
+    const ta = document.getElementById('out'); ta.select(); document.execCommand('copy');
+  }
+  const b = document.getElementById('copy'); const o = b.textContent;
+  b.textContent = '已复制'; setTimeout(()=>b.textContent=o, 900);
+};
+
+document.getElementById('save').onclick = ()=>{
+  const data = {start, wps};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '路线_' + new Date().toISOString().slice(0,16).replace(/[:T]/g,'') + '.json';
+  a.click();
+};
+document.getElementById('load').onclick = ()=> document.getElementById('file').click();
+document.getElementById('file').onchange = e=>{
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    try{
+      const d = JSON.parse(rd.result);
+      if (d.start) start = d.start;
+      wps = d.wps || [];
+      document.getElementById('sr').value = start.r;
+      document.getElementById('sc').value = start.c;
+      draw();
+    }catch(err){ alert('JSON 读不了：' + err); }
+  };
+  rd.readAsText(f);
+};
+
+document.getElementById('demo').onclick = ()=>{
+  start = {r:45, c:45};
+  document.getElementById('sr').value = 45;
+  document.getElementById('sc').value = 45;
+  wps = [{r:23,c:45},{r:23,c:46}];
+  draw();
+};
+
+document.addEventListener('keydown', e=>{
+  if (e.key === 'z' && (e.ctrlKey||e.metaKey)){ wps.pop(); draw(); e.preventDefault(); }
+  if (e.key === 'Delete' || e.key === 'Backspace'){
+    if (wps.length){ wps.pop(); draw(); e.preventDefault(); }
+  }
+});
+
+draw();
+</script>
+</body>
+</html>

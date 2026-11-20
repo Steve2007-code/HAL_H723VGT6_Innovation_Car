@@ -3,6 +3,12 @@
 
 DM_IMU_Data DM_Motor_IMU_StructData;//达妙IMU参数定义结构体
 
+/*---------- IMU 链路诊断计数器 ----------*/
+volatile uint32_t g_imu_rx_total = 0;
+volatile uint32_t g_imu_rx_gyro  = 0;
+volatile uint32_t g_imu_tx_err   = 0;
+volatile uint8_t  g_imu_last_g[8] = {0};
+
 /*CAN发送读取IMU数据帧包定义*/
 uint8_t Red_acc_raw[8] = {0xCC, Acceleration_data, 0x00, 0xDD, 0x00, 0x00, 0x00, 0x00};//加速度
 uint8_t Red_Gyro_raw[8] = {0xCC, Angular_velocity_data, 0x00, 0xDD, 0x00, 0x00, 0x00, 0x00};//角速度
@@ -118,6 +124,7 @@ void DM_IMU_UpdateQuaternion(DM_IMU_Data *ax)
   */
 void IMU_UpdateData(uint8_t* pData)
 {
+	g_imu_rx_total++;
 	switch(pData[0])
 	{
 		case Acceleration_data/* 0x01 */:
@@ -125,6 +132,8 @@ void IMU_UpdateData(uint8_t* pData)
       DM_IMU_UpdateAccel(&DM_Motor_IMU_StructData);
 			break;
 		case Angular_velocity_data/* 0x02 */:
+			g_imu_rx_gyro++;
+			memcpy((void *)g_imu_last_g, pData, 8);
 			memcpy(DM_Motor_IMU_StructData.Gyro_raw, pData, 8);
       DM_IMU_UpdateGyro(&DM_Motor_IMU_StructData);
 			break;
@@ -208,7 +217,9 @@ HAL_StatusTypeDef Red_DM_IMU_accData(void)
 //读取角速度数据
 HAL_StatusTypeDef Red_DM_IMU_GyroData(void)
 {
-	return Red_DM_IMU_raw(&DM_Motor_IMU_StructData, Angular_velocity_data);
+	HAL_StatusTypeDef r = Red_DM_IMU_raw(&DM_Motor_IMU_StructData, Angular_velocity_data);
+	if (r != HAL_OK) g_imu_tx_err++;
+	return r;
 }
 //读取欧拉角数据
 HAL_StatusTypeDef Red_DM_IMU_EulerData(void)

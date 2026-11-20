@@ -149,6 +149,9 @@ int main(void)
 	//外部VCC供电
 	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_15,GPIO_PIN_SET);
 
+	//等 IMU 上电就绪: 实测上电后约 300ms 才开始应答轮询, 过早采样会白采
+	HAL_Delay(350);
+
 	//静止标定陀螺 z 轴零偏 (这 400ms 车必须完全不动)
 	Attitude_Calibrate(400);
 
@@ -184,6 +187,7 @@ int main(void)
 	{
 		Debug_Task();
 		Link_Poll();
+		Nav_RoutePoll();      /* 内置路线: 到点后自动推进下一点 */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

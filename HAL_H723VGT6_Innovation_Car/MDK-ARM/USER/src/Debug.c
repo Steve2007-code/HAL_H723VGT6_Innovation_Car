@@ -60,7 +60,7 @@ static uint8_t s_need_frame(char cmd)
     {
     case 'v': case 's': case 'd': case 'g': case 'z':
     case 'p': case 'r': case 'k': case 'h': case 'c': case 'w':
-    case 'f':
+    case 'f': case 'R':
         return 1;
     }
     return 0;
@@ -92,6 +92,7 @@ static void s_help(void)
     printf(" c <scale>          里程计比例\r\n");
     printf(" w <0|1>            手动看门狗开关\r\n");
     printf(" f <deg>            到点后对准朝向 (999=取消)\r\n");
+    printf(" R <0|1>            跑内置路线  1=开始 0=停止\r\n");
     printf("------------------------------------------\r\n");
 }
 
@@ -259,6 +260,13 @@ static void s_exec(char *ln, uint8_t framed)
         float d = s_atof(&p);
         Nav_SetDockYaw(d);
         printf("# dock yaw %.0f deg %s\r\n", d, (d < -360.0f || d > 360.0f) ? "off" : "on");
+        break;
+    }
+
+    case 'R':
+    {
+        int on = s_atoi(&p);
+        Nav_RouteStart((uint8_t)(on != 0));
         break;
     }
 

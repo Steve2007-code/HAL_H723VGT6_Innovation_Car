@@ -28,6 +28,9 @@ typedef struct
 
 extern Attitude_t g_att;
 
+/* IMU 健康状态: 1 = 已失效(回帧但数值恒零, 或长时间无回帧), yaw 不可信 */
+extern volatile uint8_t g_imu_dead;
+
 void  Attitude_Init(void);
 void  Attitude_Update(void);              /* 5 ms 调用 */
 void  Attitude_Calibrate(uint16_t ms);    /* 静止零偏标定, 阻塞 */
