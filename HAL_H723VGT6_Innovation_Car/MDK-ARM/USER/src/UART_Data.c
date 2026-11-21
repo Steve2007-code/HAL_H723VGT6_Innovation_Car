@@ -34,6 +34,26 @@ void UART_Init(void)
 }
 
 /**
+  * @brief  接收自愈: 保证 USART1 / UART7 一直处于挂起接收状态
+  * @note   上电噪声或溢出(ORE)会让 HAL 把 RxState 复位成 READY,
+  *         之后 HAL_UART_Receive_IT 不再自动重挂 -> 表现为'第一条命令没反应,
+  *         第二条才正常'甚至彻底收不到. 主循环里周期性调用本函数兜底.
+  */
+void UART_RxCheck(void)
+{
+    if (huart1.RxState == HAL_UART_STATE_READY)
+    {
+        __HAL_UART_CLEAR_OREFLAG(&huart1);
+        HAL_UART_Receive_IT(&huart1, UART1_RX_Buf, 1);
+    }
+    if (huart7.RxState == HAL_UART_STATE_READY)
+    {
+        __HAL_UART_CLEAR_OREFLAG(&huart7);
+        HAL_UART_Receive_IT(&huart7, UART7_RX_Buf, 1);
+    }
+}
+
+/**
   * @brief  串口发送数据
   * @param  huart 串口句柄 data 数据 len 数据长度
   * @note		无
@@ -165,6 +185,13 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   */
 int fputc(int ch, FILE *f)
 {
+  /* 上一次发送没结束时 HAL_UART_Transmit 会立刻返回 HAL_BUSY, 字符被静默丢弃.
+     表现就是'命令执行了但屏幕没输出', 看起来像没响应. 这里先等它就绪. */
+  uint32_t t0 = HAL_GetTick();
+  while (huart1.gState != HAL_UART_STATE_READY &&
+         (uint32_t)(HAL_GetTick() - t0) < 100u)
+  {
+  }
   HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
   return ch;
 }

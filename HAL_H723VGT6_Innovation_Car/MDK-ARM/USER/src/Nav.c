@@ -58,7 +58,7 @@ static uint32_t s_manual_tick = 0;
 
 /* 原地转向保护: 限速(降电流峰值/防打滑) + 超时(防无限转) */
 #define NAV_SHORT_MM           200.0f /* 末段 <=200mm: 锁定车头纯平移(横移), 不转向; 长段仍车头跟随 */
-#define NAV_TURN_WZ_MAX        1.20f   /* rad/s, 原 CH_WZ_MAX=2.5 太猛 */
+#define NAV_TURN_WZ_MAX        1.40f   /* rad/s, 1.6->1.4: 降转速减少原地转向的横向打滑 */
 #define NAV_TURN_TIMEOUT_MS    4000u   /* 4s 转不到位就判失败 */
 static uint32_t s_turn_ms = 0;
 
@@ -357,8 +357,10 @@ void Nav_Update(void)
     /* ---- 到点/越过判据 ---- */
     if (d < ((s_wpi + 1 >= s_wpn) ? NAV_FINAL_MM : NAV_ARRIVE_MM))
     {
+        /* 不停车通过: 只推进航点, 不把速度清零.
+           下一周期会按新段重新算 vx/vy; 若新段要转向, 自然进入转向分支停车转.
+           终点由 s_wp_next -> Chassis_Hold() 停下来. */
         s_wp_next();
-        Chassis_SetBodyVel(0.0f, 0.0f, wz);
         return;
     }
     if ((s_wpi + 1 < s_wpn) && s_wpi > 0)
@@ -371,8 +373,7 @@ void Nav_Update(void)
             ux /= ul;  uy /= ul;
             if (((-ex) * ux + (-ey) * uy) > NAV_PASS_MM)
             {
-                s_wp_next();
-                Chassis_SetBodyVel(0.0f, 0.0f, wz);
+                s_wp_next();          /* 越过即推进, 不停车 */
                 return;
             }
         }
@@ -464,6 +465,46 @@ static void s_commit(void)
  *  拐角优先延续当前车头方向, 并合并共线航点.
  *  结果: 所有航段都平行于地图轴, 拐点全是 90 度
  *-----------------------------------------------------------------*/
+/* 合并共线: 连续三点方向相同则去掉中间点 */
+static void s_merge_collinear(void)
+{
+    uint8_t i, m = 0;
+
+    for (i = 0; i < s_tn; i++)
+    {
+        if (m >= 2)
+        {
+            float ax = s_ox[m - 1] - s_ox[m - 2];
+            float ay = s_oy[m - 1] - s_oy[m - 2];
+            float bx = s_tx[i]    - s_ox[m - 1];
+            float by = s_ty[i]    - s_oy[m - 1];
+            float la = sqrtf(ax * ax + ay * ay);
+            float lb = sqrtf(bx * bx + by * by);
+
+            if (la > 0.5f && lb > 0.5f)
+            {
+                float cr = (ax * by - ay * bx) / (la * lb);
+                if (fabsf(cr) < 0.05f && (ax * bx + ay * by) > 0.0f)
+                {
+                    s_ox[m - 1] = s_tx[i];      /* 覆盖上一点, 不新增 */
+                    s_oy[m - 1] = s_ty[i];
+                    continue;
+                }
+            }
+        }
+        s_ox[m] = s_tx[i];
+        s_oy[m] = s_ty[i];
+        m++;
+    }
+
+    for (i = 0; i < m; i++)
+    {
+        s_tx[i] = s_ox[i];
+        s_ty[i] = s_oy[i];
+    }
+    s_tn = m;
+}
+
 /* 去掉与前一点距离 < minmm 的中间点(首尾保留) */
 static void s_drop_short(float minmm)
 {
@@ -617,6 +658,7 @@ static void s_build_from_cells(int n)
 
     s_ortho();                          /* 斜线折 L, 全段正交化 */
     s_drop_short(25.0f);                /* 合并 <25mm 的碎腿(精确终点常见), 避免多余的 90 度转向 */
+    s_merge_collinear();                /* 再合并方向相同的连续点, 少一次到点判据/减速 */
 }
 
 /**
@@ -724,12 +766,15 @@ uint8_t Nav_PlanToMm(float x_mm, float y_mm)
        早先的做法是规划完再把最后一个航点改成 mm 并补一个 L 拐角,
        若精确点在来向后方, 这个 L 会造出 20mm 的倒退段 ->
        车到点后先原地掉头 180 度再走, 看起来就是「乱转」. */
+    /* 失败原因必须在规划之前清: 规划过程中 5ms 中断可能已经把
+       NAV_FAIL + why 一起置上了, 事后再清会把原因擦掉(表现为 why=0) */
+    g_nav_fail_why = 0;
+
     s_goal_x = x_mm;
     s_goal_y = y_mm;
     s_goal_exact = 1;
     ok = s_plan_cells((uint8_t)r, (uint8_t)c);
     s_goal_exact = 0;
-    if (ok) g_nav_fail_why = 0;
     return ok;
 }
 
@@ -763,46 +808,114 @@ void Nav_PrintInfo(void)
  *    - strafe=1 表示该段锁定车头纯平移(横移), 不转向
  *    - 已校验: 15 段全部可规划; 转向点最小余量 56mm (不再走中间走廊里掉头)
  *=================================================================*/
-#define NAV_ROUTE_N   15
+#define NAV_R1_N   15
+#define NAV_R2_N   13
 
-static const float s_route_x[NAV_ROUTE_N] = {
-    2195, 2195, 2195, 1205, 1205,  305,  305,  305,
-    1215, 1215,  305,  315, 2195, 2205, 2255
-};
-static const float s_route_y[NAV_ROUTE_N] = {
-     705, 1195, 2155, 2155,  285,  295, 1185, 2155,
-    2155,  275,  275, 1185, 1205,  705,  145
-};
-/* 1 = 横移(锁车头), 0 = 车头跟随行进方向 */
-static const uint8_t s_route_s[NAV_ROUTE_N] = {
-       0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0
-};
-
-void Nav_RouteStart(uint8_t on)
+/* ---- 路线 1: 只按段方向走, 无到点朝向 ---- */
+static const float   s_r1_x[NAV_R1_N] =
 {
-    if (!on)
+     2195,  2195,  2195,  1205,  1205,   305,   305,   305,
+     1215,  1215,   305,   315,  2195,  2205,  2255
+};
+static const float   s_r1_y[NAV_R1_N] =
+{
+      705,  1195,  2155,  2155,   285,   295,  1185,  2155,
+     2155,   275,   275,  1185,  1205,   705,   145
+};
+static const uint8_t s_r1_s[NAV_R1_N] =
+{
+        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0
+};
+
+/* ---- 路线 2: 每点可带到点朝向, 999 = 自动(跟随段方向) ---- */
+static const float   s_r2_x[NAV_R2_N] =
+{
+     2195,  2195,  1195,  1195,   335,   335,   345,  1205,
+     1205,   325,   325,  2205,  2275
+};
+static const float   s_r2_y[NAV_R2_N] =
+{
+     1185,  2135,  2135,   345,   345,  1185,  2125,  2135,
+      345,   345,  1185,  1185,   135
+};
+static const int16_t s_r2_f[NAV_R2_N] =
+{
+       90,   999,     0,   180,   999,    90,   999,     0,
+      180,   999,    90,    90,   999
+};
+
+/* ---- 当前绑定的路线 ---- */
+static const float   *rt_x;
+static const float   *rt_y;
+static const uint8_t *rt_s;
+static const int16_t *rt_f;
+static uint8_t rt_n  = 0;
+static uint8_t rt_id = 0;
+
+static void s_route_bind(uint8_t id)
+{
+    if (id == 1)
+    {
+        rt_x = s_r1_x;  rt_y = s_r1_y;  rt_s = s_r1_s;  rt_f = 0;
+        rt_n = NAV_R1_N;
+    }
+    else
+    {
+        rt_x = s_r2_x;  rt_y = s_r2_y;  rt_s = 0;        rt_f = s_r2_f;
+        rt_n = NAV_R2_N;
+    }
+    rt_id = id;
+}
+
+/* 按表设置该点的到点朝向; 没有表或 999 就取消 */
+static void s_route_dock_yaw(uint8_t i)
+{
+    if (rt_f && rt_f[i] != 999) Nav_SetDockYaw((float)rt_f[i]);
+    else                        Nav_SetDockYaw(999.0f);
+}
+
+void Nav_RouteStart(uint8_t which)
+{
+    if (which == 0)
     {
         s_route_on = 0;
         s_route_settle_ms = 0;
         g_force_strafe = 0;
+        Nav_SetDockYaw(999.0f);
         Nav_Stop();
         printf("# route stopped at %d\r\n", s_route_i + 1);
         return;
     }
+    if (which != 1 && which != 2)
+    {
+        printf("# route: 1 或 2\r\n");
+        return;
+    }
 
+    /* IMU 失效时直接拒绝: yaw 不可信, 强行跑只会乱转 */
+    if (g_imu_dead)
+    {
+        s_route_on = 0;
+        g_force_strafe = 0;
+        printf("# route refused: IMU DEAD (三轴恒零/无回帧), 请断电重启\r\n");
+        return;
+    }
+
+    s_route_bind(which);
     s_route_on = 1;
     s_route_i  = 0;
     s_route_settle_ms = 0;
-    g_force_strafe = s_route_s[0];
+    g_force_strafe = rt_s ? rt_s[0] : 0;
+    s_route_dock_yaw(0);
 
-    if (Nav_PlanToMm(s_route_x[0], s_route_y[0]))
-        printf("# route start: 1/%d%s\r\n", NAV_ROUTE_N,
-               s_route_s[0] ? " (strafe)" : "");
+    if (Nav_PlanToMm(rt_x[0], rt_y[0]))
+        printf("# route%d start: 1/%d%s\r\n", rt_id, rt_n,
+               (rt_s && rt_s[0]) ? " (strafe)" : "");
     else
     {
         s_route_on = 0;
         g_force_strafe = 0;
-        printf("# route FAIL at 1\r\n");
+        printf("# route%d FAIL at 1\r\n", rt_id);
     }
 }
 
@@ -815,7 +928,9 @@ void Nav_RoutePoll(void)
         s_route_on = 0;
         s_route_settle_ms = 0;
         g_force_strafe = 0;
-        printf("# route FAIL at %d  why=%d\r\n", s_route_i + 1, g_nav_fail_why);
+        Nav_SetDockYaw(999.0f);
+        printf("# route%d FAIL at %d  why=%d  imu_dead=%d  state=%d\r\n",
+               rt_id, s_route_i + 1, g_nav_fail_why, g_imu_dead, g_nav_state);
         return;
     }
     if (g_nav_state != NAV_DONE)
@@ -824,10 +939,7 @@ void Nav_RoutePoll(void)
         return;
     }
 
-    /* ---- 停稳再走: 车必须真的停住并保持一段时间 ----
-       手动逐条发 <<p>> 天然有 1~3 秒间隔, 车完全停稳; 自动版若一到 DONE 就
-       立刻规划下一段, 车还带残余速度, 起点位姿在动, 效果明显更差.
-       这里用轮速反馈判定静止, 再叠加 300ms 停留. ----*/
+    /* ---- 停稳再走 ---- */
     if (fabsf(g_chassis.fb_vx) > NAV_ROUTE_SETTLE_V ||
         fabsf(g_chassis.fb_vy) > NAV_ROUTE_SETTLE_V ||
         fabsf(g_chassis.fb_wz) > NAV_ROUTE_SETTLE_W)
@@ -840,24 +952,28 @@ void Nav_RoutePoll(void)
     s_route_settle_ms = 0;
 
     s_route_i++;
-    if (s_route_i >= NAV_ROUTE_N)
+    if (s_route_i >= rt_n)
     {
         s_route_on = 0;
         s_route_settle_ms = 0;
         g_force_strafe = 0;
-        printf("# route DONE (%d pts)\r\n", NAV_ROUTE_N);
+        Nav_SetDockYaw(999.0f);
+        printf("# route%d DONE (%d pts)\r\n", rt_id, rt_n);
         return;
     }
 
-    g_force_strafe = s_route_s[s_route_i];
-    if (Nav_PlanToMm(s_route_x[s_route_i], s_route_y[s_route_i]))
-        printf("# route %d/%d%s\r\n", s_route_i + 1, NAV_ROUTE_N,
-               s_route_s[s_route_i] ? " (strafe)" : "");
+    g_force_strafe = rt_s ? rt_s[s_route_i] : 0;
+    s_route_dock_yaw(s_route_i);
+    if (Nav_PlanToMm(rt_x[s_route_i], rt_y[s_route_i]))
+        printf("# route%d %d/%d%s%s\r\n", rt_id, s_route_i + 1, rt_n,
+               (rt_s && rt_s[s_route_i]) ? " (strafe)" : "",
+               (rt_f && rt_f[s_route_i] != 999) ? " (dock)" : "");
     else
     {
         s_route_on = 0;
+        s_route_settle_ms = 0;
         g_force_strafe = 0;
-        printf("# route FAIL at %d\r\n", s_route_i + 1);
+        printf("# route%d FAIL at %d\r\n", rt_id, s_route_i + 1);
     }
 }
 

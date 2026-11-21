@@ -25,6 +25,8 @@ extern uint8_t UART1_TX_Busy;//串口1发送忙标志
 
 /*串口初始化*/
 void UART_Init(void);
+/*接收自愈: 主循环调用*/
+void UART_RxCheck(void);
 /*串口发送数据*/
 HAL_StatusTypeDef UART_Send_NonBlock(UART_HandleTypeDef *huart, uint8_t *data, uint16_t len);
 /*串口6收到数据向串口1转发*/

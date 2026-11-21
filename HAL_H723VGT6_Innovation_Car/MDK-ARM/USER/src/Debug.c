@@ -92,7 +92,7 @@ static void s_help(void)
     printf(" c <scale>          里程计比例\r\n");
     printf(" w <0|1>            手动看门狗开关\r\n");
     printf(" f <deg>            到点后对准朝向 (999=取消)\r\n");
-    printf(" R <0|1>            跑内置路线  1=开始 0=停止\r\n");
+    printf(" R <0|1|2>          跑内置路线 1/2=开始 0=停止\r\n");
     printf("------------------------------------------\r\n");
 }
 
@@ -266,7 +266,7 @@ static void s_exec(char *ln, uint8_t framed)
     case 'R':
     {
         int on = s_atoi(&p);
-        Nav_RouteStart((uint8_t)(on != 0));
+        Nav_RouteStart((uint8_t)(on > 0 ? on : 0));   /* 1/2 选路线, 0 停 */
         break;
     }
 

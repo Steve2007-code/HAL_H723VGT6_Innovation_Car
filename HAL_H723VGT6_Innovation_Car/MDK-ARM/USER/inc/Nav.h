@@ -14,9 +14,11 @@
 
 #define NAV_WP_MAX        64
 #define NAV_ARRIVE_MM     14.0f     /* 中间航点到达判据 */
-#define NAV_FINAL_MM      8.0f      /* 终点到达判据 */
+#define NAV_FINAL_MM      5.0f      /* 终点到达判据 (8->5, 实测原来总差 7.5mm) */
 #define NAV_PASS_MM       25.0f     /* 越过判据(沿段方向投影) */
-#define NAV_TURN_GATE    0.4363f   /* 段航向偏差>25度: 先原地转向再平移 */
+#define NAV_TURN_GATE    0.1745f   /* 段航向偏差>10度: 先原地转向再平移
+                                      (25->10: 原来 25 度就放行, 剩下 25 度靠边走边修,
+                                       车头斜着走 1 米才摆正, 看起来就是「偏着走」) */
 #define NAV_YAW_INIT     1.570796f /* 初始车头朝向: 地图上方(+y)=90度 */
 #define NAV_CELL_MM       MAP_CELL_MM
 
@@ -64,7 +66,7 @@ void    Nav_GetGains(float *kp, float *kd, float *kpy, float *kdy);
 uint8_t Nav_DockCell(uint8_t kind, uint8_t idx, uint8_t *row, uint8_t *col);
 void    Nav_PrintInfo(void);
 
-/* 内置路线: <<R 1>> 一键跑图, <<R 0>> 停止 */
+/* 内置路线: <<R 1>> / <<R 2>> 一键跑图, <<R 0>> 停止 */
 /* 失败原因: 1=IMU失效 2=转向超时 3=规划失败 4=起点/终点不可规划 */
 extern volatile uint8_t g_nav_fail_why;
 

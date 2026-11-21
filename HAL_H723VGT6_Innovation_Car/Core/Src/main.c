@@ -185,6 +185,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	while (1)
 	{
+		UART_RxCheck();       /* 接收自愈: 防止 RxState 卡在 READY 收不到命令 */
 		Debug_Task();
 		Link_Poll();
 		Nav_RoutePoll();      /* 内置路线: 到点后自动推进下一点 */

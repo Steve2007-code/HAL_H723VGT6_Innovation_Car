@@ -22,7 +22,7 @@
 #define CH_RAD_USE        12.0f         /* 底盘实际使用上限 rad/s 约 0.58 m/s */
 #define CH_VXY_MAX        0.60f         /* 车体线速度上限 m/s */
 #define CH_WZ_MAX         2.50f         /* 车体角速度上限 rad/s */
-#define CH_ACC_V          1.20f         /* 线加速度 m/s^2 */
+#define CH_ACC_V          1.80f         /* 线加速度 m/s^2 (1.2->1.8, 缩短起停时间) */
 #define CH_ACC_W          8.00f         /* 角加速度 rad/s^2 */
 
 /*---------------- 轮序索引 ----------------*/
