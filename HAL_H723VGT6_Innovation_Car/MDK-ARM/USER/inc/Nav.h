@@ -16,9 +16,8 @@
 #define NAV_ARRIVE_MM     14.0f     /* 中间航点到达判据 */
 #define NAV_FINAL_MM      5.0f      /* 终点到达判据 (8->5, 实测原来总差 7.5mm) */
 #define NAV_PASS_MM       25.0f     /* 越过判据(沿段方向投影) */
-#define NAV_TURN_GATE    0.1745f   /* 段航向偏差>10度: 先原地转向再平移
-                                      (25->10: 原来 25 度就放行, 剩下 25 度靠边走边修,
-                                       车头斜着走 1 米才摆正, 看起来就是「偏着走」) */
+#define NAV_TURN_GATE    0.0175f   /* 段航向偏差>2度: 先原地转向再平移
+                                      (2->1 度: 为了压掉每圈累积的几度) */
 #define NAV_YAW_INIT     1.570796f /* 初始车头朝向: 地图上方(+y)=90度 */
 #define NAV_CELL_MM       MAP_CELL_MM
 
@@ -45,6 +44,8 @@ typedef struct
 
 extern Pose_t  g_pose;
 extern float   g_odom_scale;        /* 里程计比例标定, 默认 1.0 */
+extern float   g_nav_a_dec;         /* 减速度 m/s^2 (T 形下降段), <<D>> 现场改 */
+extern uint16_t g_nav_settle_ms;    /* 转向后停稳驻留时长 ms, <<S>> 现场改 */
 extern uint8_t g_nav_state;
 extern uint8_t g_nav_wp_total;
 extern uint8_t g_nav_wp_index;
@@ -53,6 +54,17 @@ void    Nav_Init(void);
 void    Nav_Update(void);                    /* 5 ms, 中断里跑 */
 void    Odom_Update(void);                   /* 5 ms, 中断里跑 */
 void    Nav_ResetPose(uint8_t row, uint8_t col);
+void    Nav_ResetPoseTo(uint8_t row, uint8_t col, float yaw_deg);  /* 指定真实车头角 */
+void    Nav_SetPoseMm(float x_mm, float y_mm, float yaw_deg);      /* 直接按 mm 设位姿 */
+void    Nav_RotateTo(float deg);                                   /* 原地转到指定角度 */
+void    Nav_RotateBy(float deg);                                   /* 相对当前角度再转 deg */
+float   Nav_GetYawTarget(void);                                    /* 当前段目标航向 rad */
+void    Nav_SetTurnWz(float wz);                                   /* 原地转向限速 rad/s */
+float   Nav_GetTurnWz(void);
+void    Nav_SetADec(float a);                                     /* 减速度 m/s^2 */
+float   Nav_GetADec(void);
+void     Nav_SetSettleMs(uint16_t ms);                            /* 转向后停稳驻留 ms */
+uint16_t Nav_GetSettleMs(void);
 uint8_t Nav_PlanToCell(uint8_t row, uint8_t col);
 uint8_t Nav_PlanToMm(float x_mm, float y_mm);
 uint8_t Nav_PlanToZone(uint8_t kind, uint8_t idx);
@@ -67,6 +79,10 @@ uint8_t Nav_DockCell(uint8_t kind, uint8_t idx, uint8_t *row, uint8_t *col);
 void    Nav_PrintInfo(void);
 
 /* 内置路线: <<R 1>> / <<R 2>> 一键跑图, <<R 0>> 停止 */
+/* 转向策略: 0=锁车头永不转 1=只在大角度(>100度)转 2=默认,车头跟随段方向
+   3=纯追踪圆弧过渡(不停车、不原地转, 前瞻点引导, 转角大时自动降速) */
+extern uint8_t g_yaw_mode;
+
 /* 失败原因: 1=IMU失效 2=转向超时 3=规划失败 4=起点/终点不可规划 */
 extern volatile uint8_t g_nav_fail_why;
 

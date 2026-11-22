@@ -7,7 +7,15 @@
 #include "Time.h"
 
 Pose_t  g_pose;
-float   g_odom_scale = 1.0f;
+/* 里程计比例: 2026-11-21 二次标定 (0.75 m/s, a=1.0)
+   直线 2050mm 指令: 原 0.99 时实测 2020mm (少 30mm = 1.46%)
+   新值 = 0.99 * 2020/2050 = 0.9755 -> 复测正好 2050mm, 误差 <3mm
+   反推有效轮径 48.5 * 0.9755/0.99 = 47.79mm (胶辊受压, 比硬轮缘小 0.7mm)
+   注意: 改了速度/加速度/地面之后必须重标, <<c>> 可现场改 */
+float   g_odom_scale = 0.9755f;
+/* 到点前减速度 (T 形曲线的下降段): v_allow = sqrt(2*a*d)
+   原来是写死的 1.6f = 2*0.8, 现改成变量, 用 <<D a>> 现场扫参 */
+float   g_nav_a_dec = 1.00f;   /* 与 g_ch_acc_v 对称, 才是真正的 T 形梯形 */
 uint8_t g_nav_state      = NAV_IDLE;
 uint8_t g_nav_wp_total   = 0;
 uint8_t g_nav_wp_index   = 0;
@@ -26,6 +34,8 @@ static uint8_t s_dock_on  = 0;
 
 /* 强制横移: 1 = 本段锁定车头, 只平移不转向 */
 uint8_t g_force_strafe = 0;
+uint8_t g_yaw_mode = 2;             /* 0=锁车头 1=只大角度转 2=跟随段方向 */
+static float s_yaw_lock = 0.0f;     /* 进入本计划时锁定的车头 */
 static float   s_goal_x = 0.0f, s_goal_y = 0.0f;   /* <<p>> 的精确终点 */
 static uint8_t s_goal_exact = 0;
 volatile uint8_t g_nav_fail_why = 0;   /* 1=IMU失效 2=转向超时 3=规划失败 4=不可规划 */
@@ -57,10 +67,33 @@ static uint32_t s_manual_tick = 0;
 #define NAV_MANUAL_TIMEOUT_MS   800u
 
 /* 原地转向保护: 限速(降电流峰值/防打滑) + 超时(防无限转) */
-#define NAV_SHORT_MM           200.0f /* 末段 <=200mm: 锁定车头纯平移(横移), 不转向; 长段仍车头跟随 */
-#define NAV_TURN_WZ_MAX        1.40f   /* rad/s, 1.6->1.4: 降转速减少原地转向的横向打滑 */
-#define NAV_TURN_TIMEOUT_MS    4000u   /* 4s 转不到位就判失败 */
+#define NAV_SHORT_MM            60.0f /* 末段 <=60mm 才锁车头横移(只为扫码那种几十毫米的微调); 130~200mm 的段必须正常转向 */
+/* 转向「真正完成」的角速度阈值: 只看角度会在还转着的时候就放行,
+   表现为「没转到位就开始直走」, 且边走边拧的麦轮打滑最大. */
+#define NAV_TURN_SETTLE_RATE   0.08f   /* rad/s, 约 6.9 度/秒 (0.2->0.12: 起步前真正停稳) */
+/* 模式3 纯追踪: 前瞻距离(mm). 越大越平滑, 但拐角会切得更靠内 */
+#define NAV_CARROT_MM          150.0f
+/* 原地转向限速(rad/s): 宏改成变量, 可用 <<T wz>> 现场调 */
+static float s_turn_wz_max = 0.90f;
+/* 最小转向角速度: 麦轮原地转的静摩擦很大, 误差小的时候纯 P 输出只有 0.1 rad/s,
+   车根本转不动 -> 卡在差 1~2 度处直到超时. 加个下限把它推过去. */
+#define NAV_TURN_MIN_WZ   0.25f
+#define NAV_TURN_TIMEOUT_MS    7000u   /* 7s 转不到位就判失败 (原来 4s: 转向降到 0.9 后 180 度要 4.1s, 必然误判) */
 static uint32_t s_turn_ms = 0;
+
+/* 转到位后的「停稳驻留」: 命令零速度, 等实际反馈速度真的归零并保持一小段时间,
+   才允许开始平移。
+   避免「还在转就起步」: 转向残余 + 平移叠加时, 麦轮侧向刮地, 而这段滑移在
+   里程计里完全看不见 (fb_vx/fb_vy 只反映轮子转速, 不反映车体侧滑)。
+   2026-11-21 实测: 单腿直线误差 0mm, 组合整圈物理偏差 115mm, 怀疑点即此过渡。 */
+#define NAV_SETTLE_WAIT_MS   300u    /* 静止保持时间默认值(实测 300 最稳), <<S ms>> 可现场改 */
+#define NAV_SETTLE_MAX_EXTRA 600u    /* 最长再等多久(卡住也不无限等) */
+#define NAV_SETTLE_V         0.015f  /* m/s,   平移速度归零阈值 */
+#define NAV_SETTLE_WZ        0.03f   /* rad/s, 角速度归零阈值 */
+uint16_t g_nav_settle_ms = NAV_SETTLE_WAIT_MS;
+static uint8_t  s_turn_phase   = 0;  /* 0=需要对准  1=停稳驻留中  2=已放行可平移 */
+static uint32_t s_settle_ms    = 0;  /* 最近一次检测到静止的时刻 */
+static uint32_t s_settle_t0    = 0;  /* 进入停稳驻留的时刻 */
 
 void Nav_ManualKick(void) { s_manual_tick = Tick; }
 void Nav_SetManualWd(uint8_t on) { g_nav_manual_wd = on ? 1 : 0; }
@@ -131,8 +164,9 @@ void Nav_Init(void)
     int r, c;
     Map_Init();
 
-    /* 默认车放在下方启停区中心 (row45, col45) */
-    r = 45;  c = 45;
+    /* 默认车放在下方启停区内侧 (row44, col44) = (2225,175).
+       原来用 (45,45)=(2275,125), 车体 275mm 会压出场地边界 12.5mm. */
+    r = 44;  c = 44;
     s_cell_to_xy(r, c, &g_pose.x, &g_pose.y);
     g_pose.yaw = NAV_YAW_INIT;          /* 初始车头朝地图上方(+y) */
     s_yaw_off  = NAV_YAW_INIT;
@@ -156,6 +190,53 @@ void Nav_ResetPose(uint8_t row, uint8_t col)
     Chassis_Hold();
 }
 
+/* 带朝向的重置: yaw_deg 是车的【真实】车头角 (0=右 90=上 -90=下 180=左).
+   摆车不正时用它把真实朝向告诉软件, 否则整条路线会整体旋转。 */
+void Nav_ResetPoseTo(uint8_t row, uint8_t col, float yaw_deg)
+{
+    float ya = yaw_deg * 0.0174532925f;
+    Nav_ResetPose(row, col);
+    __disable_irq();
+    s_yaw_off = ya;
+    g_pose.yaw = ya;
+    s_yaw_t   = ya;
+    __enable_irq();
+}
+
+/* 按【毫米坐标】设位姿: 比 <<r row col>> 精确, 可让车中心停在任意点
+   (例如启停区真正的中心 (2250,150) 不在任何格心上). */
+void Nav_SetPoseMm(float x_mm, float y_mm, float yaw_deg)
+{
+    float ya = yaw_deg * 0.0174532925f;
+    __disable_irq();
+    g_pose.x = x_mm;
+    g_pose.y = y_mm;
+    Attitude_ZeroYaw();
+    s_yaw_off = ya;
+    g_pose.yaw = ya;
+    s_yaw_t   = ya;
+    s_wpn = 0;  s_wpi = 0;
+    s_turn_ms = 0;
+    s_route_on = 0;  g_force_strafe = 0;
+    __enable_irq();
+    g_nav_state = NAV_IDLE;
+    Chassis_Hold();
+}
+
+/* 相对当前角度再转 deg 度(正=逆时针). 用于连续转向测试, 例如 <<A 90>> x16 = 4 圈. */
+void Nav_RotateBy(float deg)
+{
+    float cur = g_pose.yaw * 57.29578f;
+    Nav_RotateTo(cur + deg);
+}
+
+/* 原地转到指定角度(度), 不移动. 进 NAV_ALIGN 状态, 转到位后自动回 IDLE. */
+void Nav_RotateTo(float deg)
+{
+    Nav_SetDockYaw(deg);
+    s_turn_ms = 0;
+    g_nav_state = NAV_ALIGN;
+}
 void Nav_Stop(void)
 {
     g_nav_state = NAV_IDLE;
@@ -216,6 +297,26 @@ void Odom_Update(void)
  *  跟随: 车头对准段方向, 拐点先原地转向再前进
  *-----------------------------------------------------------------*/
 
+/*=================================================================
+ *  按转向策略挑选本段目标航向
+ *  mode 2: 车头跟随段方向 (原行为)
+ *  mode 1: 段方向与当前车头差 >100 度才转, 否则锁车头直接平移
+ *          (90 度拐弯用横移代替 -> 少一半转向, 也就少一半转向打滑)
+ *  mode 0: 永不转, 全程锁定进入本次规划时的车头
+ *  g_force_strafe 优先: 该段强制横移
+ *=================================================================*/
+static float s_yaw_pick(float seg_yaw)
+{
+    if (g_force_strafe) return s_yaw_lock;
+    if (g_yaw_mode == 0) return s_yaw_lock;
+    if (g_yaw_mode == 1)
+    {
+        float e = Attitude_WrapPi(seg_yaw - g_pose.yaw);
+        return (fabsf(e) > 1.745f) ? seg_yaw : s_yaw_lock;   /* >100 度才转 */
+    }
+    return seg_yaw;
+}
+
 /* 段航向: 从段起点指向段终点 (世界系, rad) */
 static float s_seg_yaw(float x0, float y0, float x1, float y1)
 {
@@ -227,6 +328,9 @@ static float s_seg_yaw(float x0, float y0, float x1, float y1)
 /* 推进到下一航点: 新段起点=刚过的航点, 更新段航向 */
 static void s_wp_next(void)
 {
+    s_turn_phase = 0;
+    s_settle_ms  = 0;
+    s_settle_t0  = 0;
     s_wpi++;
     g_nav_wp_index = s_wpi;
     if (s_wpi >= s_wpn)
@@ -250,19 +354,17 @@ static void s_wp_next(void)
        为 50mm 的横移原地转 90 度既慢又容易过冲(实测在扫码区白转一大圈).
        长段仍按段方向走: 侧向长时间横移麦轮打滑大, 里程计误差会累积.
        若确实需要到点朝向, 用 <<f 角度>> 指定, 到点后会自动对准. */
-    if (g_force_strafe)
-        s_yaw_t = g_pose.yaw;            /* 强制横移: 锁定车头 */
-    else if (s_wpi + 1 >= s_wpn)
     {
-        float lx = s_wpx[s_wpi] - s_seg_x0;
-        float ly = s_wpy[s_wpi] - s_seg_y0;
-        if (lx * lx + ly * ly <= NAV_SHORT_MM * NAV_SHORT_MM)
-            s_yaw_t = g_pose.yaw;
-        else
-            s_yaw_t = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[s_wpi], s_wpy[s_wpi]);
+        float sy = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[s_wpi], s_wpy[s_wpi]);
+        if (s_wpi + 1 >= s_wpn)
+        {
+            float lx = s_wpx[s_wpi] - s_seg_x0;
+            float ly = s_wpy[s_wpi] - s_seg_y0;
+            if (lx * lx + ly * ly <= NAV_SHORT_MM * NAV_SHORT_MM)
+                sy = g_pose.yaw;         /* 末段短: 纯平移 */
+        }
+        s_yaw_t = s_yaw_pick(sy);
     }
-    else
-        s_yaw_t = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[s_wpi], s_wpy[s_wpi]);
 }
 
 void Nav_Update(void)
@@ -293,15 +395,22 @@ void Nav_Update(void)
     {
         yaw_err = Attitude_WrapPi(s_dock_yaw - g_pose.yaw);
         wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
-        if (fabsf(yaw_err) < 0.030f)
+        /* 0.030 rad = 1.72 度, 太松: 实测总停在 1.5 度左右.
+           收到 0.0087 rad = 0.5 度 */
+        if (fabsf(yaw_err) < 0.0087f)
         {
             s_turn_ms = 0;
             Chassis_Hold();
             g_nav_state = NAV_DONE;
             return;
         }
-        if (wz >  NAV_TURN_WZ_MAX) wz =  NAV_TURN_WZ_MAX;
-        if (wz < -NAV_TURN_WZ_MAX) wz = -NAV_TURN_WZ_MAX;
+        if (wz >  s_turn_wz_max) wz =  s_turn_wz_max;
+        if (wz < -s_turn_wz_max) wz = -s_turn_wz_max;
+        /* 死区补偿: 与运行段的转向分支保持一致。
+           尾段 wz = 4.0 * err, 差 0.5 度时只有 0.035 rad/s, 麦轮静摩擦转不动,
+           会一直等到 NAV_TURN_TIMEOUT_MS 判 why=2 失败 (180 度对准必踩)。 */
+        if (fabsf(wz) < NAV_TURN_MIN_WZ)
+            wz = (yaw_err > 0.0f) ? NAV_TURN_MIN_WZ : -NAV_TURN_MIN_WZ;
         if (s_turn_ms == 0) s_turn_ms = Tick;
         else if ((uint32_t)(Tick - s_turn_ms) > NAV_TURN_TIMEOUT_MS)
         {
@@ -319,7 +428,94 @@ void Nav_Update(void)
        否则 s_yaw_t 保留上一段航向 + IMU 零偏漂移 -> 持续输出 wz -> 车原地自转 */
     if (g_nav_state != NAV_RUN || s_wpn == 0)
     {
+        s_turn_phase = 0;
         Chassis_Hold();
+        return;
+    }
+
+    /* ================= 模式 3: 纯追踪圆弧过渡 =================
+       不停车、不原地转: 在路径上取「前瞻点」(车投影点前方 NAV_CARROT_MM 处),
+       车朝它走, 转角大时自动降速。前瞻点越过拐点后自动切下一段,
+       于是拐角被走成圆弧而不是「停下-转-再走」。
+       注意: 圆弧会切到路径内侧, 窄通道里慎用。 */
+    if (g_yaw_mode == 3)
+    {
+        float ux, uy, ul, t, tgt_x, tgt_y, lx, ly, kv, fx, fy, fd;
+        uint8_t guard = 0;
+
+        ux = s_wpx[s_wpi] - s_seg_x0;
+        uy = s_wpy[s_wpi] - s_seg_y0;
+        ul = sqrtf(ux * ux + uy * uy);
+        if (ul < 1.0f) { ul = 1.0f; ux = 1.0f; uy = 0.0f; }
+        ux /= ul;  uy /= ul;
+        t = (g_pose.x - s_seg_x0) * ux + (g_pose.y - s_seg_y0) * uy;
+        if (t < 0.0f) t = 0.0f;
+
+        /* 前瞻点超出本段就推进下一段(不停车), 最多 3 次 */
+        while ((t + NAV_CARROT_MM) > ul && (s_wpi + 1) < s_wpn && guard < 3)
+        {
+            s_wp_next();
+            guard++;
+            ux = s_wpx[s_wpi] - s_seg_x0;
+            uy = s_wpy[s_wpi] - s_seg_y0;
+            ul = sqrtf(ux * ux + uy * uy);
+            if (ul < 1.0f) { ul = 1.0f; ux = 1.0f; uy = 0.0f; }
+            ux /= ul;  uy /= ul;
+            t = (g_pose.x - s_seg_x0) * ux + (g_pose.y - s_seg_y0) * uy;
+            if (t < 0.0f) t = 0.0f;
+        }
+
+        {
+            float tt = t + NAV_CARROT_MM;
+            if (tt > ul) tt = ul;
+            tgt_x = s_seg_x0 + ux * tt;
+            tgt_y = s_seg_y0 + uy * tt;
+        }
+        lx = tgt_x - g_pose.x;
+        ly = tgt_y - g_pose.y;
+
+        c = cosf(g_pose.yaw);
+        s = sinf(g_pose.yaw);
+        bx = ( lx * c + ly * s) * 0.001f;
+        by = (-lx * s + ly * c) * 0.001f;
+
+        /* 车头目标: 一般情况下朝前瞻点, 但「末段且很短」时要锁车头纯平移
+           (否则 100mm 的小横移也要先转个 90 度, 而且会斜着走)
+           这与模式2的 NAV_SHORT_MM 规则保持一致。 */
+        if ((s_wpi + 1) >= s_wpn && ul <= NAV_SHORT_MM)
+            yaw_err = 0.0f;                       /* 保持当前车头 */
+        else
+            yaw_err = Attitude_WrapPi(atan2f(ly, lx) - g_pose.yaw);
+        wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
+
+        /* 转角越大越慢: 90 度时降到 40% */
+        kv = 1.0f - 0.60f * fabsf(yaw_err) / 1.5708f;
+        if (kv < 0.35f) kv = 0.35f;
+
+        vx = (s_kp_pos * bx - s_kd_pos * g_chassis.fb_vx) * kv;
+        vy = (s_kp_pos * by - s_kd_pos * g_chassis.fb_vy) * kv;
+
+        fx = s_wpx[s_wpi] - g_pose.x;
+        fy = s_wpy[s_wpi] - g_pose.y;
+        fd = sqrtf(fx * fx + fy * fy);
+
+        if ((s_wpi + 1) >= s_wpn && fd < NAV_FINAL_MM)
+        {
+            s_wp_next();                 /* 终点: 内部 Chassis_Hold + DONE */
+            return;
+        }
+        if (t >= (ul - 5.0f) && (s_wpi + 1) < s_wpn)
+        {
+            s_wp_next();                 /* 中间点: 越过即推进, 不停车 */
+        }
+
+        vn = sqrtf(vx * vx + vy * vy);
+        if (vn > CH_VXY_MAX)
+        {
+            vx = vx * CH_VXY_MAX / vn;
+            vy = vy * CH_VXY_MAX / vn;
+        }
+        Chassis_SetBodyVel(vx, vy, wz);
         return;
     }
 
@@ -327,27 +523,59 @@ void Nav_Update(void)
     yaw_err = Attitude_WrapPi(s_yaw_t - g_pose.yaw);
     wz = s_kp_yaw * yaw_err - s_kd_yaw * g_att.yaw_rate;
 
-    /* ---- 拐点: 段航向未对准先原地转向, 不平移 ---- */
-    if (fabsf(yaw_err) > NAV_TURN_GATE)
-    {
-        /* 限速: 四轮同时最大出力电流峰值大, 且麦轮原地转易打滑 */
-        if (wz >  NAV_TURN_WZ_MAX) wz =  NAV_TURN_WZ_MAX;
-        if (wz < -NAV_TURN_WZ_MAX) wz = -NAV_TURN_WZ_MAX;
+    /* ---- 拐点状态机: 0=需要对准  1=停稳驻留  2=已放行(之后连续平移) ---- */
+    if (s_turn_phase != 0 && fabsf(yaw_err) > NAV_TURN_GATE)
+        s_turn_phase = 0;              /* 平移中航向跑偏过大 -> 重新停下对准 */
 
-        /* 超时: 转不动就判失败, 绝不无限转 */
-        if (s_turn_ms == 0) s_turn_ms = Tick;
-        else if ((uint32_t)(Tick - s_turn_ms) > NAV_TURN_TIMEOUT_MS)
+    if (s_turn_phase == 0)
+    {
+        if (fabsf(yaw_err) > NAV_TURN_GATE ||
+            fabsf(g_att.yaw_rate) > NAV_TURN_SETTLE_RATE)
         {
-            s_turn_ms = 0;
-            Chassis_Hold();
-            g_nav_fail_why = 2;
-            g_nav_state = NAV_FAIL;
+            /* 限速: 四轮同时最大出力电流峰值大, 且麦轮原地转易打滑 */
+            if (wz >  s_turn_wz_max) wz =  s_turn_wz_max;
+            if (wz < -s_turn_wz_max) wz = -s_turn_wz_max;
+
+            /* 死区补偿: 角度还差得多时保证最小角速度, 否则麦轮静摩擦会让它卡在最后几度 */
+            if (fabsf(yaw_err) > NAV_TURN_GATE && fabsf(wz) < NAV_TURN_MIN_WZ)
+                wz = (yaw_err > 0.0f) ? NAV_TURN_MIN_WZ : -NAV_TURN_MIN_WZ;
+
+            /* 超时: 转不动就判失败, 绝不无限转 */
+            if (s_turn_ms == 0) s_turn_ms = Tick;
+            else if ((uint32_t)(Tick - s_turn_ms) > NAV_TURN_TIMEOUT_MS)
+            {
+                s_turn_ms = 0;
+                s_settle_ms = 0;  s_settle_t0 = 0;
+                Chassis_Hold();
+                g_nav_fail_why = 2;
+                g_nav_state = NAV_FAIL;
+                return;
+            }
+            Chassis_SetBodyVel(0.0f, 0.0f, wz);
             return;
         }
-        Chassis_SetBodyVel(0.0f, 0.0f, wz);
-        return;
+        /* 角度和角速度都到位 -> 进入停稳驻留 */
+        s_turn_phase = 1;
+        s_settle_t0  = Tick;
+        s_settle_ms  = Tick;
+        s_turn_ms    = 0;
     }
-    s_turn_ms = 0;
+
+    /* ---- 停稳驻留: 命令零速度, 等实际反馈速度真的归零, 并保持一小段时间 ----
+       修 bug: 原来驻留结束后立刻把标志清 0, 下一周期又从头进入驻留,
+       结果 120ms 里只有 5ms 在平移 -> 车几乎不动。改成 phase 2 放行后保持。 */
+    if (s_turn_phase == 1)
+    {
+        if (fabsf(g_chassis.fb_vx) > NAV_SETTLE_V ||
+            fabsf(g_chassis.fb_vy) > NAV_SETTLE_V ||
+            fabsf(g_chassis.fb_wz) > NAV_SETTLE_WZ)
+            s_settle_ms = Tick;                     /* 还在动: 重新计时 */
+        Chassis_SetBodyVel(0.0f, 0.0f, 0.0f);
+        if ((uint32_t)(Tick - s_settle_ms) < (uint32_t)g_nav_settle_ms &&
+            (uint32_t)(Tick - s_settle_t0)  < ((uint32_t)g_nav_settle_ms + NAV_SETTLE_MAX_EXTRA))
+            return;
+        s_turn_phase = 2;                           /* 放行, 之后连续平移 */
+    }
 
     /* ---- 误差 ---- */
     ex = s_wpx[s_wpi] - g_pose.x;
@@ -390,7 +618,7 @@ void Nav_Update(void)
     vy = s_kp_pos * by - s_kd_pos * g_chassis.fb_vy;
 
     /* ---- 到点前按距离限速 (减速度 0.8 m/s^2) ---- */
-    vlim = sqrtf(1.6f * d * 0.001f);
+    vlim = sqrtf(2.0f * g_nav_a_dec * d * 0.001f);
     if (vlim > CH_VXY_MAX) vlim = CH_VXY_MAX;
     vn = sqrtf(vx * vx + vy * vy);
     if (vn > vlim && vn > 0.0001f)
@@ -408,6 +636,9 @@ static void s_commit(void)
 {
     uint8_t i;
     __disable_irq();
+    s_turn_phase = 0;
+    s_settle_ms  = 0;
+    s_settle_t0  = 0;
     s_wpn = s_tn;
     for (i = 0; i < s_tn; i++)
     {
@@ -435,12 +666,11 @@ static void s_commit(void)
         }
     }
 
-    if (g_force_strafe)
-        s_yaw_t = g_pose.yaw;
-    else if (s_wpi == 1)
-        s_yaw_t = s_seg_yaw(s_wpx[0], s_wpy[0], s_wpx[1], s_wpy[1]);
+    s_yaw_lock = g_pose.yaw;
+    if (s_wpi == 1)
+        s_yaw_t = s_yaw_pick(s_seg_yaw(s_wpx[0], s_wpy[0], s_wpx[1], s_wpy[1]));
     else
-        s_yaw_t = s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[0], s_wpy[0]);
+        s_yaw_t = s_yaw_pick(s_seg_yaw(s_seg_x0, s_seg_y0, s_wpx[0], s_wpy[0]));
     g_nav_state = NAV_RUN;
     __enable_irq();
 
@@ -808,23 +1038,35 @@ void Nav_PrintInfo(void)
  *    - strafe=1 表示该段锁定车头纯平移(横移), 不转向
  *    - 已校验: 15 段全部可规划; 转向点最小余量 56mm (不再走中间走廊里掉头)
  *=================================================================*/
-#define NAV_R1_N   15
+#define NAV_R1_N   5
 #define NAV_R2_N   13
 
-/* ---- 路线 1: 只按段方向走, 无到点朝向 ---- */
+/* ---- 路线 1: 只给功能区终点, 路径全交给 A* ----
+       作业点由人标定, 路径交给 A*:
+       扫码(2225,1195) -> 夹取(1195,2155) -> 初加工(1195,265) -> 暂存(305,1195) -> 回启停(2225,175)
+       2026-11-21: P1 x 2175->2225, P3 x 1205->1195, 让 leg1/leg3 变成纯竖直线。
+       原来这两个点和上一点的 x 差 50/10mm, 正交化会折出一条 50mm / 10mm 的碎腿,
+       而碎腿前要原地转 90 度、走几十毫米、再在 5mm 死区里停 -> 纯浪费且精度差。 */
 static const float   s_r1_x[NAV_R1_N] =
 {
-     2195,  2195,  2195,  1205,  1205,   305,   305,   305,
-     1215,  1215,   305,   315,  2195,  2205,  2255
+     2225,  1195,  1195,   305,  2225
 };
 static const float   s_r1_y[NAV_R1_N] =
 {
-      705,  1195,  2155,  2155,   285,   295,  1185,  2155,
-     2155,   275,   275,  1185,  1205,   705,   145
+     1195,  2155,   265,  1195,   175
 };
 static const uint8_t s_r1_s[NAV_R1_N] =
 {
-        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0
+        0,     0,     0,     0,     0
+};
+/* 到点朝向 (度, 0=右 90=上 -90=下 180=左; 999 = 不指定, 车头跟随段方向)
+   最后一点指定 90 度: 回程结束车头朝上, 与出发点一致。
+   这样测同一测点的位移就等于车心位移 —— 否则 180 度旋转会把偏心测点的
+   位移放大 2r (实测螺丝偏心 39mm -> 假漂移 78mm)。
+   比赛上也更好: 一轮结束车头朝上, 可以直接接着跑下一轮。 */
+static const int16_t s_r1_f[NAV_R1_N] =
+{
+      999,   999,   999,   999,    90
 };
 
 /* ---- 路线 2: 每点可带到点朝向, 999 = 自动(跟随段方向) ---- */
@@ -856,7 +1098,7 @@ static void s_route_bind(uint8_t id)
 {
     if (id == 1)
     {
-        rt_x = s_r1_x;  rt_y = s_r1_y;  rt_s = s_r1_s;  rt_f = 0;
+        rt_x = s_r1_x;  rt_y = s_r1_y;  rt_s = s_r1_s;  rt_f = s_r1_f;
         rt_n = NAV_R1_N;
     }
     else
@@ -958,12 +1200,17 @@ void Nav_RoutePoll(void)
         s_route_settle_ms = 0;
         g_force_strafe = 0;
         Nav_SetDockYaw(999.0f);
-        printf("# route%d DONE (%d pts)\r\n", rt_id, rt_n);
+        printf("# route%d DONE (%d pts)  final odom=(%.0f,%.0f) yaw=%.1f\r\n",
+               rt_id, rt_n, g_pose.x, g_pose.y, g_pose.yaw * 57.29578f);
         return;
     }
 
     g_force_strafe = rt_s ? rt_s[s_route_i] : 0;
     s_route_dock_yaw(s_route_i);
+    /* 点位到达时的里程计位姿: 和卷尺实测逐点对照, 才能分清是"里程计漂"还是"没走到" */
+    printf("# wp%d reached  odom=(%.0f,%.0f) yaw=%.1f  ->  next target (%.0f,%.0f)\r\n",
+           s_route_i, g_pose.x, g_pose.y, g_pose.yaw * 57.29578f,
+           rt_x[s_route_i], rt_y[s_route_i]);
     if (Nav_PlanToMm(rt_x[s_route_i], rt_y[s_route_i]))
         printf("# route%d %d/%d%s%s\r\n", rt_id, s_route_i + 1, rt_n,
                (rt_s && rt_s[s_route_i]) ? " (strafe)" : "",
@@ -976,6 +1223,27 @@ void Nav_RoutePoll(void)
         printf("# route%d FAIL at %d\r\n", rt_id, s_route_i + 1);
     }
 }
+
+/* 供遥测使用: 当前段的目标航向 (rad) */
+float Nav_GetYawTarget(void) { return s_yaw_t; }
+
+void  Nav_SetTurnWz(float wz)
+{
+    if (wz >= 0.3f && wz <= 2.5f) s_turn_wz_max = wz;
+}
+float Nav_GetTurnWz(void) { return s_turn_wz_max; }
+
+void  Nav_SetADec(float a)
+{
+    if (a > 0.10f && a < 8.0f) g_nav_a_dec = a;
+}
+float Nav_GetADec(void) { return g_nav_a_dec; }
+
+void Nav_SetSettleMs(uint16_t ms)
+{
+    if (ms <= 800u) g_nav_settle_ms = ms;   /* 超过 800ms 不接受, 防止把路线拖死 */
+}
+uint16_t Nav_GetSettleMs(void) { return g_nav_settle_ms; }
 
 uint8_t Nav_RouteBusy(void)  { return s_route_on; }
 uint8_t Nav_RouteIndex(void) { return s_route_i; }

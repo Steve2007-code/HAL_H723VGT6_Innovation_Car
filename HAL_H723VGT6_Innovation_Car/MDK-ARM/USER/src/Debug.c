@@ -60,7 +60,8 @@ static uint8_t s_need_frame(char cmd)
     {
     case 'v': case 's': case 'd': case 'g': case 'z':
     case 'p': case 'r': case 'k': case 'h': case 'c': case 'w':
-    case 'f': case 'R':
+    case 'f': case 'R': case 'y': case 'q': case 'a': case 'G': case 'A': case 'T':
+    case 'D': case 'S':
         return 1;
     }
     return 0;
@@ -77,6 +78,7 @@ static void s_help(void)
     printf(" i                  打印 IMU 诊断\r\n");
     printf(" m                  打印增益\r\n");
     printf(" t <0|1>            CSV 遥测开关\r\n");
+    printf("   $格式: Tick,row,col,x,y,pose_yaw,vx,vy,wz,state,wp,imu_yaw,imu_rate,euler,yaw_tgt\r\n");
     printf(" x                  急停\r\n");
     printf(" e                  退出单轮模式\r\n");
     printf(" ---- 运动类 (需帧) ----\r\n");
@@ -86,13 +88,21 @@ static void s_help(void)
     printf(" g <row> <col>      规划到格子\r\n");
     printf(" p <x> <y>          规划到世界坐标 mm\r\n");
     printf(" z <kind> <idx>     规划到功能区\r\n");
-    printf(" r <row> <col>      重置位姿\r\n");
+    printf(" r <row> <col> [yaw] 重置位姿, 可指定真实车头角(度, 0右/90上/-90下/180左)\r\n");
     printf(" k <kp> <kd>        位置环\r\n");
     printf(" h <kp> <kd>        航向环\r\n");
     printf(" c <scale>          里程计比例\r\n");
     printf(" w <0|1>            手动看门狗开关\r\n");
     printf(" f <deg>            到点后对准朝向 (999=取消)\r\n");
     printf(" R <0|1|2>          跑内置路线 1/2=开始 0=停止\r\n");
+    printf(" y <0|1|2|3>        转向策略 0锁车头 1只大角度 2跟随(默认) 3圆弧过渡\r\n");
+    printf(" q <x> <y> [yaw]    按毫米设位姿(比 r 精确, 可停任意点)\r\n");
+    printf(" a <deg>            原地转到指定角度(0右/90上/-90下/180左)\r\n");
+    printf(" A <deg>            相对当前角度再转 deg (正=逆时针, 可连发)\r\n");
+    printf(" G <scale>          陀螺刻度修正 0.85~1.15 (转一圈少 E 度 -> (360+E)/360)\r\n");
+    printf(" T <wz>             原地转向限速 rad/s (0.3~2.5, 越小越慢但打滑越少)\r\n");
+    printf(" D <a> [a_dec]      加/减速度 m/s^2 (T 形曲线); 只给一个数 = 加减速一致\r\n");
+    printf(" S <ms>             转向后停稳驻留时长 ms (0~800), 默认 300, 越大越稳越慢\r\n");
     printf("------------------------------------------\r\n");
 }
 
@@ -199,8 +209,19 @@ static void s_exec(char *ln, uint8_t framed)
     {
         int r = s_atoi(&p);
         int c = s_atoi(&p);
-        Nav_ResetPose((uint8_t)r, (uint8_t)c);
-        printf("# pose reset to (%d,%d)\r\n", r, c);
+        /* 可选第三个参数: 车的真实车头角(度), 不填则默认朝上(90) */
+        while (*p == ' ' || *p == ',') p++;
+        if (*p == '-' || (*p >= '0' && *p <= '9'))
+        {
+            float yd = s_atof(&p);
+            Nav_ResetPoseTo((uint8_t)r, (uint8_t)c, yd);
+            printf("# pose reset to (%d,%d)  yaw=%.0f deg\r\n", r, c, yd);
+        }
+        else
+        {
+            Nav_ResetPose((uint8_t)r, (uint8_t)c);
+            printf("# pose reset to (%d,%d)\r\n", r, c);
+        }
         break;
     }
 
@@ -260,6 +281,80 @@ static void s_exec(char *ln, uint8_t framed)
         float d = s_atof(&p);
         Nav_SetDockYaw(d);
         printf("# dock yaw %.0f deg %s\r\n", d, (d < -360.0f || d > 360.0f) ? "off" : "on");
+        break;
+    }
+
+    case 'T':
+    {
+        float wz = s_atof(&p);
+        if (wz > 0.0f) Nav_SetTurnWz(wz);
+        printf("# turn wz = %.2f rad/s\r\n", Nav_GetTurnWz());
+        break;
+    }
+
+    case 'D':
+    {
+        float a1 = s_atof(&p), a2 = a1;
+        while (*p == ' ' || *p == ',') p++;
+        if (*p == '-' || (*p >= '0' && *p <= '9')) a2 = s_atof(&p);
+        Nav_SetADec(a2);
+        Chassis_SetAccV(a1);
+        printf("# acc = %.2f  dec = %.2f m/s2\r\n", Chassis_GetAccV(), Nav_GetADec());
+        break;
+    }
+
+    case 'S':
+    {
+        int ms = s_atoi(&p);
+        Nav_SetSettleMs((uint16_t)ms);
+        printf("# settle = %u ms\r\n", (unsigned)Nav_GetSettleMs());
+        break;
+    }
+
+    case 'G':
+    {
+        float sc = s_atof(&p);
+        if (sc > 0.85f && sc < 1.15f) g_gyro_scale = sc;
+        printf("# gyro scale = %.4f\r\n", g_gyro_scale);
+        break;
+    }
+
+    case 'A':
+    {
+        float deg = s_atof(&p);
+        Nav_RotateBy(deg);
+        printf("# rotate by %.0f deg (now %.1f)\r\n", deg, g_pose.yaw * 57.29578f);
+        break;
+    }
+
+    case 'a':
+    {
+        float deg = s_atof(&p);
+        Nav_RotateTo(deg);
+        printf("# rotate to %.0f deg\r\n", deg);
+        break;
+    }
+
+    case 'q':
+    {
+        float x = s_atof(&p);
+        float y = s_atof(&p);
+        float yd = 90.0f;
+        while (*p == ' ' || *p == ',') p++;
+        if (*p == '-' || (*p >= '0' && *p <= '9')) yd = s_atof(&p);
+        Nav_SetPoseMm(x, y, yd);
+        printf("# pose = (%.0f,%.0f)  yaw=%.0f deg\r\n", x, y, yd);
+        break;
+    }
+
+    case 'y':
+    {
+        int m = s_atoi(&p);
+        if (m >= 0 && m <= 3) g_yaw_mode = (uint8_t)m;
+        printf("# yaw mode %d  %s\r\n", g_yaw_mode,
+               g_yaw_mode == 0 ? "锁车头永不转" :
+               (g_yaw_mode == 1 ? "只在大角度转(90度用横移)" :
+               (g_yaw_mode == 3 ? "纯追踪圆弧过渡(不停车)" : "车头跟随段方向")));
         break;
     }
 
@@ -340,10 +435,18 @@ void Debug_Task(void)
         c = (int)(g_pose.x / MAP_CELL_MM);
         if (r < 0) r = 0;  if (r > MAP_N - 1) r = MAP_N - 1;
         if (c < 0) c = 0;  if (c > MAP_N - 1) c = MAP_N - 1;
-        printf("$%lu,%d,%d,%.1f,%.1f,%.2f,%.3f,%.3f,%.3f,%d,%d\r\n",
+        /* 列: 1Tick 2row 3col 4x 5y 6pose_yaw 7vx 8vy 9wz 10state 11wp
+               12imu_yaw 13imu_rate 14euler_yaw 15yaw_target
+           12=IMU 积分角(相对上电, 度)  13=IMU 角速度(rad/s)
+           14=IMU 内部欧拉 yaw(度)     15=本段目标航向(度) */
+        printf("$%lu,%d,%d,%.1f,%.1f,%.2f,%.3f,%.3f,%.3f,%d,%d,%.2f,%.4f,%.2f,%.2f\r\n",
                (unsigned long)Tick, r, c, g_pose.x, g_pose.y,
                g_pose.yaw * 57.29578f,
                g_chassis.fb_vx, g_chassis.fb_vy, g_chassis.fb_wz,
-               g_nav_state, g_nav_wp_index);
+               g_nav_state, g_nav_wp_index,
+               g_att.yaw * 57.29578f,              /* 12 IMU 积分 yaw */
+               g_att.yaw_rate,                     /* 13 IMU 角速度 */
+               g_att.euler[1],                     /* 14 IMU 欧拉 yaw */
+               Nav_GetYawTarget() * 57.29578f);    /* 15 目标航向 */
     }
 }

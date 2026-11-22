@@ -3,6 +3,8 @@
 #include "DM_BLDC_Motor.h"
 
 Chassis_t g_chassis;
+/* 加减速度限值: 默认 = CH_ACC_V; <<D a>> 现场改, 不发命令则行为与改前完全一致 */
+float g_ch_acc_v = 1.0f;     /* 2026-11-21 实测 <<D 1.0>> 终点误差最小, 设成默认值 */
 
 /* 轮序 0/1/2/3 与电机数据块的对应关系 */
 static DM_Motor_Data *const s_mot[4] =
@@ -91,6 +93,12 @@ void Chassis_Single(uint8_t idx, float rad)
     g_chassis.single_rad  = s_lim(rad, CH_RAD_USE);
 }
 
+void Chassis_SetAccV(float a)
+{
+    if (a > 0.10f && a < 8.0f) g_ch_acc_v = a;
+}
+float Chassis_GetAccV(void) { return g_ch_acc_v; }
+
 void Chassis_SingleExit(void)
 {
     g_chassis.single_mode = 0;
@@ -121,7 +129,7 @@ void Chassis_Update(void)
     uint8_t i;
     float w[4];
     float mx = 0.0f, sc;
-    const float dtv = CH_ACC_V * 0.005f;
+    const float dtv = g_ch_acc_v * 0.005f;
     const float dtw = CH_ACC_W * 0.005f;
 
     /* ---- 反馈正解 ---- */

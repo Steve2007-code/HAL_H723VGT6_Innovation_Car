@@ -73,6 +73,10 @@ static uint16_t s_q[MAP_CELLS];         /* BFS 队列 */
   * @brief  生成距离场 + 可规划表
   * @note   s_dist = 到最近实体障碍(1)的切比雪夫格数; 8 邻域 BFS 单位代价
   */
+/* 地图边界也要留出车体: 车半宽 137.5mm = 2.75 格, 取 3 格 = 150mm.
+   原来边界完全不算障碍, 车中心可以贴到 x=2325 -> 车体右边缘 2462 探出场地. */
+#define MAP_BORDER_CELLS   3
+
 void Map_Init(void)
 {
     int i, r, c, head = 0, tail = 0;
@@ -131,6 +135,9 @@ void Map_Init(void)
             s_free[IDX(r, c)] = 0;
             if (k == 1 || k == 3 || k == 4 || k == 5) continue;
             if (s_dist[IDX(r, c)] < g_map_clear_cells) continue;
+            /* 离地图边界不足 3 格的不许走(车体会出界) */
+            if (r < MAP_BORDER_CELLS || r > (MAP_N - 1 - MAP_BORDER_CELLS) ||
+                c < MAP_BORDER_CELLS || c > (MAP_N - 1 - MAP_BORDER_CELLS)) continue;
             s_free[IDX(r, c)] = 1;
         }
     }
@@ -254,7 +261,14 @@ int AStar_Search(int sr, int sc, int gr, int gc, uint8_t *out, int max_cells)
                 {
                     if (!Map_Free(r + dr, c) || !Map_Free(r, c + dc)) continue;
                 }
-                ng = (uint16_t)(s_g[cur] + ((dr != 0 && dc != 0) ? 14 : 10));
+                /* 贴边惩罚: 离障碍 <=5 格的格子每步多花 4 (约 30%~40%).
+                   目的是让路径倾向走通道中线, 拐点自然落在宽敞处,
+                   而不是贴着「dist>=4」这条极限边界切内角. */
+                {
+                    uint16_t step = (uint16_t)((dr != 0 && dc != 0) ? 14 : 10);
+                    if (Map_Dist(nr, nc) <= 5) step = (uint16_t)(step + 4);
+                    ng = (uint16_t)(s_g[cur] + step);
+                }
                 if (ng < s_g[IDX(nr, nc)])
                 {
                     s_g[IDX(nr, nc)] = ng;

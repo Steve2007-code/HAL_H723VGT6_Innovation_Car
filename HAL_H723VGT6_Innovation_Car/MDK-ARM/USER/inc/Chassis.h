@@ -19,8 +19,8 @@
 
 /*---------------- 限幅与斜坡 ----------------*/
 #define CH_RAD_MAX        30.0f         /* 电机 VMAX rad/s */
-#define CH_RAD_USE        12.0f         /* 底盘实际使用上限 rad/s 约 0.58 m/s */
-#define CH_VXY_MAX        0.60f         /* 车体线速度上限 m/s */
+#define CH_RAD_USE        16.0f         /* 底盘实际使用上限 rad/s (12->16, 约 0.78 m/s) */
+#define CH_VXY_MAX        0.75f         /* 车体线速度上限 m/s (0.60->0.75) */
 #define CH_WZ_MAX         2.50f         /* 车体角速度上限 rad/s */
 #define CH_ACC_V          1.80f         /* 线加速度 m/s^2 (1.2->1.8, 缩短起停时间) */
 #define CH_ACC_W          8.00f         /* 角加速度 rad/s^2 */
@@ -45,6 +45,7 @@ typedef struct
 } Chassis_t;
 
 extern Chassis_t g_chassis;
+extern float     g_ch_acc_v;      /* 加减速度 m/s^2, <<D>> 现场改 */
 
 void    Chassis_Init(void);
 void    Chassis_SetBodyVel(float vx, float vy, float wz);
@@ -54,5 +55,7 @@ void    Chassis_SetDir(uint8_t idx, float d);
 void    Chassis_Single(uint8_t idx, float rad);
 void    Chassis_SingleExit(void);
 void    Chassis_GetBodyVel(float *vx, float *vy, float *wz);
+void    Chassis_SetAccV(float a);   /* T 形曲线: 加减速度 m/s^2 */
+float   Chassis_GetAccV(void);
 
 #endif

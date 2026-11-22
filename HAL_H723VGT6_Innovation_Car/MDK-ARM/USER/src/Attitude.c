@@ -6,7 +6,6 @@
 
 Attitude_t g_att;
 
-static uint8_t s_div = 0;
 
 /**
   * @brief  角度归一化到 [-pi, pi]
@@ -50,6 +49,14 @@ void Attitude_Calibrate(uint16_t ms)
     g_att.gz_bias = sum / (float)n;
 
     printf("# gyro z bias = %.6f rad/s (%d samples)\r\n", g_att.gz_bias, n);
+    /* 静止时零偏应在 0.005 以内; 超过 0.02 说明标定那 400ms 车被碰/在晃.
+       该值会让 yaw 每秒漂 gz_bias 弧度, 是「有时好有时差」的元凶. */
+    if (fabsf(g_att.gz_bias) > 0.02f)
+    {
+        printf("# !!! 标定期间车在动: 该零偏会让 yaw 每秒漂 %.1f 度 !!!\r\n",
+               g_att.gz_bias * 57.29578f);
+        printf("# !!! 请让车完全静止后重新上电 !!!\r\n");
+    }
 }
 
 /**
@@ -67,6 +74,9 @@ void Attitude_ZeroYaw(void)
 volatile uint32_t g_att_calls = 0;   /* Attitude_Update 被调用次数 */
 volatile uint32_t g_imu_rej   = 0;   /* 被判为坏帧而丢弃的角速度采样数 */
 volatile uint8_t  g_imu_dead  = 0;   /* 1 = IMU 已失效, yaw 不可信 */
+/* 陀螺刻度修正: 转 360 度实际只转了 (360+E) 度时, 本值 = (360+E)/360.
+   例: 转一圈少 6 度 -> 354/360 = 0.983 */
+float g_gyro_scale = 0.9975f;   /* 实测: 转 8 次 90 度(720) 偏 1.8 度 -> 718.2/720 */
 static uint16_t   s_zero_cnt  = 0;   /* 三轴原始值全等于中点的连续次数 */
 static uint16_t   s_norx_cnt  = 0;   /* 角速度帧不更新的连续次数 */
 static uint32_t   s_rx_snap   = 0;
@@ -77,14 +87,13 @@ void Attitude_Update(void)
 
     g_att_calls++;
 
-    /* ---- 每 10 ms 请求一帧欧拉角 + 一帧角速度 ---- */
-    if ((s_div & 0x01u) == 0)
-    {
-        Red_DM_IMU_EulerData();
-        Red_DM_IMU_GyroData();
-        g_att.online = 1;
-    }
-    s_div++;
+    /* ---- 每 5ms 请求一帧欧拉角 + 一帧角速度 ----
+       原为隔一次请求(10ms=100Hz), 航向反馈延迟 = 采样 10ms + 低通 ~10ms;
+       改成每拍请求(5ms=200Hz)可把延迟减半, 航向环能跟得更紧、转向后回正更快。
+       FDCAN3 1Mbps 下两帧只占约 0.2ms, 负载无忧。 */
+    Red_DM_IMU_EulerData();
+    Red_DM_IMU_GyroData();
+    g_att.online = 1;
 
     /* ---- 采样 ---- */
     g_att.euler[0] = DM_Motor_IMU_StructData.Euler_f_pitch;
@@ -132,6 +141,7 @@ void Attitude_Update(void)
         g_imu_rej++;
         gz = 0.0f;
     }
+    gz *= g_gyro_scale;            /* 刻度修正 */
     g_att.yaw_rate += ATT_LPF * (gz - g_att.yaw_rate);
 
     /* ---- 积分 ---- */
@@ -165,8 +175,8 @@ void Attitude_PrintDiag(void)
            g_att.gyro[0], g_att.gyro[1], g_att.gyro[2], g_att.gz_bias);
     printf("# acc  x/y/z = %.3f / %.3f / %.3f m/s2\r\n",
            g_att.acc[0], g_att.acc[1], g_att.acc[2]);
-    printf("# yaw = %.3f deg  yawrate = %.4f rad/s\r\n",
-           g_att.yaw * 57.29578f, g_att.yaw_rate);
+    printf("# yaw = %.3f deg  yawrate = %.4f rad/s  gyro_scale = %.4f\r\n",
+           g_att.yaw * 57.29578f, g_att.yaw_rate, g_gyro_scale);
     /*---- 链路诊断: 判断 yaw 冻结的根因 ----*/
     printf("# att_upd=%lu  imu rx total=%lu  gyro=%lu  tx_err=%lu  rej=%lu\r\n",
            (unsigned long)g_att_calls, (unsigned long)g_imu_rx_total,
