@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=任务一抓取 · 一键启动
+Name[en]=Task1 Vision Start
+Comment=香橙派 YOLO 视觉识别（Ascend NPU，自动回退 CPU）
+Comment[en]=Orange Pi YOLO vision, one-click start
+Exec=bash "/home/HwHiAiUser/Steve_folder/物料识别/start_desktop.sh"
+Path=/home/HwHiAiUser/Steve_folder/物料识别
+Icon=utilities-terminal
+Terminal=true
+StartupNotify=true
+Categories=Utility;Development;

@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=任务一抓取 · 一键启动
+Name[en]=Task1 Vision Start
+Comment=香橙派 YOLO 视觉识别（Ascend NPU，自动回退 CPU）
+Comment[en]=Orange Pi YOLO vision, one-click start
+Exec=bash "/home/HwHiAiUser/Steve_folder/物料识别/start_desktop.sh"
+Path=/home/HwHiAiUser/Steve_folder/物料识别
+Icon=utilities-terminal
+# 板上默认图形终端模拟器起不来（Failed to execute default Terminal Emulator），
+# 改 false 后窗口就是程序自己的 cv2.imshow；按键要先点一下画面窗口拿焦点。
+Terminal=false
+StartupNotify=true
+Categories=Utility;Development;

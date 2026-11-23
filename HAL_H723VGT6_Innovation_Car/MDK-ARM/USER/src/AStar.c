@@ -135,9 +135,13 @@ void Map_Init(void)
             s_free[IDX(r, c)] = 0;
             if (k == 1 || k == 3 || k == 4 || k == 5) continue;
             if (s_dist[IDX(r, c)] < g_map_clear_cells) continue;
-            /* 离地图边界不足 3 格的不许走(车体会出界) */
-            if (r < MAP_BORDER_CELLS || r > (MAP_N - 1 - MAP_BORDER_CELLS) ||
-                c < MAP_BORDER_CELLS || c > (MAP_N - 1 - MAP_BORDER_CELLS)) continue;
+            /* 离地图边界不足 3 格的不许走(车体会出界)。
+               例外: 启停区(kind 2) 是车的合法停放位置, 不设边界限制 ——
+               否则把起点摆在启停区真实位置(2250,175 / col45)会被判成不可规划,
+               和现实对不上。车体是否真探出场地由车体投影/地面标定负责。 */
+            if (k != 2 &&
+                (r < MAP_BORDER_CELLS || r > (MAP_N - 1 - MAP_BORDER_CELLS) ||
+                 c < MAP_BORDER_CELLS || c > (MAP_N - 1 - MAP_BORDER_CELLS))) continue;
             s_free[IDX(r, c)] = 1;
         }
     }

@@ -780,6 +780,24 @@ static void s_emit(uint8_t *m, float x, float y)
     (*m)++;
 }
 
+/* 小偏斜段(次轴 <= 主轴 25%, 且主轴 > 200mm): 直接保留斜线, 不折 L。
+   折 L 只是为了几十毫米的横向位移就要多转一次 90 度(多一次停车+打滑),
+   反而更慢更晃。这条斜线本身已通过 s_los 检查, 是通的, 所以安全。 */
+static uint8_t s_keep_diag(float x0, float y0, float ax, float ay, uint8_t first)
+{
+    float ax_f = fabsf(ax), ay_f = fabsf(ay);
+    float amin = (ax_f < ay_f) ? ax_f : ay_f;
+    float amax = (ax_f < ay_f) ? ay_f : ax_f;
+    int r, c;
+    /* 只在「从启停区出发的第一段」放宽: 那几十毫米的横向偏差不值得
+       多转一次 90 度(两次停车+打滑)。其它段一律保持原正交策略,
+       不动已经标定好的路线。 */
+    if (!first) return 0;
+    s_xy_to_cell(x0, y0, &r, &c);
+    if (Map_Kind(r, c) != 2) return 0;
+    return (uint8_t)(amax > 300.0f && amin <= 80.0f);
+}
+
 static void s_ortho(void)
 {
     uint8_t i, m;
@@ -799,6 +817,11 @@ static void s_ortho(void)
         float ax = x1 - x0, ay = y1 - y0;
 
         if (fabsf(ax) < 0.5f || fabsf(ay) < 0.5f)       /* 已是正交段 */
+        {
+            s_emit(&m, x1, y1);
+            cur = atan2f(ay, ax);
+        }
+        else if (s_keep_diag(x0, y0, ax, ay, (uint8_t)(i == 1))) /* 启停区出口: 保留斜线 */
         {
             s_emit(&m, x1, y1);
             cur = atan2f(ay, ax);
@@ -1039,7 +1062,7 @@ void Nav_PrintInfo(void)
  *    - 已校验: 15 段全部可规划; 转向点最小余量 56mm (不再走中间走廊里掉头)
  *=================================================================*/
 #define NAV_R1_N   5
-#define NAV_R2_N   13
+#define NAV_R2_N   8
 
 /* ---- 路线 1: 只给功能区终点, 路径全交给 A* ----
        作业点由人标定, 路径交给 A*:
@@ -1069,22 +1092,32 @@ static const int16_t s_r1_f[NAV_R1_N] =
       999,   999,   999,   999,    90
 };
 
-/* ---- 路线 2: 每点可带到点朝向, 999 = 自动(跟随段方向) ---- */
+/* ---- 路线 2: 2026-11-22 用户标定
+       扫码 -> [夹取 -> 初加工 -> 暂存] x2 -> 回启停
+       起点: <<q 2250 136 90>>    末点 (2250,136) 严格闭环
+       工具逐段核过: 14458mm / 18 航点 / 12 次转向 / 可规划
+       备注: y=136 处车横过来(朝左右)时右侧面会越过场地线 9mm,
+             若场地外沿没有护栏/桌面余量足够, 不影响行驶。 ---- */
 static const float   s_r2_x[NAV_R2_N] =
 {
-     2195,  2195,  1195,  1195,   335,   335,   345,  1205,
-     1205,   325,   325,  2205,  2275
+     2105,  1195,  1175,   315,  1205,  1185,   315,  2250
 };
 static const float   s_r2_y[NAV_R2_N] =
 {
-     1185,  2135,  2135,   345,   345,  1185,  2125,  2135,
-      345,   345,  1185,  1185,   135
+     1185,  2065,   355,  1155,  2065,   355,  1165,   136
 };
 static const int16_t s_r2_f[NAV_R2_N] =
 {
-       90,   999,     0,   180,   999,    90,   999,     0,
-      180,   999,    90,    90,   999
+      999,   999,   999,   999,   999,   999,   999,   999
 };
+
+/* ---- 编译期长度检查 ----
+   数组初始化项少于 NAV_R?_N 时 C 会用 0 补齐，那个点是 (0,0) 会跑到地图角落，
+   而且编译不报错。这里用一个负数组长度的 typedef 把这种情况变成编译错误。 */
+typedef char s_r1_len_chk[(sizeof(s_r1_x)/sizeof(s_r1_x[0])) == NAV_R1_N ? 1 : -1];
+typedef char s_r1_len_chk2[(sizeof(s_r1_y)/sizeof(s_r1_y[0])) == NAV_R1_N ? 1 : -1];
+typedef char s_r2_len_chk[(sizeof(s_r2_x)/sizeof(s_r2_x[0])) == NAV_R2_N ? 1 : -1];
+typedef char s_r2_len_chk2[(sizeof(s_r2_y)/sizeof(s_r2_y[0])) == NAV_R2_N ? 1 : -1];
 
 /* ---- 当前绑定的路线 ---- */
 static const float   *rt_x;

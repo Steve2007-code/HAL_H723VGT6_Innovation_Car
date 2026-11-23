@@ -1,0 +1,30 @@
+# 香橙派（aarch64 / Ubuntu 22.04）最小依赖
+# ------------------------------------------------------------------
+# 推荐用 apt 装，aarch64 上比 pip 稳：
+#   sudo apt update
+#   sudo apt install -y python3-opencv python3-numpy python3-serial python3-pil v4l-utils
+#   pip3 install onnxruntime
+#
+# 若 pip3 install onnxruntime 报 "no matching distribution found"：
+#   不用慌，把启动脚本改成 BACKEND=cvdnn bash run_task1.sh
+#   （只靠 OpenCV DNN 读 best.onnx，onnxruntime 就不是必需了）
+#
+# 注意：本包**不需要** torch / ultralytics（那两个在 aarch64 上极难装）。
+#       best.pt 已经在 PC 上导出成 best.onnx 了。
+#
+# ---------------- NPU 路线（Orange Pi AIpro / Ascend 310B4）----------------
+# 上面这些 pip 依赖是给 CPU 路线用的，装在「conda deactivate」后的系统 python3。
+# NPU 路线不装 onnxruntime，改用 CANN 自带的 pyACL，环境正好相反：
+#   conda activate base
+#   source /usr/local/Ascend/ascend-toolkit/set_env.sh
+#   python3 -c "import acl; print('acl OK')"
+#   bash atc_convert.sh                    # best_opset11.onnx -> best.om
+#   BACKEND=om LINK=print SHOW=1 bash run_task1.sh
+# 需要的文件：best_opset11.onnx / atc_convert.sh / om_backend.py / best.om
+# ------------------------------------------------------------------
+
+numpy>=1.23
+# opencv-python>=4.8     # aarch64 若 pip 装不动，改用 apt 的 python3-opencv
+pyserial>=3.5
+onnxruntime>=1.16        # 可选：装不上就用 --backend cvdnn
+Pillow>=9.0              # 可选：仅 --show 开窗口画汉字牌子时才用
