@@ -185,14 +185,23 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   */
 int fputc(int ch, FILE *f)
 {
-  /* 上一次发送没结束时 HAL_UART_Transmit 会立刻返回 HAL_BUSY, 字符被静默丢弃.
-     表现就是'命令执行了但屏幕没输出', 看起来像没响应. 这里先等它就绪. */
-  uint32_t t0 = HAL_GetTick();
-  while (huart1.gState != HAL_UART_STATE_READY &&
-         (uint32_t)(HAL_GetTick() - t0) < 100u)
+  uint32_t t0;
+
+  (void)f;
+
+  /* 直接写 USART1 寄存器, 不走 HAL_UART_Transmit. 原因:
+     1) HAL_UART_Transmit 会占用 huart1.Lock, 与中断里的 HAL_UART_Receive_IT
+        抢同一把锁, 抢不到时该字符被静默丢弃. 输出中文(GBK 双字节)时只要
+        丢一个字节, 后面整串汉字就整体错位 -> 显示成乱码.
+     2) HAL_UART_Transmit 的等待会把主循环拖住, 超时设小又会丢字符.
+     这里只等 TXE, 最多 3ms, 超时丢这一个字符, 绝不占锁、不阻塞主循环.
+     ORE 不在打印路径里清(读 RDR 会丢掉正在接收的字节), 交给 UART_RxCheck 兜底. */
+  t0 = HAL_GetTick();
+  while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0U)
   {
+    if ((uint32_t)(HAL_GetTick() - t0) >= 3u) return ch;
   }
-  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
+  USART1->TDR = (uint8_t)ch;
   return ch;
 }
 

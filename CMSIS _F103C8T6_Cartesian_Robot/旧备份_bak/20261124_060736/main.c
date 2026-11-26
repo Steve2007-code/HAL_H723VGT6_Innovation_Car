@@ -1,0 +1,104 @@
+/******************************************************************************
+ * main.c  --  直角坐标机械臂 A 轴视觉跟随（全非阻塞）
+ *
+ * 数据流：摄像头串口 <<X,dx,Y,dy>> -> USART1 中断收字节 -> 主循环解析帧
+ *         -> TIM3 每 10ms 触发 PID -> Stepper_SetVel(AXIS_A, v)
+ *         -> TIM2 50kHz 中断速度斜坡 + 发脉冲
+ *
+ * 板间：USART2 <<Y,pos,vel>> 100Hz 上报 yaw 目标给底盘 H723（UART7），
+ *       收 <<A/K>> 只存状态；成帧层 frame.c 两路独立实例，互不串帧。
+ *
+ * A 轴 = 水平轴，跟随像素 X 误差；B 轴 = 上下轴，只使能不参与 PID。
+ * yaw = 底盘 4340：摄像头俯视时追画面极角 atan2(dx,-dy)，让目标转回正上方。
+ * 目标丢失（9999 或 250ms 无帧）时平滑减速停住保持。
+ *
+ * LED：PC13 低电平亮，识别到目标时常亮。
+ * 标定项集中在 track_config.h：TRACK_SIGN（方向）、TRACK_KP（增益）。
+ ******************************************************************************/
+
+#include "stm32f10x.h"
+#include "stepper.h"
+#include "track_config.h"
+#include "track.h"
+#include "vision.h"
+#include "link_config.h"
+#include "mcu_link.h"
+#include "yaw_track.h"
+#include "servo.h"
+#include "backlight.h"
+#include "lcd.h"
+
+/* 舵机两个工位角度（实测） */
+#define SERVO_ANGLE_CLOSE   58.0f
+#define SERVO_ANGLE_OPEN    130.0f
+
+/* 粗延时：72MHz 下约 1ms，仅用于上电等驱动器建立电流 */
+static void delay_ms(uint32_t ms)
+{
+    uint32_t i;
+    volatile uint32_t j;
+
+    for (i = 0; i < ms; i++) {
+        for (j = 0; j < 8000; j++) {
+        }
+    }
+}
+
+static void led_init(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+    GPIOC->CRH &= ~(0xFU << 20);        /* PC13 */
+    GPIOC->CRH |=  (0x2U << 20);        /* 2MHz 推挽输出 */
+    GPIOC->BSRR = (1U << 13);           /* 熄灭 */
+}
+
+static void led_on(void)  { GPIOC->BRR  = (1U << 13); }
+static void led_off(void) { GPIOC->BSRR = (1U << 13); }
+
+int main(void)
+{
+    Stepper_Init();
+    led_init();
+    Backlight_Init();
+    Servo_Init();
+
+    LCD_Init();
+    LCD_Fill(LCD_BLACK);
+    /* 9 倍放大：单字符 45x63，7 字符宽 315，几乎占满 320 宽；
+       两排分居上下，纵向也铺满 240 高。 */
+    LCD_DrawString(2, 15,  "123+321", LCD_WHITE, LCD_BLACK, 9);
+    LCD_DrawString(2, 160, "456+654", LCD_WHITE, LCD_BLACK, 9);
+
+    Vision_Init(TRACK_UART_BAUD);
+    Track_Timer_Init();
+    Track_Init();
+    Link_Init(LINK_UART_BAUD);
+    YawTrack_Init();
+
+    Stepper_Enable(AXIS_A, 1);
+    Stepper_Enable(AXIS_B, 1);          /* B 轴给保持力矩，不参与跟随 */
+    delay_ms(300);
+
+    Stepper_TrackOn(TRACK_AXIS, 1);     /* A 轴进入连续速度跟随模式 */
+
+    /* 上电工作状态：夹爪停在关位，补光默认熄灭 */
+    Servo_SetAngle(SERVO_ANGLE_CLOSE);      /* 夹爪默认闭合 */
+    Backlight_Set(0);                       /* 补光默认关闭 */
+
+    while (1) {
+        if (g_tick_10ms) {
+            g_tick_10ms = 0;
+            Link_PollRx();              /* 1) 先收 A/K，更新链路状态 */
+            Track_Update();             /* 2) 视觉 PID + 下发 A 轴速度，不阻塞、不发帧 */
+            YawTrack_Update(Track_GetDx(), Track_GetDy(), Track_GetValid());
+                                        /* 3) yaw 极角闭环 + 更新 yaw 目标角 */
+            Link_TxTick();              /* 3)+4) 取 yaw 目标 + 组包投递 TX 缓冲 */
+            Servo_Tick();               /* 舵机 20ms 帧同步推进（内部 2 分频） */
+        }
+
+        if (g_track_valid) led_on();    /* 识别到目标常亮 */
+        else               led_off();   /* 丢失目标熄灭 */
+
+        /* 无任何忙等；Link_TxTick 只投递缓冲，实际发送由 USART2 TXE 中断完成 */
+    }
+}

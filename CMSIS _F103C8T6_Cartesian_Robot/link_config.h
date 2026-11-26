@@ -11,9 +11,9 @@
 #define LINK_PERIOD_MS          10        /* 与 TIM3 10ms 同拍，Y 帧 100Hz */
 
 /* F103 侧同样限幅（H723 侧还会再硬钳一次） */
-#define LINK_POS_MIN_MRAD       0       /* 4340 yaw 下边界: 0 度 */
-#define LINK_POS_MAX_MRAD       3142    /* 4340 yaw 上边界: +pi = 180 度 */
-#define LINK_VEL_MAX_MRADPS     3000
+#define LINK_POS_MIN_MRAD       (-2269) /* 4340 yaw 下边界: -130 度 */
+#define LINK_POS_MAX_MRAD       2269    /* 4340 yaw 上边界: +130 度 */
+#define LINK_VEL_MAX_MRADPS     6000    /* 与 YAW_VEL_MRADPS / H723 LINK_VEL_LIM 对齐; 原 3000 会把 6rad/s 钳成一半 */
 
 /* yaw 目标：本期只留接口 + 默认值，待用户确定工位逻辑后再填算法 */
 #define LINK_YAW_DEFAULT_MRAD   0

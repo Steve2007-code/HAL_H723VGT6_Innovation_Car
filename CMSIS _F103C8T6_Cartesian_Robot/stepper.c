@@ -1,9 +1,10 @@
 /******************************************************************************
  * stepper.c  --  双路步进电机驱动：速度斜坡 + 位置控制
  *
- * 接线（与原来一致）：
+ * 接线：
  *   通道A: ST1=PA7  DIR1=PA6  EN1=PA5
- *   通道B: ST2=PB0  DIR2=PB1  EN2=PB10
+ *   通道B: ST2=PB0  DIR2=PB1  EN2=PA4
+ *   （EN2 由 PB10 改到 PA4，让出 PB10/PB11 给 USART3 接第二路摄像头）
  *   必须共地：驱动板 GND <-> STM32 GND
  *   J2 上的 5V 是驱动板输出，不要和蓝板的 5V 并接
  *
@@ -52,8 +53,8 @@ typedef struct {
 } StepperPins;
 
 static const StepperPins pins[2] = {
-    { GPIOA, 7,  GPIOA, 6,  GPIOA, 5  },   /* 通道A */
-    { GPIOB, 0,  GPIOB, 1,  GPIOB, 10 }    /* 通道B */
+    { GPIOA, 7,  GPIOA, 6,  GPIOA, 5  },   /* 通道A: ST=PA7 DIR=PA6 EN=PA5 */
+    { GPIOB, 0,  GPIOB, 1,  GPIOA, 4  }    /* 通道B: ST=PB0 DIR=PB1 EN=PA4 (原 PB10 让给 USART3) */
 };
 
 /* ------------------------- 每轴状态 ------------------------- */

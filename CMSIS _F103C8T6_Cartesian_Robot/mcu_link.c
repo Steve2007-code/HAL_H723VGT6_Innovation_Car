@@ -13,6 +13,7 @@
  ******************************************************************************/
 #include "mcu_link.h"
 #include "link_config.h"
+#include "mcu_cmd.h"
 #include "frame.h"
 #include "track.h"          /* g_ms */
 
@@ -162,6 +163,10 @@ void Link_PollRx(void)
             if (s_k_code == LINK_K_READY)   s_yaw_ack = 0;
             /* K,1 上电就绪不参与链路判定；其余 K / 全部 A 都算活性 */
             if (s_k_code != LINK_K_READY) s_last_rx_ms = g_ms;
+        } else if (cmd == 'M' && n >= 1) {
+            /* H723 下发的机械臂命令: <<M,sub[,v1[,v2]]>> ; 无参命令 n=1 */
+            Cmd_ExecSub(v[0], &v[1], (uint8_t)(n - 1));
+            s_last_rx_ms = g_ms;      /* M 也算链路活性 */
         } else {
             s_bad_frame = 1;
         }
@@ -208,6 +213,29 @@ void Link_SetYawTarget(int32_t pos_mrad, int32_t vel_mradps)
     s_yaw_pos_mrad   = pos_mrad;
     s_yaw_vel_mradps = vel_mradps;
     __enable_irq();
+}
+
+/* ---------- 回传机械臂状态给 H723（供调试口查询） ---------- */
+void Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
+                     int32_t trun, int32_t yman)
+{
+    char  buf[72];
+    char *p = buf;
+    const char *s = "<<S,";
+
+    while (*s) *p++ = *s++;
+
+    p = i2s(p, apos); *p++ = ',';
+    p = i2s(p, bpos); *p++ = ',';
+    p = i2s(p, ytgt); *p++ = ',';
+    p = i2s(p, yact); *p++ = ',';
+    p = i2s(p, trun); *p++ = ',';
+    p = i2s(p, yman);
+    *p++ = '>';
+    *p++ = '>';
+    *p   = 0;
+
+    send_frame(buf);
 }
 
 int32_t Link_GetYawTarget(void) { return s_yaw_pos_mrad; }

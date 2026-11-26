@@ -52,3 +52,4 @@ hal_h723vgt6_template\debug.o: ./USER/inc/2812LED.h
 hal_h723vgt6_template\debug.o: ./USER/inc/DMA.h
 hal_h723vgt6_template\debug.o: ./USER/inc/UART_Data.h
 hal_h723vgt6_template\debug.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+hal_h723vgt6_template\debug.o: ./USER/inc/Link.h

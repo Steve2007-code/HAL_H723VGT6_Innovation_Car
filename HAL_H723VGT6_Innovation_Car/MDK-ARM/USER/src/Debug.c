@@ -8,6 +8,7 @@
 #include "AStar.h"
 #include "Time.h"
 #include "UART_Data.h"
+#include "Link.h"
 
 /*==========================================================================
  * 串口协议:
@@ -61,7 +62,7 @@ static uint8_t s_need_frame(char cmd)
     case 'v': case 's': case 'd': case 'g': case 'z':
     case 'p': case 'r': case 'k': case 'h': case 'c': case 'w':
     case 'f': case 'R': case 'y': case 'q': case 'a': case 'G': case 'A': case 'T':
-    case 'D': case 'S':
+    case 'D': case 'S': case 'M':
         return 1;
     }
     return 0;
@@ -103,6 +104,16 @@ static void s_help(void)
     printf(" T <wz>             原地转向限速 rad/s (0.3~2.5, 越小越慢但打滑越少)\r\n");
     printf(" D <a> [a_dec]      加/减速度 m/s^2 (T 形曲线); 只给一个数 = 加减速一致\r\n");
     printf(" S <ms>             转向后停稳驻留时长 ms (0~800), 默认 300, 越大越稳越慢\r\n");
+    printf(" ---- 机械臂 (经 UART7 转发 F103) ----\r\n");
+    printf(" M A <pos> [pps]    A 轴绝对位置(微步, 0~6500), 自动暂停视觉跟随\r\n");
+    printf(" M B <pos> [pps]    B 轴绝对位置(微步, 0~20000)\r\n");
+    printf(" M Y <deg> [deg/s]  4340 yaw 目标角(度,-130~130,可小数) + 角速度(度/秒,0~343)\r\n");
+    printf(" M T <0|1>          A 轴视觉跟随 0=停 1=开\r\n");
+    printf(" M H                yaw 恢复视觉跟随\r\n");
+    printf(" M G <0|1|2>        夹爪 0=合(50) 1=小开(65) 2=大开(100)\r\n");
+    printf(" M L <0|1>          补光 0=关 1=开\r\n");
+    printf(" M Q                查询机械臂状态 (回 # ARM ...)\r\n");
+    printf("   例: <<M A 3000 6000>>  <<M Y 90>>  <<M Y 40 120>>  <<M Q>>\r\n");
     printf("------------------------------------------\r\n");
 }
 
@@ -370,6 +381,74 @@ static void s_exec(char *ln, uint8_t framed)
         printf("# telem %d\r\n", s_telem);
         break;
 
+    case 'M':
+    {
+        int sub = 0, v1, v2;
+        uint8_t nv;
+        float deg = 0.0f;
+        float vspd = 0.0f;
+
+        while (*p == ' ') p++;
+        switch (*p)
+        {
+        case 'A': case 'a': sub = 1; p++; break;   /* A 轴位置 */
+        case 'B': case 'b': sub = 2; p++; break;   /* B 轴位置 */
+        case 'Y': case 'y': sub = 3; p++; break;   /* 4340 yaw 角度 */
+        case 'T': case 't': sub = 4; p++; break;   /* A 轴跟随开关 */
+        case 'H': case 'h': sub = 5; p++; break;   /* yaw 回视觉 */
+        case 'G': case 'g': sub = 6; p++; break;   /* 夹爪 */
+        case 'L': case 'l': sub = 7; p++; break;   /* 补光 */
+        case 'Q': case 'q': sub = 9; p++; break;   /* 查询 */
+        default: break;
+        }
+        if (sub == 0)
+        {
+            printf("# 用法: <<M A|B|Y|T|H|G|L|Q [v1] [v2]>>\r\n");
+            break;
+        }
+        if (sub == 3)
+        {
+            /* yaw 用角度（度）输入，可带小数；协议层仍是 mrad */
+            deg = s_atof(&p);
+            v1  = (int)(deg * 17.4532925f + (deg >= 0.0f ? 0.5f : -0.5f));
+
+            /* 可选第 2 参数: 角速度(度/秒)；缺省或 0 = 用 F103 默认 6 rad/s */
+            vspd = s_atof(&p);
+            if (vspd < 0.0f) vspd = -vspd;
+            v2 = (int)(vspd * 17.4532925f + 0.5f);
+            if (v2 > 6000) v2 = 6000;            /* 与 LINK_VEL_LIM 一致 (6 rad/s) */
+
+            if (deg < -130.0f || deg > 130.0f)
+            {
+                printf("# 注意: %.1f deg 超出 -130~130, 会被 F103 钳位\r\n", deg);
+            }
+            if (vspd > 343.0f)
+            {
+                printf("# 注意: %.0f deg/s 超上限, 已按 343 deg/s 下发\r\n", vspd);
+            }
+        }
+        else
+        {
+            v1 = s_atoi(&p);
+            v2 = s_atoi(&p);
+        }
+
+        nv = (sub == 1 || sub == 2 || sub == 3) ? 3u :
+             ((sub == 4 || sub == 6 || sub == 7) ? 2u : 1u);
+        Link_SendM(sub, v1, v2, nv);
+
+        if (sub == 3)
+        {
+            if (v2 > 0)
+                printf("# yaw = %.1f deg @ %.0f deg/s -> F103\r\n", deg, vspd);
+            else
+                printf("# yaw = %.1f deg @ 默认速度 -> F103\r\n", deg);
+        }
+        else
+            printf("# M %d (%d,%d) -> F103\r\n", sub, v1, v2);
+        break;
+    }
+
     default:
         printf("# unknown cmd '%c', try '?'\r\n", cmd);
         break;
@@ -424,6 +503,19 @@ void Debug_Task(void)
         else if (s_len < (uint8_t)(sizeof(s_line) - 1))
         {
             s_line[s_len++] = ch;
+        }
+    }
+
+    /* 机械臂状态回显: Link 层暂存, 这里取出打印(yaw 折成度) */
+    {
+        int32_t st[6];
+        if (Link_GetArmStat(st, 6))
+        {
+            printf("# ARM apos=%ld bpos=%ld yaw=%.1f yact=%.1f trun=%ld yman=%ld\r\n",
+                   (long)st[0], (long)st[1],
+                   (double)st[2] * 0.05729578,
+                   (double)st[3] * 0.05729578,
+                   (long)st[4], (long)st[5]);
         }
     }
 

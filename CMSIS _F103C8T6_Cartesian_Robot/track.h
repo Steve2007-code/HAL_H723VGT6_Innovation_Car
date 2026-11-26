@@ -16,6 +16,10 @@ void Track_Timer_Init(void);                  /* TIM3，10ms 中断只置标志 */
 void Track_Init(void);                        /* PID 与状态初始化 */
 void Track_Update(void);                      /* 主循环每 10ms 调一次 */
 
+/* 手动位置控制：on=0 暂停视觉 PID（A 轴可被 MoveTo 接管），on=1 恢复跟随 */
+void    Track_SetRun(uint8_t on);
+uint8_t Track_GetRun(void);
+
 /* 只读访问器：供 yaw 极角跟随取最近一帧误差 */
 int16_t Track_GetDx(void);
 int16_t Track_GetDy(void);

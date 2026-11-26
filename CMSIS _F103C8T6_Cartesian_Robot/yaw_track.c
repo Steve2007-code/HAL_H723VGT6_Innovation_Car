@@ -18,6 +18,7 @@ static int32_t s_target_mrad;
 static int32_t s_phi_f;
 static int32_t s_phi_prev;         /* 上一帧低通误差, 供微分项用 */
 static uint32_t s_seen_ms;          /* 已处理过的视觉帧时间戳 */
+static uint8_t  s_manual;            /* 1 = 手动位置控制中，视觉不再累加 */
 
 void YawTrack_Init(void)
 {
@@ -32,9 +33,38 @@ int32_t YawTrack_GetTargetMrad(void)
     return s_target_mrad;
 }
 
+/* 手动设定 yaw 目标角（调试机械臂末端位置用）。进入手动后视觉累加停止，
+   目标角保持不变，直到 YawTrack_SetAuto() 恢复视觉跟随。 */
+void YawTrack_SetManual(int32_t mrad, int32_t vel_mradps)
+{
+    if (mrad >  LINK_POS_MAX_MRAD) mrad =  LINK_POS_MAX_MRAD;
+    if (mrad <  LINK_POS_MIN_MRAD) mrad =  LINK_POS_MIN_MRAD;
+    if (vel_mradps < 0)            vel_mradps = -vel_mradps;
+    if (vel_mradps >  LINK_VEL_MAX_MRADPS) vel_mradps = LINK_VEL_MAX_MRADPS;
+    if (vel_mradps == 0)           vel_mradps =  YAW_VEL_MRADPS;
+
+    s_target_mrad = mrad;
+    s_phi_f       = 0;
+    s_phi_prev    = 0;
+    s_manual      = 1;                 /* 必须在 SetYawTarget 之前置位 */
+    Link_SetYawTarget(mrad, vel_mradps);
+}
+
+void YawTrack_SetAuto(void)
+{
+    s_phi_f    = 0;
+    s_phi_prev = 0;
+    s_manual   = 0;                    /* 从当前目标角继续视觉累加，不会突变 */
+}
+
+uint8_t YawTrack_IsManual(void) { return s_manual; }
+
 void YawTrack_Update(int16_t dx, int16_t dy, uint8_t valid)
 {
     int32_t phi, d, dphi;
+
+    /* 手动位置控制期间不与视觉竞争：目标由 Cmd 层设定，这里直接返回 */
+    if (s_manual) return;
 
     /* 只在收到新视觉帧时累加一次。
        相机帧率通常 30~60Hz, 而本函数以 100Hz 被调用; 同一帧被重复累加 2~3 次

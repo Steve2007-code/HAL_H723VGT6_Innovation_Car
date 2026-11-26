@@ -100,7 +100,8 @@ int parse_i(const char **pp, int32_t *v)
 static uint8_t cmd_ok(char c)
 {
     return (c == 'Y' || c == 'E' || c == 'A' ||
-            c == 'S' || c == 'C' || c == 'K') ? 1U : 0U;
+            c == 'S' || c == 'C' || c == 'K' ||
+            c == 'M') ? 1U : 0U;      /* M = H723 下发的机械臂命令帧 */
 }
 
 /* 解析 "<CMD>,<V1>[,<V2>...]"。返回字段数(1~max_vals)，失败返回 0。

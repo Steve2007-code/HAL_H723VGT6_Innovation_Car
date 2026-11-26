@@ -1,0 +1,12 @@
+.\objects\qr_scan.o: qr_scan.c
+.\objects\qr_scan.o: qr_scan.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\stm32f10x.h
+.\objects\qr_scan.o: .\RTE\_Target_1\RTE_Components.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\core_cm3.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_version.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_compiler.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_armcc.h
+.\objects\qr_scan.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\system_stm32f10x.h
+.\objects\qr_scan.o: frame.h
+.\objects\qr_scan.o: mcu_cmd.h

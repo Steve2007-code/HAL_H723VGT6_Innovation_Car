@@ -23,6 +23,7 @@ static int16_t s_dx;
 static int16_t s_dy;
 static uint8_t s_valid;
 static float   s_dy_f;
+static uint8_t s_run = 1;          /* 0 = 手动位置控制期间暂停 PID */
 
 void Track_Timer_Init(void)
 {
@@ -76,6 +77,12 @@ void Track_Update(void)
         s_valid = f.valid;
     }
 
+    /* 手动位置控制期间不跑 PID（帧照常消费以清空缓冲，避免环形缓冲溢出） */
+    if (!s_run) {
+        g_track_valid = 0;
+        return;
+    }
+
     /* 丢失目标：9999 哨兵或通信超时 */
     if (!s_valid || Vision_AgeMs() > TRACK_TIMEOUT_MS) {
         PID_Reset(&s_pid);
@@ -99,6 +106,20 @@ void Track_Update(void)
 
     Stepper_SetVel(TRACK_AXIS, (int32_t)TRACK_SIGN * v);
 }
+
+/* ---------- 手动/自动切换：手动位置控制时暂停视觉 PID ---------- */
+void Track_SetRun(uint8_t on)
+{
+    s_run = on;
+    if (!on) {
+        PID_Reset(&s_pid);
+        s_dy_f = 0.0f;
+        Stepper_SetVel(TRACK_AXIS, 0);
+        g_track_valid = 0;
+    }
+}
+
+uint8_t Track_GetRun(void) { return s_run; }
 
 /* ---------- 只读访问器：供 yaw 跟随取最近一帧误差 ---------- */
 int16_t Track_GetDx(void) { return s_dx; }

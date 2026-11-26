@@ -424,6 +424,31 @@
               <FileType>1</FileType>
               <FilePath>.\yaw_track.c</FilePath>
             </File>
+            <File>
+              <FileName>servo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\servo.c</FilePath>
+            </File>
+            <File>
+              <FileName>backlight.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\backlight.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\lcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>qr_scan.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\qr_scan.c</FilePath>
+            </File>
+            <File>
+              <FileName>mcu_cmd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\mcu_cmd.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -473,6 +498,36 @@
               <FileName>yaw_track.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\yaw_track.h</FilePath>
+            </File>
+            <File>
+              <FileName>servo.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\servo.h</FilePath>
+            </File>
+            <File>
+              <FileName>backlight.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\backlight.h</FilePath>
+            </File>
+            <File>
+              <FileName>lcd.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\lcd.h</FilePath>
+            </File>
+            <File>
+              <FileName>cnfont.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\cnfont.h</FilePath>
+            </File>
+            <File>
+              <FileName>qr_scan.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\qr_scan.h</FilePath>
+            </File>
+            <File>
+              <FileName>mcu_cmd.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\mcu_cmd.h</FilePath>
             </File>
           </Files>
         </Group>

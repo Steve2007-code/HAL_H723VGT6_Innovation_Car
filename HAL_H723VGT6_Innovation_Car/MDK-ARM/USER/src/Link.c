@@ -23,6 +23,7 @@ static FrameRx_t s_link_h723;
 static uint8_t  s_tx_fifo[TX_FIFO_SZ];
 static volatile uint16_t s_tx_wr = 0;
 static volatile uint16_t s_tx_rd = 0;
+static uint32_t s_tx_start_ms = 0;       /* 本次 IT 发送启动时刻, 用于状态机卡死兜底 */
 static uint8_t  s_tx_buf[TX_BURST_SZ];   /* HAL_UART_Transmit_IT 期间必须保持有效 */
 
 /* ==================== 链路状态 ==================== */
@@ -37,6 +38,10 @@ static uint32_t s_last_can_ms = 0;
 static uint32_t s_last_a_ms = 0;
 static uint32_t s_last_k3_ms = 0;
 static uint32_t s_last_k4_ms = 0;
+
+/* F103 回传的机械臂状态(S 帧)暂存: 协议层不下探 printf, 由 Debug_Task 取走打印 */
+static volatile int32_t s_arm[6];
+static volatile uint8_t s_arm_new = 0;
 
 /* ==================== 内部函数 ==================== */
 static uint8_t s_i32_str(char *d, int32_t v)
@@ -82,15 +87,41 @@ static void s_emit(const char *cmd, const int32_t *v, uint8_t n)
 static void s_tx_pump(void)
 {
     uint16_t n = 0;
-    if (huart7.gState != HAL_UART_STATE_READY) return;
+    uint16_t rd_bak;
+
+    if (huart7.gState != HAL_UART_STATE_READY)
+    {
+        /* 卡死兜底: UART7 的 IT 发送若因错误中断没等到 TC, gState 会永远停在
+           BUSY_TX, 此后一帧都发不出去(表现为上位机有回显、4340/步进完全不动,
+           而且没有任何报错). 超过 20ms 直接强制复位状态机. */
+        if ((uint32_t)(HAL_GetTick() - s_tx_start_ms) > 20u)
+        {
+            __HAL_UART_DISABLE_IT(&huart7, UART_IT_TC);
+            huart7.gState = HAL_UART_STATE_READY;
+        }
+        return;
+    }
+
+    rd_bak = s_tx_rd;
     while (s_tx_rd != s_tx_wr && n < TX_BURST_SZ)
     {
         s_tx_buf[n++] = s_tx_fifo[s_tx_rd];
         s_tx_rd = (uint16_t)((s_tx_rd + 1) % TX_FIFO_SZ);
     }
     if (n == 0) return;
-    /* 非阻塞; 失败则本段丢弃, 不重试、不忙等 */
-    (void)HAL_UART_Transmit_IT(&huart7, s_tx_buf, n);
+
+    /* 关键: HAL_UART_Transmit_IT 会去抢 huart7.Lock, 而 RX 中断里的
+       HAL_UART_Receive_IT 也持有同一把锁. 抢不到时返回 HAL_BUSY 且不发送,
+       若此时已经推进了 s_tx_rd, 这段数据就永久丢失 -> 上位机看到"M 指令已发出"
+       但下位机根本没收到. 因此失败必须把读指针退回去, 下一轮重试. */
+    if (HAL_UART_Transmit_IT(&huart7, s_tx_buf, n) == HAL_OK)
+    {
+        s_tx_start_ms = HAL_GetTick();
+    }
+    else
+    {
+        s_tx_rd = rd_bak;
+    }
 }
 
 static void s_send_k(uint8_t code)
@@ -108,6 +139,19 @@ static void s_send_a(void)
     v[1] = (int32_t)(DM_Motor_4340P_Yaw_StructData.VEL * 1000.0f);
     v[2] = (int32_t)DM_Motor_4340P_Yaw_StructData.UpData[0];
     s_emit("A", v, 3);
+}
+
+/* 下行命令帧: <<M,sub[,v1[,v2]]>> 立即投递并推一次 TX 泵 */
+void Link_SendM(int32_t sub, int32_t v1, int32_t v2, uint8_t nv)
+{
+    int32_t v[3];
+    v[0] = sub;
+    v[1] = v1;
+    v[2] = v2;
+    if (nv < 1u) nv = 1u;
+    if (nv > 3u) nv = 3u;
+    s_emit("M", v, nv);
+    s_tx_pump();                 /* 查询能更快看到回包 */
 }
 
 /* 成帧状态机: 0=等< 1=等第二个< 2=收body 3=等第二个> */
@@ -207,11 +251,27 @@ void Link_Init(void)
 {
     memset(&s_link_h723, 0, sizeof(s_link_h723));
     s_tx_wr = 0; s_tx_rd = 0;
+    s_tx_start_ms = 0;
     s_yaw_pos = 0.0f; s_yaw_vel = 0.0f;
     s_can_pending = 0; s_yaw_enabled = 0; s_link_lost = 0; s_first_poll = 1;
     s_last_y_ms = 0; s_last_can_ms = 0; s_last_a_ms = 0;
     s_last_k3_ms = 0; s_last_k4_ms = 0;
     s_send_k(1);            /* 上电就绪, 只发一次, F103 不依赖它 */
+}
+
+/* 取走一帧机械臂状态(取走即清标志); 返回 1=有新数据 */
+uint8_t Link_GetArmStat(int32_t *out, uint8_t max)
+{
+    uint8_t i, n = 6;
+
+    if (!s_arm_new) return 0;
+    if (n > max) n = max;
+
+    __disable_irq();
+    for (i = 0; i < n; i++) out[i] = s_arm[i];
+    s_arm_new = 0;
+    __enable_irq();
+    return 1;
 }
 
 void Link_FeedByte(uint8_t c)
@@ -225,7 +285,7 @@ void Link_Poll(void)
     char body[FR_BODY_SZ];
     uint32_t now = HAL_GetTick();
     char cmd;
-    int32_t v[4];
+    int32_t v[8];                /* S 帧最多 6 字段, 需 >= 6 */
     uint8_t nf;
 
     if (s_first_poll)
@@ -238,7 +298,7 @@ void Link_Poll(void)
     /* 1) 取帧, 可循环处理粘包 */
     while (s_frame_poll(&s_link_h723, body, FR_BODY_SZ))
     {
-        nf = s_parse_cmd_ints(body, &cmd, v, 4);
+        nf = s_parse_cmd_ints(body, &cmd, v, 8);
         if (nf == 0)
         {
             if (now - s_last_k3_ms >= LINK_K_COOL_MS)
@@ -298,9 +358,21 @@ void Link_Poll(void)
                 }
             }
         }
+        else if (cmd == 'S' && nf >= 4)
+        {
+            /* F103 回传机械臂状态: <<S,apos,bpos,ytgt,yact,trun,yman>> */
+            /* 只暂存, 打印交给 Debug_Task (协议层不依赖 printf) */
+            s_arm[0] = v[0];                                  /* apos */
+            s_arm[1] = v[1];                                  /* bpos */
+            s_arm[2] = v[2];                                  /* ytgt */
+            s_arm[3] = v[3];                                  /* yact */
+            s_arm[4] = (nf >= 5u) ? v[4] : -1;
+            s_arm[5] = (nf >= 6u) ? v[5] : -1;
+            s_arm_new = 1;
+        }
         else
         {
-            /* A/S/C/K 上行帧到达 H723 属异常(自环/接错线), 计非法帧 */
+            /* A/C/K 等上行帧到达 H723 属异常(自环/接错线), 计非法帧 */
             if (now - s_last_k3_ms >= LINK_K_COOL_MS)
             {
                 s_send_k(3);
