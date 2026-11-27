@@ -139,11 +139,25 @@ int main(void)
     Stepper_Enable(AXIS_B, 1);          /* B 轴给保持力矩，不参与跟随 */
     delay_ms(300);
 
-    /* B 轴上升到 10000 脉冲：非阻塞，只设目标，TIM2 中断里后台自己走完
-       (10000 步 @12000pps 约 0.85s；加速 500ms，若丢步/异响就先降 pps) */
-    Stepper_MoveTo(AXIS_B, 10000, 12000, 500);
+    /* ---------------- 上电归位：B 先到位，再动 A 和 yaw ----------------
+       顺序要求：先把 B 抬到顶，确认到位后才让 A 伸出、yaw 转 -115 度。
+       这段在主循环之前，Link_TxTick 还没跑，Y 帧发不出去，所以 yaw 不会提前动。
+       B 20000 步 @24000pps 约 0.85s，等 4s 足够（超时也继续，不卡死启动）。 */
+    Stepper_MoveTo(AXIS_B, 20000, 24000, 400);
+    {
+        uint16_t guard = 0;
+        while (Stepper_IsBusy(AXIS_B) && guard < 400)
+        {
+            delay_ms(10);
+            guard++;
+        }
+    }
 
-    Stepper_TrackOn(TRACK_AXIS, 1);     /* A 轴进入连续速度跟随模式 */
+    Stepper_MoveTo(AXIS_A, 1000, 12000, 250);   /* A 轴伸到 1000 并停住 */
+    YawTrack_SetManual(-2007, 6000);            /* yaw 转到 -115 度 (2007 mrad) */
+
+    /* 不调用 Stepper_TrackOn(TRACK_AXIS, 1)：A 轴保持位置控制，不会被视觉 PID 拉走。
+       需要恢复视觉跟随时发 <<M T 1>>。 */
 
     /* 上电工作状态：夹爪打开到 140 度（补光由屏幕页面控制） */
     Servo_SetAngle(SERVO_ANGLE_OPEN);       /* 夹爪上电张开 */

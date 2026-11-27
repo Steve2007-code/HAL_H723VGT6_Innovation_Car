@@ -50,25 +50,62 @@ def _font(size):
 
 
 def make_patches(size=22):
-    """把六个汉字预渲成小牌子。
+    """把"编号 + 颜色名"预渲成小牌子，如 "4 绿"。
 
     cv2.putText 用 Hershey 字体，画不了汉字——先前"红 0.93"只剩"0.93"，
     便是这个缘故。故用 PIL 先渲好，再贴上去。
+    前面带上 1~6 的编号：编号是判色的结果本身，屏上、console、报文里统一用这个数。
     """
     from PIL import Image, ImageDraw
     font = _font(size)
     out = {}
     for cid, name in COLORS.items():
+        label = "%d %s" % (cid, name)
         probe = Image.new("RGB", (8, 8))
-        l, t, r, b = ImageDraw.Draw(probe).textbbox((0, 0), name, font=font)
+        l, t, r, b = ImageDraw.Draw(probe).textbbox((0, 0), label, font=font)
         w, h = (r - l) + 8, (b - t) + 6
         im = Image.new("RGB", (max(w, 8), max(h, 8)), (0, 0, 0))
-        ImageDraw.Draw(im).text((4 - l, 3 - t), name, font=font, fill=(0, 255, 0))
+        ImageDraw.Draw(im).text((4 - l, 3 - t), label, font=font, fill=(0, 255, 0))
         out[cid] = cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR)
     return out
 
 
 _PATCHES = None
+
+
+def parse_cmd(payload):
+    """解析下位机发来的一条命令，返回新的任务分组；返回 None 表示不认识、不改。
+
+        color 3        → [[3]]         只抓 3 号色（等价于 --task 3）
+        task 156+123   → parse_task()  换成整串任务码
+        color 0 / task 0 / stop → []   清空目标（持续发 9999，下位机据此判断无目标）
+
+    分隔符宽容：逗号、分号、空格、Tab 都当分隔；大小写不敏感。
+    """
+    parts = payload.strip().replace(",", " ").replace(";", " ").split()
+    if not parts:
+        return None
+    head = parts[0].lower()
+    arg = " ".join(parts[1:]).strip()
+
+    if head == "stop":
+        return []
+    if head == "color":
+        if not arg.isdigit():
+            return None
+        n = int(arg)
+        if n == 0:
+            return []
+        return [[n]] if 1 <= n <= 6 else None
+    if head == "task":
+        code = arg.replace(" ", "")
+        if not code or set(code) <= {"0", "+"}:
+            return []
+        try:
+            return parse_task(code)
+        except Exception:
+            return None
+    return None
 
 
 def draw(img, boxes, protos, votes=None):
@@ -210,6 +247,8 @@ def main():
     ap.add_argument("--aim-file", default=str(here / "aim_material.json"), help="偏移存盘处")
     ap.add_argument("--task", default=None, help="任务码，如 123 或 156+123；按序只盯当前该抓的那一色")
     ap.add_argument("--advance-gap", type=int, default=12, help="目标连续几帧看不见才算抓走")
+    ap.add_argument("--no-cmd", action="store_true",
+                    help="不接收串口命令（默认接收下位机发来的 <<color N>> / <<task ...>>）")
     args = ap.parse_args()
 
     from ultralytics import YOLO
@@ -339,6 +378,10 @@ def main():
     else:
         print(f"信号通道：{lk.describe()}   模板 {args.msg!r}")
     print(f"容差 {args.tol:.0f}px   连 {args.lock_frames} 帧才发")
+    if args.no_cmd or args.link != "serial":
+        print("串口命令：未启用（要收命令需 --link serial 且不加 --no-cmd）")
+    else:
+        print("串口命令：<<color 3>> 换单色   <<task 156+123>> 换整串   <<color 0>> 清空目标")
     print(f"目标点 = 画面中心上移 {args.target_up:.0f}px（屏上红叉），偏差与对准均以它为准")
 
     # ---- 屏上显示真正发出去的原始报文（最近 4 帧 + 实际发送速率）
@@ -383,6 +426,23 @@ def main():
         prev = now
         if dt > 0:
             fps = 0.9 * fps + 0.1 * (1.0 / dt) if fps else 1.0 / dt
+
+        # ---------------- 串口命令：下位机随时可换目标
+        # 放在判定之前，这样本帧就能按新目标过滤，不用等下一帧
+        for _cmd in (() if args.no_cmd else lk.poll()):
+            _g = parse_cmd(_cmd)
+            if _g is None:
+                print(f"  [命令] 看不懂，忽略：<<{_cmd}>>")
+                continue
+            tracker = Tracker(_g, advance_when_gone=args.advance_gap)
+            locked_n = 0                       # 换目标必须清计数，否则会误判"已连续锁定"
+            if not _g:
+                print(f"\n[命令] <<{_cmd}>>  目标已清空，持续发 9999")
+            else:
+                _d = " / ".join(" ".join(f"{TASK_NAMES[c]}({c})" for c in g) for g in _g)
+                print(f"\n[命令] <<{_cmd}>>  新目标：{_d}")
+                if len(_g) > 1:
+                    print(f"  （给了 {len(_g)} 批，本程序只跑第 1 批）")
 
         # ---------------- 顶心与画面中心的重合判定 → 发信号
         cx0, cy0 = vis.shape[1] / 2.0, vis.shape[0] / 2.0
@@ -454,10 +514,15 @@ def main():
             if locked_n == args.lock_frames:
                 print(f"\n[重合] 颜色 {COLORS.get(best[1], '?')} 距中心 {best[0]:.0f}px，开始发信号")
 
-        warn = "  << 过曝" if m > 235 else ("  << 太暗" if m < 15 else "")
+        warn = "  << OVER" if m > 235 else ("  << DARK" if m < 15 else "")
         cv2.putText(vis, f"fps {fps:.1f}  obj {len(boxes)}  exp {exp:.0f} gam {gam:.0f} bri {bri:.0f} gain {gai:.0f} mean {m:.0f}{warn}",
                     (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         # 注：OpenCV 是 BGR，(0,0,255)=红，(0,255,255)=黄，(0,255,0)=绿
+
+        # 物料编号图例。编号即判色结果：1红 2黄 3蓝 4绿 5黑 6浅蓝。
+        # 屏上只能用英文——Hershey 字体没有汉字字形，塞中文进去会变成问号。
+        cv2.putText(vis, "MAT  1=red 2=yellow 3=blue 4=green 5=black 6=cyan",
+                    (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
 
         # 相机中心：绿十字（仅作参考）
         cv2.drawMarker(vis, (int(cx0), int(cy0)), (0, 255, 0), cv2.MARKER_CROSS, 30, 2)
@@ -473,7 +538,7 @@ def main():
             if tg is None:
                 ttxt = "task done"
             else:
-                ttxt = "goal %s(%d)  %s" % (TASK_NAMES.get(tg, "?"), tg, tracker.progress())
+                ttxt = "goal #%d  %s" % (tg, tracker.progress())
             cv2.putText(vis, ttxt, (10, 122), cv2.FONT_HERSHEY_SIMPLEX, 0.62,
                         (255, 255, 255) if tg is None else (0, 200, 255), 2)
         if best is not None:
@@ -484,8 +549,9 @@ def main():
             cv2.circle(vis, (int(ax), int(ay)), 8, col, 2)
             if locked:
                 cv2.circle(vis, (int(ax), int(ay)), int(args.tol), (0, 255, 0), 2)
-            txt = (f"LOCK {COLORS.get(best[1], '?')} d={d:.0f}px" if locked
-                   else f"track d={d:.0f}px")
+            _cid = "?" if best[1] is None else str(best[1])
+            txt = (f"LOCK #{_cid} d={d:.0f}px" if locked
+                   else f"track #{_cid} d={d:.0f}px")
             if sending:
                 txt += "  >>> SEND"
             cv2.putText(vis, txt + f"  aim({aim_x:+.0f},{aim_y:+.0f})", (10, 98),

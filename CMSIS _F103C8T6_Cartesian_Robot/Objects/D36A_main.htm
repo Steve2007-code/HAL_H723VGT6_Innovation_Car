@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\Objects\D36A_main.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\Objects\D36A_main.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Fri Nov 27 12:47:48 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Fri Nov 27 15:49:22 2026
 <BR><P>
 <H3>Maximum Stack Usage =        308 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -538,14 +538,14 @@ Global Symbols
 <P><STRONG><a name="[60]"></a>Cmd_ExecSub</STRONG> (Thumb, 396 bytes, Stack size 64 bytes, mcu_cmd.o(i.Cmd_ExecSub))
 <BR><BR>[Stack]<UL><LI>Max Depth = 212<LI>Call Chain = Cmd_ExecSub &rArr; Link_SendStatus &rArr; i2s
 </UL>
-<BR>[Calls]<UL><LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetManual
-<LI><a href="#[64]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetAuto
+<BR>[Calls]<UL><LI><a href="#[64]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetAuto
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_IsManual
 <LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_GetTargetMrad
 <LI><a href="#[6c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Link_SendStatus
 <LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Link_GetYawPos
 <LI><a href="#[62]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Track_SetRun
 <LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Track_GetRun
+<LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetManual
 <LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Servo_SetAngle
 <LI><a href="#[63]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_TrackOn
 <LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_MoveTo
@@ -706,8 +706,8 @@ Global Symbols
 
 <P><STRONG><a name="[af]"></a>Link_SetYawTarget</STRONG> (Thumb, 14 bytes, Stack size 0 bytes, mcu_link.o(i.Link_SetYawTarget))
 <BR><BR>[Called By]<UL><LI><a href="#[b0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetManualVel
-<LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetManual
 <LI><a href="#[b1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_Update
+<LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetManual
 </UL>
 
 <P><STRONG><a name="[83]"></a>Link_TxTick</STRONG> (Thumb, 140 bytes, Stack size 48 bytes, mcu_link.o(i.Link_TxTick))
@@ -834,7 +834,8 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[b3]"></a>Stepper_IsBusy</STRONG> (Thumb, 102 bytes, Stack size 0 bytes, stepper.o(i.Stepper_IsBusy))
-<BR><BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ap_ready
+<BR><BR>[Called By]<UL><LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ap_ready
 </UL>
 
 <P><STRONG><a name="[55]"></a>Stepper_MoveTo</STRONG> (Thumb, 98 bytes, Stack size 32 bytes, stepper.o(i.Stepper_MoveTo))
@@ -870,7 +871,6 @@ Global Symbols
 <LI><a href="#[a2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;axis_finish
 </UL>
 <BR>[Called By]<UL><LI><a href="#[60]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Cmd_ExecSub
-<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 <LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ap_start
 </UL>
 
@@ -1021,6 +1021,7 @@ Global Symbols
 </UL>
 <BR>[Called By]<UL><LI><a href="#[60]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Cmd_ExecSub
 <LI><a href="#[54]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;AutoPlace_Tick
+<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
 <P><STRONG><a name="[b0]"></a>YawTrack_SetManualVel</STRONG> (Thumb, 38 bytes, Stack size 8 bytes, yaw_track.o(i.YawTrack_SetManualVel))
@@ -1041,10 +1042,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[45]"></a>main</STRONG> (Thumb, 280 bytes, Stack size 24 bytes, main.o(i.main))
+<P><STRONG><a name="[45]"></a>main</STRONG> (Thumb, 324 bytes, Stack size 24 bytes, main.o(i.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 308<LI>Call Chain = main &rArr; QR_Poll &rArr; Cmd_Exec &rArr; Cmd_ExecSub &rArr; Link_SendStatus &rArr; i2s
 </UL>
 <BR>[Calls]<UL><LI><a href="#[b1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_Update
+<LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_SetManual
 <LI><a href="#[bf]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;YawTrack_Init
 <LI><a href="#[ad]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Vision_Init
 <LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Track_Update
@@ -1071,8 +1073,8 @@ Global Symbols
 <LI><a href="#[c6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;led_off
 <LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;led_init
 <LI><a href="#[c0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;delay_ms
-<LI><a href="#[63]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_TrackOn
 <LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_MoveTo
+<LI><a href="#[b3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_IsBusy
 <LI><a href="#[9c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_Init
 <LI><a href="#[9a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Stepper_Enable
 </UL>

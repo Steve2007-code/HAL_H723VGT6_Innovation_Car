@@ -50,8 +50,9 @@ typedef struct
 static const ApStep_t S_PLACE[] =
 {
     /*   A       B     yaw(度x10) 舵机  hold   说明 */
-    { 1000,      0,        0,     65,   300},  /* 0  抓取准备: B 降到抓取位, A 伸出, 小开 */
-    { AP_NA,  AP_NB,   AP_NY,      50,   350},  /* 1  合爪, 夹住物料 */
+    { AP_NA, 20000,        0,     65,   400},  /* 0  高位: 先把 yaw 转回 0 并张开(B/A 保持不动) */
+    { 1000,      0,    AP_NY,  AP_NS,     0},  /* 1  再降到抓取位, A 伸出 */
+    { AP_NA,  AP_NB,   AP_NY,      50,   350},  /* 2  合爪, 夹住物料 */
     { AP_NA, 20000,    AP_NY,  AP_NS,     0},  /* 2  先把 B 抬到顶(防横向碰撞) */
     { 4000,  AP_NB,    -1137,  AP_NS,     0},  /* 3  退 A + 转到 1 号盘 */
     {  700,  AP_NB,    AP_NY,  AP_NS,     0},  /* 4  靠近 1 号盘 */
@@ -95,8 +96,9 @@ static const ApStep_t S_PLACE[] =
 static const ApStep_t S_UNLOAD[] =
 {
     /*   A       B     yaw(度x10) 舵机  hold   说明 */
-    { 4000, 20000,        0,     65,   300},  /* 0  起点: 回安全位并张开爪子 */
-    { AP_NA,  AP_NB,    -675,  AP_NS,     0},  /* 1  转到 3 号盘 */
+    { AP_NA, 20000,        0,     65,   400},  /* 0  高位: B 提到顶 + yaw 转回 0 + 张开 */
+    { 4000,  AP_NB,    AP_NY,  AP_NS,     0},  /* 1  退 A 到安全位 */
+    { AP_NA,  AP_NB,    -675,  AP_NS,     0},  /* 2  转到 3 号盘 */
     { 1000,  AP_NB,    AP_NY,  AP_NS,     0},  /* 2  靠近 3 号盘 (A=1000) */
     { AP_NA, 16000,    AP_NY,  AP_NS,     0},  /* 3  下降到盘内 */
     { AP_NA,  AP_NB,   AP_NY,      50,   350},  /* 4  合爪夹住物料 */

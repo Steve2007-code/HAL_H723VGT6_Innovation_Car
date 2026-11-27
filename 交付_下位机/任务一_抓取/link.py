@@ -30,6 +30,7 @@ class Link:
         self._file = None
         self.sent = 0
         self.errors = 0
+        self._buf = b""          # poll() 的接收缓冲，半个包留到下一帧
 
         if self.kind == "udp":
             self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -66,6 +67,47 @@ class Link:
             if self.errors <= 3:
                 print(f"  发送失败：{e}")
             return False
+
+    def poll(self):
+        """非阻塞收：把已到的字节收进缓冲，返回其中所有完整的 <<...>> 的内容。
+
+        为什么要这么写：串口是一根线双向。视觉这边 20Hz 往下位机写 <<X,dx,Y,dy>>，
+        同时还要收下位机发来的 <<color 1>>。所以不能用 readline（没数据就阻塞，
+        一卡整帧识别就停了），只能看 in_waiting 有多少读多少。
+        也正因为会读到半截，才需要 self._buf 把残缺的尾巴留到下一帧。
+        """
+        if self._ser is None:          # print / udp 模式没有接收端
+            return []
+        try:
+            n = self._ser.in_waiting
+            if n:
+                self._buf += self._ser.read(n)
+        except Exception:
+            return []
+
+        out = []
+        while True:
+            i = self._buf.find(b"<<")
+            if i < 0:
+                # 没有包头：只留可能是一个残缺的 '<'，其余都是垃圾
+                self._buf = b"<" if self._buf.endswith(b"<") else b""
+                break
+            if i > 0:
+                self._buf = self._buf[i:]              # 丢掉包头前的垃圾
+            j = self._buf.find(b">>", 2)
+            if j < 0:
+                if len(self._buf) > 256:               # 一直等不到包尾，防缓冲涨爆
+                    self._buf = b""
+                break
+            raw = self._buf[2:j]
+            self._buf = self._buf[j + 2:]
+            try:
+                text = raw.decode("ascii").strip()
+            except Exception:
+                continue                                # 乱码，丢掉
+            if text:
+                out.append(text)
+        return out
 
     def describe(self):
         if self.kind == "udp":
