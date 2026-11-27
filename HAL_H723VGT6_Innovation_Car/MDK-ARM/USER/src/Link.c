@@ -40,7 +40,7 @@ static uint32_t s_last_k3_ms = 0;
 static uint32_t s_last_k4_ms = 0;
 
 /* F103 回传的机械臂状态(S 帧)暂存: 协议层不下探 printf, 由 Debug_Task 取走打印 */
-static volatile int32_t s_arm[7];
+static volatile int32_t s_arm[11];
 static volatile uint8_t s_arm_new = 0;
 
 /* M 命令回执监测: 发出后超时未收到 S 帧 -> 查询类自动补发一次, 连续 3 次才告警 */
@@ -289,7 +289,7 @@ uint8_t Link_TakeMiss(void)
 /* 取走一帧机械臂状态(取走即清标志); 返回 1=有新数据 */
 uint8_t Link_GetArmStat(int32_t *out, uint8_t max)
 {
-    uint8_t i, n = 7;
+    uint8_t i, n = 11;
 
     if (!s_arm_new) return 0;
     if (n > max) n = max;
@@ -318,7 +318,7 @@ void Link_Poll(void)
     char body[FR_BODY_SZ];
     uint32_t now = HAL_GetTick();
     char cmd;
-    int32_t v[8];                /* S 帧最多 6 字段, 需 >= 6 */
+    int32_t v[14];               /* S 帧最多 11 字段(含 dx/dy/kcode/lost) */
     uint8_t nf;
 
     if (s_first_poll)
@@ -331,7 +331,7 @@ void Link_Poll(void)
     /* 1) 取帧, 可循环处理粘包 */
     while (s_frame_poll(&s_link_h723, body, FR_BODY_SZ))
     {
-        nf = s_parse_cmd_ints(body, &cmd, v, 8);
+        nf = s_parse_cmd_ints(body, &cmd, v, 14);
         if (nf == 0)
         {
             if (now - s_last_k3_ms >= LINK_K_COOL_MS)
@@ -401,7 +401,11 @@ void Link_Poll(void)
             s_arm[3] = v[3];                                  /* yact */
             s_arm[4] = (nf >= 5u) ? v[4] : -1;
             s_arm[5] = (nf >= 6u) ? v[5] : -1;
-            s_arm[6] = (nf >= 7u) ? v[6] : -1;      /* 自动放料流程当前步 */
+            s_arm[6] = (nf >= 7u) ? v[6] : -1;      /* 当前流程步号 */
+            s_arm[7] = (nf >= 8u)  ? v[7]  : -9999;  /* 视觉 dx */
+            s_arm[8] = (nf >= 9u)  ? v[8]  : -9999;  /* 视觉 dy */
+            s_arm[9] = (nf >= 10u) ? v[9]  : -1;     /* F103 记录的 K 码 */
+            s_arm[10]= (nf >= 11u) ? v[10] : -1;     /* F103 的断链标志 */
             s_arm_new = 1;
             s_m_wait  = 0;                          /* 收到回执 */
             s_m_miss  = 0;

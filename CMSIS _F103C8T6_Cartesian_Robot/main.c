@@ -29,6 +29,7 @@
 #include "backlight.h"
 #include "lcd.h"
 #include "auto_place.h"
+#include "auto_pickup.h"
 
 /* 舵机两个工位角度（实测） */
 #define SERVO_ANGLE_CLOSE   50.0f    /* 闭合 */
@@ -60,6 +61,30 @@ static void led_init(void)
 
 static void led_on(void)  { GPIOC->BRR  = (1U << 13); }
 static void led_off(void) { GPIOC->BSRR = (1U << 13); }
+
+/* LED 指示板间链路(10ms 调一次):
+   断链(收不到 H723 的 A/K 帧) -> 100ms 翻转一次, 明显快闪;
+   正常 -> 跟随视觉识别状态(识别到目标常亮)。 */
+static void led_tick(void)
+{
+    static uint16_t cnt = 0;
+    static uint8_t  st  = 0;
+
+    if (Link_IsLost())
+    {
+        if (++cnt >= 10u)
+        {
+            cnt = 0;
+            st  = (uint8_t)(!st);
+            if (st) led_on(); else led_off();
+        }
+        return;
+    }
+
+    cnt = 0;
+    if (g_track_valid) led_on();
+    else               led_off();
+}
 
 /* ---------------- 屏幕两页 ----------------
  * 第 0 页：任务码（大字铺满），同时点亮补光
@@ -154,7 +179,7 @@ int main(void)
     }
 
     Stepper_MoveTo(AXIS_A, 1000, 12000, 250);   /* A 轴伸到 1000 并停住 */
-    YawTrack_SetManual(-2007, 6000);            /* yaw 转到 -115 度 (2007 mrad) */
+    YawTrack_SetManual(-2007, 1500);            /* yaw 转到 -115 度; 速度 6000->1500 让起步柔和不冲 */
 
     /* 不调用 Stepper_TrackOn(TRACK_AXIS, 1)：A 轴保持位置控制，不会被视觉 PID 拉走。
        需要恢复视觉跟随时发 <<M T 1>>。 */
@@ -172,12 +197,11 @@ int main(void)
                                         /* 3) yaw 极角闭环 + 更新 yaw 目标角 */
             Link_TxTick();              /* 3)+4) 取 yaw 目标 + 组包投递 TX 缓冲 */
             AutoPlace_Tick();           /* 自动放料流程状态机（<<M P>> 启动） */
+            AutoPickup_Tick();          /* 任务码夹取流程状态机（<<M C>> 启动） */
             Servo_Tick();               /* 舵机 20ms 帧同步推进（内部 2 分频） */
             page_tick();                /* 屏幕页面：任务码显示 5 秒后转统计页 */
+            led_tick();                 /* LED: 断链快闪 / 正常跟随识别状态 */
         }
-
-        if (g_track_valid) led_on();    /* 识别到目标常亮 */
-        else               led_off();   /* 丢失目标熄灭 */
 
         /* 无任何忙等；Link_TxTick 只投递缓冲，实际发送由 USART2 TXE 中断完成 */
     }

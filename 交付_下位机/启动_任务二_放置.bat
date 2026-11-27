@@ -21,7 +21,7 @@ set "PY=D:\programming\python\python.exe"
 
 rem 串口号：每换一次 USB 口都可能变。本机现在只有 COM21 是真实 USB 串口
 rem         不确定就先跑一遍本 bat，报错里会列出当前所有串口
-set "COM_PORT=COM21"
+set "COM_PORT=COM26"
 set "BAUD=115200"
 
 rem 通道：serial = 走串口发给下位机

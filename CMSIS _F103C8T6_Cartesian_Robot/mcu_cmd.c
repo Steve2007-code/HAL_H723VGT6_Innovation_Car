@@ -21,6 +21,7 @@
 #include "backlight.h"
 #include "link_config.h"
 #include "auto_place.h"
+#include "auto_pickup.h"
 
 #define CMD_MAX_VALS    3
 #define CMD_PPS_DEF     3000        /* 未指定速度时的默认 pps */
@@ -109,8 +110,12 @@ void Cmd_ExecSub(int32_t sub, const int32_t *v, uint8_t n)
 
     if (n > 0 && v == 0) return;
 
-    /* 手动单轴命令优先：任何 A/B/Y/T/H/G/L 指令都先中止自动放料流程 */
-    if (sub >= 1 && sub <= 7) AutoPlace_Stop();
+    /* 手动单轴命令优先：任何 A/B/Y/T/H/G/L 指令都先中止两个自动流程 */
+    if (sub >= 1 && sub <= 7)
+    {
+        AutoPlace_Stop();
+        AutoPickup_Stop();
+    }
 
     switch (sub) {
 
@@ -169,25 +174,47 @@ void Cmd_ExecSub(int32_t sub, const int32_t *v, uint8_t n)
 
     case 10:                                    /* 中止自动流程 */
         AutoPlace_Stop();
+        AutoPickup_Stop();
         break;
 
     case 11:                                    /* 启动自动卸料流程 */
         AutoUnload_Start();
         break;
 
+    case 12:                                    /* 启动任务码夹取(第一批 3 个) */
+        AutoPickup_Start();
+        break;
+
+    case 13:                                    /* 视觉跟随测试: <<M V <color>> */
+        if (n < 1) return;
+        AutoPickup_VisionTest((uint8_t)v[0]);
+        break;
+
+    case 14:                                    /* 强制重新使能 4340(yaw 不动时恢复) */
+        Link_RequestEnable();
+        break;
+
     default:
         break;
     }
 
-    /* 执行类命令(1~7)与查询(9)都回一帧状态:
-       H723 侧一旦打印出 # ARM ... 就证明 F103 真的收到了这条命令并走完了分支,
-       从而把"上位机已入队"和"下位机已执行"区分开. */
-    if (sub >= 1 && sub <= 11)
+    /* 执行类命令都回一帧状态:
+       H723 侧一旦打印出 # ARM ... 就证明 F103 真的收到了这条命令并走完了分支。
+       step 取"当前正在跑的那个流程"的步号(之前只取 AutoPlace, 导致 <<M C>> 运行时
+       step 恒为 0, 看不出夹取流程的进度)。dx/dy 是视觉最新一帧的像素误差。 */
+    if (sub >= 1 && sub <= 14)
     {
+        int32_t step_now = 0;
+
+        if (AutoPickup_IsRunning())      step_now = (int32_t)AutoPickup_GetStep();
+        else if (AutoPlace_IsRunning())  step_now = (int32_t)AutoPlace_GetStep();
+
         Link_SendStatus(Stepper_GetPos(AXIS_A), Stepper_GetPos(AXIS_B),
                         YawTrack_GetTargetMrad(), Link_GetYawPos(),
                         (int32_t)Track_GetRun(), (int32_t)YawTrack_IsManual(),
-                        (int32_t)AutoPlace_GetStep());
+                        step_now,
+                        (int32_t)Track_GetDx(), (int32_t)Track_GetDy(),
+                        (int32_t)Link_GetKCode(), (int32_t)Link_IsLost());
     }
 }
 

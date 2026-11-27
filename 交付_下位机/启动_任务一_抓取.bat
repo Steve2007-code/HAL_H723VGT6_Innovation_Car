@@ -5,7 +5,7 @@ chcp 936 >nul
 rem ====== edit these ======
 set "PY=D:\programming\python\python.exe"
 rem 串口号：换 USB 口就会变。本机只有 COM21 是真实 USB 串口，COM4/COM5 是蓝牙虚拟口
-set "COM_PORT=COM21"
+set "COM_PORT=COM26"
 set "BAUD=115200"
 set "CAM=1"
 rem 640x480 -> 30fps ; 1280x720 -> only 10fps (usb2 bandwidth limit)
@@ -15,7 +15,7 @@ rem e.g. "532" = black then blue then yellow ; "4" = green only
 set "TASK=4"
 rem 通道：serial = 走串口发给下位机
 rem       print  = 不开串口、不真发，报文只在窗口左下角显示（先验证识别时用）
-set "LINK=print"
+set "LINK=serial"
 rem free-run mode: send dx/dy as soon as the target is seen (no align wait)
 rem   TOL        huge  -> locked always true
 rem   MOTION_TOL huge  -> "turntable stopped" check disabled

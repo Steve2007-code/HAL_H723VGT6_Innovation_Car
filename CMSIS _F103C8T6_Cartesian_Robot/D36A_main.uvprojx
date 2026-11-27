@@ -454,6 +454,11 @@
               <FileType>1</FileType>
               <FilePath>.\auto_place.c</FilePath>
             </File>
+            <File>
+              <FileName>auto_pickup.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\auto_pickup.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -538,6 +543,11 @@
               <FileName>auto_place.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\auto_place.h</FilePath>
+            </File>
+            <File>
+              <FileName>auto_pickup.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\auto_pickup.h</FilePath>
             </File>
           </Files>
         </Group>

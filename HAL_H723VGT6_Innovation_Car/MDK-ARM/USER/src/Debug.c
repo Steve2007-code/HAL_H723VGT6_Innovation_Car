@@ -115,7 +115,10 @@ static void s_help(void)
     printf(" M Q                查询机械臂状态 (回 # ARM ... step=流程步号)\r\n");
     printf(" M P                启动自动放料: 依次抓 3 个物料放进车上 1/2/3 号盘\r\n");
     printf(" M U                启动自动卸料: 依次从 3/2/1 号盘取出送回抓取位\r\n");
-    printf(" M S                中止自动流程(放料/卸料都停)\r\n");
+    printf(" M C                启动任务码夹取: 按二维码第1组颜色抓 3 个料上车\r\n");
+    printf(" M V <color>        视觉跟随测试: 1~6 发色+补光+跟随, 0 停止(不跑流程)\r\n");
+    printf(" M E                强制重新请求使能 4340 (yaw 不动的恢复手段)\r\n");
+    printf(" M S                中止自动流程(放料/卸料/夹取都停)\r\n");
     printf("   例: <<M A 3000 6000>>  <<M Y 90>>  <<M Y 40 120>>  <<M Q>>\r\n");
     printf("------------------------------------------\r\n");
 }
@@ -404,6 +407,9 @@ static void s_exec(char *ln, uint8_t framed)
         case 'Q': case 'q': sub = 9; p++; break;   /* 查询 */
         case 'P': case 'p': sub = 8; p++; break;   /* 启动自动放料 */
         case 'U': case 'u': sub = 11; p++; break;  /* 启动自动卸料 */
+        case 'C': case 'c': sub = 12; p++; break;  /* 启动任务码夹取 */
+        case 'V': case 'v': sub = 13; p++; break;  /* 视觉跟随测试 */
+        case 'E': case 'e': sub = 14; p++; break;  /* 强制重新使能 4340 */
         case 'S': case 's': sub = 10; p++; break;  /* 中止自动流程 */
         default: break;
         }
@@ -440,7 +446,7 @@ static void s_exec(char *ln, uint8_t framed)
         }
 
         nv = (sub == 1 || sub == 2 || sub == 3) ? 3u :
-             ((sub == 4 || sub == 6 || sub == 7) ? 2u : 1u);
+             ((sub == 4 || sub == 6 || sub == 7 || sub == 13) ? 2u : 1u);
         Link_SendM(sub, v1, v2, nv);
 
         if (sub == 3)
@@ -520,14 +526,15 @@ void Debug_Task(void)
 
     /* 机械臂状态回显: Link 层暂存, 这里取出打印(yaw 折成度) */
     {
-        int32_t st[7];
-        if (Link_GetArmStat(st, 7))
+        int32_t st[11];
+        if (Link_GetArmStat(st, 11))
         {
-            printf("# ARM apos=%ld bpos=%ld yaw=%.1f yact=%.1f trun=%ld yman=%ld step=%ld\r\n",
+            printf("# ARM apos=%ld bpos=%ld yaw=%.1f yact=%.1f trun=%ld yman=%ld step=%ld dx=%ld dy=%ld k=%ld lost=%ld\r\n",
                    (long)st[0], (long)st[1],
                    (double)st[2] * 0.05729578,
                    (double)st[3] * 0.05729578,
-                   (long)st[4], (long)st[5], (long)st[6]);
+                   (long)st[4], (long)st[5], (long)st[6],
+                   (long)st[7], (long)st[8], (long)st[9], (long)st[10]);
         }
     }
 

@@ -113,7 +113,7 @@ class Link:
         if self.kind == "udp":
             return f"UDP {self.addr[0]}:{self.addr[1]}"
         if self.kind == "serial":
-            return f"串口 {self.kw.get('port')} @ {self.kw.get('baud', 115200)}"
+            return f"串口 {self.kw.get('com') or self.kw.get('port')} @ {self.kw.get('baud', 115200)}"
         return "仅打印（不真发）"
 
     def close(self):

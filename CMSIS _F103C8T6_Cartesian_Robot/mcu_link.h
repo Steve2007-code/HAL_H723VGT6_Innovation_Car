@@ -14,10 +14,14 @@ void    Link_Init(uint32_t baud);
 void    Link_PollRx(void);      /* 1) 先收 A/K，更新链路状态 */
 void    Link_TxTick(void);      /* 3)+4) 取 yaw 目标 + 组包投递 TX 缓冲（非阻塞） */
 
+/* 强制重新发 E,1 请求 H723 使能 4340(并恢复 100ms 补发), yaw 不动时用来恢复 */
+void    Link_RequestEnable(void);
+
 void    Link_SetYawTarget(int32_t pos_mrad, int32_t vel_mradps);
 /* 回传机械臂状态给 H723: <<S,apos,bpos,ytgt,yact,trun,yman>> */
 void    Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
-                        int32_t trun, int32_t yman, int32_t step);
+                        int32_t trun, int32_t yman, int32_t step,
+                        int32_t dx, int32_t dy, int32_t kcode, int32_t lost);
 int32_t Link_GetYawTarget(void);
 int32_t Link_GetYawPos(void);      /* 4340 实际角度 mrad (来自 A 帧) */
 int32_t Link_GetYawVel(void);      /* 4340 实际角速度 mrad/s (来自 A 帧, 用于判断停稳) */

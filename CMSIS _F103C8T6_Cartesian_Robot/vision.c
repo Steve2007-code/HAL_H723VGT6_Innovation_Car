@@ -32,7 +32,8 @@ void Vision_Init(uint32_t baud)
     GPIOA->CRH |=  (0x4U << 8);         /* PA10: MODE=00 CNF=01 浮空输入 */
 
     USART1->BRR = (uint16_t)(SystemCoreClock / baud);
-    USART1->CR1 = (1U << 13) | (1U << 2) | (1U << 5);   /* UE | RE | RXNEIE */
+    /* UE | TE | RE | RXNEIE : 必须使能 TE 才能向摄像头发 <<color N>> */
+    USART1->CR1 = (1U << 13) | (1U << 3) | (1U << 2) | (1U << 5);
 
     NVIC_SetPriority(USART1_IRQn, 3);
     NVIC_EnableIRQ(USART1_IRQn);
@@ -74,6 +75,18 @@ uint8_t Vision_Poll(VisionFrame_t *f)
         return 1;
     }
     return 0;
+}
+
+/* 向摄像头（USART1）发字符串。阻塞发送, 但只用于短命令(<=16 字节), 约 1.4ms */
+void Vision_SendStr(const char *s)
+{
+    while (*s)
+    {
+        while (!(USART1->SR & (1U << 7)))   /* 等 TXE */
+        {
+        }
+        USART1->DR = (uint8_t)(*s++);
+    }
 }
 
 uint32_t Vision_AgeMs(void)

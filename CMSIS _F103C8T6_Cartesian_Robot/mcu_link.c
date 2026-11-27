@@ -192,7 +192,18 @@ void Link_TxTick(void)
         send_frame("<<E,1>>");
     }
 
-    if (s_link_lost) return;         /* 停发 Y；Track_Update 的 PID 不受影响 */
+    /* 断链时不再"停发 Y":
+       原来是 s_link_lost -> 停发 Y -> H723 400ms 后也判断链 -> 停发 0x105 ->
+       4340 再也收不到任何指令 -> yaw 永久不动(表现为"掉线之后 yaw 就死了")。
+       现在改为发"当前位置 + 0 速度"做心跳: 4340 原地保持不动, 而 H723 的
+       400ms 看门狗一直被喂, 不会停发 CAN; F103 恢复收到 A 帧后自动回到正常。 */
+    if (s_link_lost)
+    {
+        pos = Link_GetYawPos();      /* 用 A 帧里的最后已知角度 */
+        fmt_y(buf, pos, 0);
+        send_frame(buf);
+        return;
+    }
 
     pos = s_yaw_pos_mrad;
     vel = s_yaw_vel_mradps;
@@ -215,11 +226,21 @@ void Link_SetYawTarget(int32_t pos_mrad, int32_t vel_mradps)
     __enable_irq();
 }
 
+/* 强制重新请求使能: 清 s_yaw_ack 让 100ms 补发重新开始, 并立即发一帧 E,1 */
+void Link_RequestEnable(void)
+{
+    s_yaw_ack   = 0;
+    s_e_cnt     = 1;
+    s_last_e_ms = g_ms;
+    send_frame("<<E,1>>");
+}
+
 /* ---------- 回传机械臂状态给 H723（供调试口查询） ---------- */
 void Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
-                     int32_t trun, int32_t yman, int32_t step)
+                     int32_t trun, int32_t yman, int32_t step,
+                     int32_t dx, int32_t dy, int32_t kcode, int32_t lost)
 {
-    char  buf[80];
+    char  buf[112];
     char *p = buf;
     const char *s = "<<S,";
 
@@ -231,7 +252,11 @@ void Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
     p = i2s(p, yact); *p++ = ',';
     p = i2s(p, trun); *p++ = ',';
     p = i2s(p, yman); *p++ = ',';
-    p = i2s(p, step);
+    p = i2s(p, step); *p++ = ',';
+    p = i2s(p, dx);   *p++ = ',';
+    p = i2s(p, dy);   *p++ = ',';
+    p = i2s(p, kcode);*p++ = ',';
+    p = i2s(p, lost);
     *p++ = '>';
     *p++ = '>';
     *p   = 0;

@@ -74,12 +74,23 @@ _PATCHES = None
 
 
 def parse_cmd(payload):
-    """解析下位机发来的一条命令，返回新的任务分组；返回 None 表示不认识、不改。
+    """解析下位机发来的一条命令。
 
-        color 3        → [[3]]         只抓 3 号色（等价于 --task 3）
-        task 156+123   → parse_task()  换成整串任务码
-        color 0 / task 0 / stop → []   清空目标（持续发 9999，下位机据此判断无目标）
+    返回：
+        ("set", groups)    设定目标；groups 为空表示清空目标（继续发 9999）
+        ("pause", None)    停止追踪：一条报文都不再发，画面照常预览
+        ("resume", None)   解除停止，按当前目标继续发
+        None               不认识，忽略（下次照旧用原目标）
 
+        color 3        → ("set", [[3]])         只抓 3 号色
+        task 156+123   → ("set", parse_task)    换整串任务码
+        color 0        → ("set", [])            清空目标，但仍发 9999
+        stop / pause   → ("pause", None)        完全静默
+        resume / go    → ("resume", None)
+
+    注意 stop 与 color 0 不是一回事：
+        color 0  还在发 <<X,9999,Y,9999>>，下位机知道"没目标"；
+        stop     一条都不发，下位机连"没目标"都收不到，会停在原地等。
     分隔符宽容：逗号、分号、空格、Tab 都当分隔；大小写不敏感。
     """
     parts = payload.strip().replace(",", " ").replace(";", " ").split()
@@ -88,21 +99,23 @@ def parse_cmd(payload):
     head = parts[0].lower()
     arg = " ".join(parts[1:]).strip()
 
-    if head == "stop":
-        return []
+    if head in ("stop", "pause", "halt"):
+        return ("pause", None)
+    if head in ("resume", "go", "run"):
+        return ("resume", None)
     if head == "color":
         if not arg.isdigit():
             return None
         n = int(arg)
         if n == 0:
-            return []
-        return [[n]] if 1 <= n <= 6 else None
+            return ("set", [])
+        return ("set", [[n]]) if 1 <= n <= 6 else None
     if head == "task":
         code = arg.replace(" ", "")
         if not code or set(code) <= {"0", "+"}:
-            return []
+            return ("set", [])
         try:
-            return parse_task(code)
+            return ("set", parse_task(code))
         except Exception:
             return None
     return None
@@ -382,14 +395,20 @@ def main():
         print("串口命令：未启用（要收命令需 --link serial 且不加 --no-cmd）")
     else:
         print("串口命令：<<color 3>> 换单色   <<task 156+123>> 换整串   <<color 0>> 清空目标")
+        print("          <<stop>> 停止追踪（一条都不发）   <<resume>> 恢复")
     print(f"目标点 = 画面中心上移 {args.target_up:.0f}px（屏上红叉），偏差与对准均以它为准")
 
     # ---- 屏上显示真正发出去的原始报文（最近 4 帧 + 实际发送速率）
     tx_hist = []
     tx_n, tx_t0, tx_hz = 0, time.time(), 0.0
+    paused = False          # <<stop>> / <<pause>> 置 True：一条报文都不发，只留预览
 
     def _tx(msg):
         nonlocal tx_n, tx_t0, tx_hz
+        # 拦截点放在这里：两条 wire 分支、以及无目标时的 9999，全都要经过 _tx，
+        # 所以只在这一处挡就够，不必去每个分支各加一遍判断。
+        if paused:
+            return
         lk.send(msg)
         tx_hist.append(msg)
         if len(tx_hist) > 4:
@@ -430,12 +449,26 @@ def main():
         # ---------------- 串口命令：下位机随时可换目标
         # 放在判定之前，这样本帧就能按新目标过滤，不用等下一帧
         for _cmd in (() if args.no_cmd else lk.poll()):
-            _g = parse_cmd(_cmd)
-            if _g is None:
+            _r = parse_cmd(_cmd)
+            if _r is None:
                 print(f"  [命令] 看不懂，忽略：<<{_cmd}>>")
                 continue
+            _act, _g = _r
+            if _act == "pause":
+                paused = True
+                print(f"\n[命令] <<{_cmd}>>  已停止追踪：一条报文都不再发"
+                      f"（<<resume>> 恢复，<<color N>> 也会顺带恢复）")
+                continue
+            if _act == "resume":
+                paused = False
+                print(f"\n[命令] <<{_cmd}>>  已恢复发送")
+                continue
+            # 设定目标
             tracker = Tracker(_g, advance_when_gone=args.advance_gap)
             locked_n = 0                       # 换目标必须清计数，否则会误判"已连续锁定"
+            if paused:
+                paused = False                 # 给了新目标就当作"顺便恢复"
+                print("\n[命令] 顺带解除停止追踪")
             if not _g:
                 print(f"\n[命令] <<{_cmd}>>  目标已清空，持续发 9999")
             else:
@@ -512,7 +545,11 @@ def main():
                 last_send = now
             sending = True
             if locked_n == args.lock_frames:
-                print(f"\n[重合] 颜色 {COLORS.get(best[1], '?')} 距中心 {best[0]:.0f}px，开始发信号")
+                if not paused:
+                    print(f"\n[重合] 颜色 {COLORS.get(best[1], '?')} 距中心 {best[0]:.0f}px，开始发信号")
+
+        if paused:
+            sending = False        # 暂停期间一条都没发，别让屏上还显示 >>> SEND
 
         warn = "  << OVER" if m > 235 else ("  << DARK" if m < 15 else "")
         cv2.putText(vis, f"fps {fps:.1f}  obj {len(boxes)}  exp {exp:.0f} gam {gam:.0f} bri {bri:.0f} gain {gai:.0f} mean {m:.0f}{warn}",
@@ -523,6 +560,10 @@ def main():
         # 屏上只能用英文——Hershey 字体没有汉字字形，塞中文进去会变成问号。
         cv2.putText(vis, "MAT  1=red 2=yellow 3=blue 4=green 5=black 6=cyan",
                     (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
+        if paused:      # 停止追踪要一眼能看出来，否则会以为程序卡了
+            cv2.rectangle(vis, (6, 58), (216, 86), (0, 0, 0), -1)
+            cv2.putText(vis, "PAUSED - no TX", (12, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.66, (0, 0, 255), 2)
 
         # 相机中心：绿十字（仅作参考）
         cv2.drawMarker(vis, (int(cx0), int(cy0)), (0, 255, 0), cv2.MARKER_CROSS, 30, 2)
@@ -562,8 +603,9 @@ def main():
         box_top = max(0, base - 108)
         cv2.rectangle(vis, (0, box_top), (272, min(vis.shape[0] - 1, base + 8)),
                       (0, 0, 0), -1)
-        cv2.putText(vis, f"TX  {tx_hz:.1f} Hz", (10, base - 88),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.putText(vis, "TX  PAUSED" if paused else f"TX  {tx_hz:.1f} Hz",
+                    (10, base - 88), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                    (0, 0, 255) if paused else (255, 255, 255), 2)
         for i, _m in enumerate(reversed(tx_hist)):
             _c = (0, 255, 255) if "9999" in _m else (0, 255, 0)
             cv2.putText(vis, _m, (10, base - i * 22),

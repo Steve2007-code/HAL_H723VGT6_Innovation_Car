@@ -18,7 +18,10 @@ typedef struct {
 } VisionFrame_t;
 
 void     Vision_Init(uint32_t baud);        /* USART1 PA9/PA10，RXNE 中断 + 环形缓冲 */
-uint8_t  Vision_Poll(VisionFrame_t *f);     /* 非阻塞：解析到完整帧返回 1 */
+uint8_t  Vision_Poll(VisionFrame_t *f);
+
+/* 向摄像头发字符串(如 "<<color 5>>"), 阻塞约 1.4ms, 仅在流程状态机里用 */
+void     Vision_SendStr(const char *s);     /* 非阻塞：解析到完整帧返回 1 */
 uint32_t Vision_AgeMs(void);                /* 距最近一帧的时间，用于超时判丢 */
 
 #endif

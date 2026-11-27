@@ -27,7 +27,8 @@ void Link_Poll(void);               /* 主循环调用, 与 Debug_Task() 并列 */
 void Link_FeedByte(uint8_t c);      /* 仅 UART7 RX 完成回调里调用, 只写环形缓冲 */
 
 /* 取一帧 F103 回传的机械臂状态: out[0]=apos out[1]=bpos out[2]=ytgt(mrad)
-   out[3]=yact(mrad) out[4]=trun out[5]=yman out[6]=自动流程当前步(0=未运行)
+   out[3]=yact(mrad) out[4]=trun out[5]=yman out[6]=当前流程步(0=未运行)
+   out[7]=视觉 dx(px) out[8]=视觉 dy(px) out[9]=K码 out[10]=F103断链标志
    返回 1=有新数据 */
 uint8_t Link_GetArmStat(int32_t *out, uint8_t max);
 
