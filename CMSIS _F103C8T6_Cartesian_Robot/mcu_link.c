@@ -17,7 +17,7 @@
 #include "frame.h"
 #include "track.h"          /* g_ms */
 
-#define TX_SZ   128         /* 必须是 2 的幂 */
+#define TX_SZ   256         /* 必须是 2 的幂; 128 时 S 帧+Y 帧并发容易满, 满即丢帧 */
 
 /* ---------- 接收实例（s_cam 在 vision.c 内，两路互不串帧） ---------- */
 static FrameRx_t s_link;
@@ -217,9 +217,9 @@ void Link_SetYawTarget(int32_t pos_mrad, int32_t vel_mradps)
 
 /* ---------- 回传机械臂状态给 H723（供调试口查询） ---------- */
 void Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
-                     int32_t trun, int32_t yman)
+                     int32_t trun, int32_t yman, int32_t step)
 {
-    char  buf[72];
+    char  buf[80];
     char *p = buf;
     const char *s = "<<S,";
 
@@ -230,7 +230,8 @@ void Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
     p = i2s(p, ytgt); *p++ = ',';
     p = i2s(p, yact); *p++ = ',';
     p = i2s(p, trun); *p++ = ',';
-    p = i2s(p, yman);
+    p = i2s(p, yman); *p++ = ',';
+    p = i2s(p, step);
     *p++ = '>';
     *p++ = '>';
     *p   = 0;
@@ -240,17 +241,30 @@ void Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
 
 int32_t Link_GetYawTarget(void) { return s_yaw_pos_mrad; }
 int32_t Link_GetYawPos(void)    { return s_a_pos; }   /* 4340 实际角度 (来自 A 帧) */
+int32_t Link_GetYawVel(void)    { return s_a_vel; }   /* 4340 实际角速度 (来自 A 帧) */
 uint8_t Link_IsLost(void)       { return s_link_lost; }
 uint8_t Link_GetKCode(void)     { return s_k_code; }
 
 /* ---------- USART2 中断：只收字节 / 只发字节 ---------- */
 void USART2_IRQHandler(void)
 {
-    if (USART2->SR & (1U << 5)) {          /* RXNE */
+    uint16_t sr = USART2->SR;              /* 先快照一次, 读 DR 会改变 SR */
+
+    /* ORE(溢出)必须清: 不清的话 USART2 会彻底停止接收, A 帧再也进不来 ->
+       link_lost -> 自动流程里每步都要白等超时, 表现为"跑流程时突然卡死"。
+       动作期间 TIM2 以 50kHz 抢占 CPU, Stepper_MoveTo 还会短暂关中断,
+       一个字节落进关中断窗口就会溢出一帧。读 DR 即可同时清 RXNE 与 ORE。 */
+    if (sr & (1U << 5))                    /* RXNE */
+    {
         uint8_t c = (uint8_t)(USART2->DR & 0xFFU);
         Frame_FeedByte(&s_link, c);
     }
-    if (USART2->SR & (1U << 7)) {          /* TXE */
+    else if (sr & (1U << 3))               /* 只有 ORE, 没有待读数据 */
+    {
+        (void)USART2->DR;                  /* 读一次 DR 清 ORE */
+    }
+
+    if (sr & (1U << 7)) {                  /* TXE */
         if ((uint16_t)(tx_wr - tx_rd) != 0U) {
             USART2->DR = tx_buf[tx_rd++ & (TX_SZ - 1U)];
         } else {

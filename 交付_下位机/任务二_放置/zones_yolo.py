@@ -275,7 +275,7 @@ def main():
             tx_n, tx_t0 = 0, _t.time()
 
     print("q 退出   s 存帧并保存偏移   j/l 左移/右移标定点   i/k 上移/下移")
-    print("e/E 曝光   m/M gamma   b/B 亮度   w 锁白平衡")
+    print("e/E 曝光   m/M gamma   b/B 亮度   g/G 增益   w 锁白平衡")
     print("红十=盘心，橙十/绿十=标定点（绿=已对准），绿十=画面中心")
 
     fps, prev_t = 0.0, _t.time()
@@ -287,7 +287,7 @@ def main():
         dials = detect_dials(model, frame, args.conf, args.imgsz)
         vis, pts, best = annotate(frame, dials, tpl, args.digit_from, (aim_x, aim_y), args.tol)
         mn = float(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).mean())
-        warn = "  太暗:补光" if mn < 80 else ("  过曝" if mn > 235 else "")
+        warn = "  DARK:add light" if mn < 80 else ("  OVER" if mn > 235 else "")
         now = _t.time()
         dt = now - prev_t
         prev_t = now
@@ -313,7 +313,7 @@ def main():
         if best is not None:
             num, cx, cy, how, cf, agree, mname, ax, ay, d = best
             ok_txt = "ALIGNED" if d <= args.tol else f"d={d:.0f}px"
-            cv2.putText(vis, f"AIM {num}号  {ok_txt}",
+            cv2.putText(vis, f"AIM #{num}  {ok_txt}",
                         (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                         (0, 255, 0) if d <= args.tol else (0, 165, 255), 2)
 
@@ -355,15 +355,24 @@ def main():
             cap.set(cv2.CAP_PROP_GAMMA, gam)
             print(f"  GAMMA={gam:.0f}")
         elif k == ord("b"):
-            bri = max(0.0, bri - 5.0)
+            bri = max(-64.0, bri - 5.0)
             cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
         elif k == ord("B"):
-            bri = min(255.0, bri + 5.0)
+            bri = min(64.0, bri + 5.0)
             cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
+        elif k == ord("g"):
+            gai = max(0.0, gai - 10.0)
+            cap.set(cv2.CAP_PROP_GAIN, gai)
+            print(f"  GAIN={gai:.0f}")
+        elif k == ord("G"):
+            gai = min(255.0, gai + 10.0)
+            cap.set(cv2.CAP_PROP_GAIN, gai)
+            print(f"  GAIN={gai:.0f}")
         elif k == ord("w"):
             cap.set(cv2.CAP_PROP_AUTO_WB, 0)
             print("  白平衡已锁定")
-        if k in (ord("e"), ord("E"), ord("b"), ord("B"), ord("m"), ord("M")):
+        if k in (ord("e"), ord("E"), ord("b"), ord("B"),
+                 ord("g"), ord("G"), ord("m"), ord("M")):
             remember()                      # 每调一次便落盘，万一强退也不丢
         if k == ord("s"):
             cv2.imwrite(args.out, vis)

@@ -1,0 +1,16 @@
+.\objects\auto_place.o: auto_place.c
+.\objects\auto_place.o: auto_place.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\stm32f10x.h
+.\objects\auto_place.o: .\RTE\_Target_1\RTE_Components.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\core_cm3.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_version.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_compiler.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\PACK\ARM\CMSIS\5.9.0\CMSIS\Core\Include\cmsis_armcc.h
+.\objects\auto_place.o: D:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include\system_stm32f10x.h
+.\objects\auto_place.o: stepper.h
+.\objects\auto_place.o: servo.h
+.\objects\auto_place.o: track.h
+.\objects\auto_place.o: yaw_track.h
+.\objects\auto_place.o: mcu_link.h
+.\objects\auto_place.o: link_config.h

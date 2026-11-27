@@ -40,9 +40,14 @@ void Vision_Init(uint32_t baud)
 
 void USART1_IRQHandler(void)
 {
-    if (USART1->SR & (1U << 5)) {       /* RXNE */
+    uint16_t sr = USART1->SR;
+
+    if (sr & (1U << 5)) {               /* RXNE */
         uint8_t c = (uint8_t)(USART1->DR & 0xFFU);
         Frame_FeedByte(&s_cam, c);
+    }
+    else if (sr & (1U << 3)) {          /* ORE: 不清会彻底停摆, 读 DR 清除 */
+        (void)USART1->DR;
     }
 }
 

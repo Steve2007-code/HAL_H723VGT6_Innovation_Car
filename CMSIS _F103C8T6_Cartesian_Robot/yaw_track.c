@@ -50,6 +50,15 @@ void YawTrack_SetManual(int32_t mrad, int32_t vel_mradps)
     Link_SetYawTarget(mrad, vel_mradps);
 }
 
+/* 只更新限速, 不碰目标角和低通状态: 供流程做梯形速度规划时每 10ms 调一次 */
+void YawTrack_SetManualVel(int32_t vel_mradps)
+{
+    if (vel_mradps < 0) vel_mradps = -vel_mradps;
+    if (vel_mradps > LINK_VEL_MAX_MRADPS) vel_mradps = LINK_VEL_MAX_MRADPS;
+    if (vel_mradps < 1) vel_mradps = 1;          /* 0 会被当成"用默认", 这里必须给正数 */
+    Link_SetYawTarget(s_target_mrad, vel_mradps);
+}
+
 void YawTrack_SetAuto(void)
 {
     s_phi_f    = 0;

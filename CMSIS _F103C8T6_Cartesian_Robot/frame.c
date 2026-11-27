@@ -20,6 +20,9 @@ void Frame_Init(FrameRx_t *q)
 
 void Frame_FeedByte(FrameRx_t *q, uint8_t c)
 {
+    /* 满则丢弃这一个新字节, 绝不覆盖还没被 Poll 取走的旧数据:
+       覆盖会让整条字节流错位, 之后所有帧都解析失败(表现为"突然全部没反应")。 */
+    if ((uint16_t)(q->wr - q->rd) >= FR_RX_SZ) return;
     q->rx[q->wr++ & (FR_RX_SZ - 1U)] = c;
 }
 

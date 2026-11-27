@@ -521,10 +521,10 @@ def main():
             cap.set(cv2.CAP_PROP_GAMMA, gam)
             print(f"  GAMMA={gam:.0f}")
         elif k == ord("b"):
-            bri = max(0.0, bri - 5.0)
+            bri = max(-64.0, bri - 5.0)
             cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
         elif k == ord("B"):
-            bri = min(255.0, bri + 5.0)
+            bri = min(64.0, bri + 5.0)
             cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
         elif k == ord("g"):
             gai = max(0.0, gai - 10.0)

@@ -449,6 +449,11 @@
               <FileType>1</FileType>
               <FilePath>.\mcu_cmd.c</FilePath>
             </File>
+            <File>
+              <FileName>auto_place.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\auto_place.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -528,6 +533,11 @@
               <FileName>mcu_cmd.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\mcu_cmd.h</FilePath>
+            </File>
+            <File>
+              <FileName>auto_place.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\auto_place.h</FilePath>
             </File>
           </Files>
         </Group>

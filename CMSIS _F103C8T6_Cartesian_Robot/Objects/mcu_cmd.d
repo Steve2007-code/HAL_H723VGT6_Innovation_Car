@@ -17,3 +17,4 @@
 .\objects\mcu_cmd.o: servo.h
 .\objects\mcu_cmd.o: backlight.h
 .\objects\mcu_cmd.o: link_config.h
+.\objects\mcu_cmd.o: auto_place.h

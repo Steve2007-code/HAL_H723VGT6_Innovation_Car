@@ -75,7 +75,9 @@ static uint16_t s_q[MAP_CELLS];         /* BFS 队列 */
   */
 /* 地图边界也要留出车体: 车半宽 137.5mm = 2.75 格, 取 3 格 = 150mm.
    原来边界完全不算障碍, 车中心可以贴到 x=2325 -> 车体右边缘 2462 探出场地. */
-#define MAP_BORDER_CELLS   3
+#define MAP_BORDER_CELLS   5     /* 2026-11-27 用户要求由 3 扩到 5 (250mm)。
+                                    实测: 6 格会把启停区变成孤岛(A* 不连通), 5 格是上限。
+                                    代价: col44 起被禁 -> R1 扫码点已从 2225 内移到 2125。 */
 
 void Map_Init(void)
 {

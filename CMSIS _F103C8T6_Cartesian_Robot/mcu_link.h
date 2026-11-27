@@ -17,9 +17,10 @@ void    Link_TxTick(void);      /* 3)+4) È¡ yaw Ä¿±ê + ×é°üÍ¶µİ TX »º³å£¨·Ç×èÈû£
 void    Link_SetYawTarget(int32_t pos_mrad, int32_t vel_mradps);
 /* »Ø´«»úĞµ±Û×´Ì¬¸ø H723: <<S,apos,bpos,ytgt,yact,trun,yman>> */
 void    Link_SendStatus(int32_t apos, int32_t bpos, int32_t ytgt, int32_t yact,
-                        int32_t trun, int32_t yman);
+                        int32_t trun, int32_t yman, int32_t step);
 int32_t Link_GetYawTarget(void);
 int32_t Link_GetYawPos(void);      /* 4340 Êµ¼Ê½Ç¶È mrad (À´×Ô A Ö¡) */
+int32_t Link_GetYawVel(void);      /* 4340 Êµ¼Ê½ÇËÙ¶È mrad/s (À´×Ô A Ö¡, ÓÃÓÚÅĞ¶ÏÍ£ÎÈ) */
 uint8_t Link_IsLost(void);
 uint8_t Link_GetKCode(void);
 

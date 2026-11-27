@@ -17,6 +17,8 @@ int32_t YawTrack_GetTargetMrad(void);
 
 /* 手动位置控制（调试末端工位用）：手动设目标角后视觉累加暂停 */
 void    YawTrack_SetManual(int32_t mrad, int32_t vel_mradps);
+/* 只改限速, 不动目标角(供 T 型加减速逐周期调速用) */
+void    YawTrack_SetManualVel(int32_t vel_mradps);
 void    YawTrack_SetAuto(void);
 uint8_t YawTrack_IsManual(void);
 

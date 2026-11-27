@@ -83,10 +83,16 @@ void QR_Init(uint32_t baud)
 
 void USART3_IRQHandler(void)
 {
-    if (USART3->SR & (1U << 5))             /* RXNE */
+    uint16_t sr = USART3->SR;
+
+    if (sr & (1U << 5))                     /* RXNE */
     {
         uint8_t c = (uint8_t)(USART3->DR & 0xFFU);
         Frame_FeedByte(&s_qr, c);
+    }
+    else if (sr & (1U << 3))                /* ORE: ¶Á DR Çå³ý, ·ÀÖ¹½ÓÊÕÍ£°Ú */
+    {
+        (void)USART3->DR;
     }
 }
 

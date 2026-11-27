@@ -28,6 +28,7 @@
 #include "servo.h"
 #include "backlight.h"
 #include "lcd.h"
+#include "auto_place.h"
 
 /* 舵机两个工位角度（实测） */
 #define SERVO_ANGLE_CLOSE   50.0f    /* 闭合 */
@@ -156,6 +157,7 @@ int main(void)
             YawTrack_Update(Track_GetDx(), Track_GetDy(), Track_GetValid());
                                         /* 3) yaw 极角闭环 + 更新 yaw 目标角 */
             Link_TxTick();              /* 3)+4) 取 yaw 目标 + 组包投递 TX 缓冲 */
+            AutoPlace_Tick();           /* 自动放料流程状态机（<<M P>> 启动） */
             Servo_Tick();               /* 舵机 20ms 帧同步推进（内部 2 分频） */
             page_tick();                /* 屏幕页面：任务码显示 5 秒后转统计页 */
         }

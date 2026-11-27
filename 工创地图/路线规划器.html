@@ -148,7 +148,7 @@
       </div>
       <div class="row" style="margin-top:6px">
         <span style="color:var(--dim);font-size:12px">边界余量</span>
-        <input type="number" id="bordIn" min="0" max="6" value="3" style="width:52px">
+        <input type="number" id="bordIn" min="0" max="6" value="5" style="width:52px">
         <span style="color:var(--dim);font-size:12px">格（1格=50mm）</span>
       </div>
       <div class="tip" id="bordTip" style="margin-top:4px">
@@ -296,7 +296,7 @@ const MAP_DEFAULT = [
 
 const N = 48, SUB = 5, N2 = N * SUB;   /* 48×48 大格 / 240×240 厘米格 */
 const MAP_MM = 2400, CELL = 50;
-let   BORDER = 3;        /* 与固件 MAP_BORDER_CELLS 一致，可在界面里改 */
+let   BORDER = 5;        /* 与固件 MAP_BORDER_CELLS 一致，可在界面里改 */
 const CLEAR  = 4;        /* 与 g_map_clear_cells 一致 */
 const EDGE_PENALTY_CELL = 5;   /* 与 AStar.c 里 dist<=5 加罚一致 */
 
@@ -1269,7 +1269,7 @@ document.getElementById('bordIn').onchange=e=>{
   const v=Math.max(0,Math.min(6,Math.round(+e.target.value||0)));
   e.target.value=v; BORDER=v;
   const tip=document.getElementById('bordTip');
-  tip.innerHTML = (v===3)
+  tip.innerHTML = (v===5)
     ? '离场地边不足这么多格的格子不允许规划（防止车体探出场地）。改了必须同步固件 <kbd>MAP_BORDER_CELLS</kbd>。'
     : `<span style="color:#fbbf24">⚠ 固件 <kbd>MAP_BORDER_CELLS</kbd> 也要改成 ${v}，否则预览和实车会不一致。</span>`;
   rebuild(); recompute(); draw(); buildMapOut();

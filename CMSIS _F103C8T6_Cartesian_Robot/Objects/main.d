@@ -18,3 +18,4 @@
 .\objects\main.o: servo.h
 .\objects\main.o: backlight.h
 .\objects\main.o: lcd.h
+.\objects\main.o: auto_place.h

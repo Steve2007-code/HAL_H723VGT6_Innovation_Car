@@ -112,7 +112,10 @@ static void s_help(void)
     printf(" M H                yaw 恢复视觉跟随\r\n");
     printf(" M G <0|1|2>        夹爪 0=合(50) 1=小开(65) 2=大开(100)\r\n");
     printf(" M L <0|1>          补光 0=关 1=开\r\n");
-    printf(" M Q                查询机械臂状态 (回 # ARM ...)\r\n");
+    printf(" M Q                查询机械臂状态 (回 # ARM ... step=流程步号)\r\n");
+    printf(" M P                启动自动放料: 依次抓 3 个物料放进车上 1/2/3 号盘\r\n");
+    printf(" M U                启动自动卸料: 依次从 3/2/1 号盘取出送回抓取位\r\n");
+    printf(" M S                中止自动流程(放料/卸料都停)\r\n");
     printf("   例: <<M A 3000 6000>>  <<M Y 90>>  <<M Y 40 120>>  <<M Q>>\r\n");
     printf("------------------------------------------\r\n");
 }
@@ -399,6 +402,9 @@ static void s_exec(char *ln, uint8_t framed)
         case 'G': case 'g': sub = 6; p++; break;   /* 夹爪 */
         case 'L': case 'l': sub = 7; p++; break;   /* 补光 */
         case 'Q': case 'q': sub = 9; p++; break;   /* 查询 */
+        case 'P': case 'p': sub = 8; p++; break;   /* 启动自动放料 */
+        case 'U': case 'u': sub = 11; p++; break;  /* 启动自动卸料 */
+        case 'S': case 's': sub = 10; p++; break;  /* 中止自动流程 */
         default: break;
         }
         if (sub == 0)
@@ -506,16 +512,22 @@ void Debug_Task(void)
         }
     }
 
+    /* M 命令没回执: 说明 F103 没收到(链路)或固件不支持该子命令 */
+    if (Link_TakeMiss())
+    {
+        printf("# 警告: F103 未回执(M 命令发出 500ms 无 S 帧) —— 检查 F103 固件版本或 UART7 链路\r\n");
+    }
+
     /* 机械臂状态回显: Link 层暂存, 这里取出打印(yaw 折成度) */
     {
-        int32_t st[6];
-        if (Link_GetArmStat(st, 6))
+        int32_t st[7];
+        if (Link_GetArmStat(st, 7))
         {
-            printf("# ARM apos=%ld bpos=%ld yaw=%.1f yact=%.1f trun=%ld yman=%ld\r\n",
+            printf("# ARM apos=%ld bpos=%ld yaw=%.1f yact=%.1f trun=%ld yman=%ld step=%ld\r\n",
                    (long)st[0], (long)st[1],
                    (double)st[2] * 0.05729578,
                    (double)st[3] * 0.05729578,
-                   (long)st[4], (long)st[5]);
+                   (long)st[4], (long)st[5], (long)st[6]);
         }
     }
 

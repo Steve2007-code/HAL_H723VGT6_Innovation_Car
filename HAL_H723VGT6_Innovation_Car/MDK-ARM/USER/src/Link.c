@@ -3,7 +3,7 @@
 #include <string.h>
 
 /* ==================== 通用成帧层 (独立实例 s_link_h723) ==================== */
-#define FR_RX_SZ    128
+#define FR_RX_SZ    256         /* 加大接收缓冲: 主循环被 printf 占用时不易溢出丢帧 */
 #define FR_BODY_SZ  32
 
 typedef struct
@@ -40,8 +40,20 @@ static uint32_t s_last_k3_ms = 0;
 static uint32_t s_last_k4_ms = 0;
 
 /* F103 回传的机械臂状态(S 帧)暂存: 协议层不下探 printf, 由 Debug_Task 取走打印 */
-static volatile int32_t s_arm[6];
+static volatile int32_t s_arm[7];
 static volatile uint8_t s_arm_new = 0;
+
+/* M 命令回执监测: 发出后超时未收到 S 帧 -> 查询类自动补发一次, 连续 3 次才告警 */
+#define LINK_M_TIMEOUT_MS   800u    /* 等回执超时(原 500ms, 放宽给 F103 更多处理时间) */
+#define LINK_M_FAIL_ALARM   3u      /* 连续几次无回执才告警, 防偶发刷屏 */
+
+static uint8_t  s_m_wait  = 0;
+static uint8_t  s_m_miss  = 0;
+static uint8_t  s_m_retry = 0;
+static uint8_t  s_m_fail  = 0;
+static uint32_t s_m_ms    = 0;
+static int32_t  s_m_sub = 0, s_m_v1 = 0, s_m_v2 = 0;
+static uint8_t  s_m_nv  = 1;
 
 /* ==================== 内部函数 ==================== */
 static uint8_t s_i32_str(char *d, int32_t v)
@@ -151,6 +163,13 @@ void Link_SendM(int32_t sub, int32_t v1, int32_t v2, uint8_t nv)
     if (nv < 1u) nv = 1u;
     if (nv > 3u) nv = 3u;
     s_emit("M", v, nv);
+    s_m_sub   = sub;             /* 记下来, 无回执时可补发 */
+    s_m_v1    = v1;
+    s_m_v2    = v2;
+    s_m_nv    = nv;
+    s_m_retry = 0;
+    s_m_wait  = 1;
+    s_m_ms    = HAL_GetTick();
     s_tx_pump();                 /* 查询能更快看到回包 */
 }
 
@@ -259,10 +278,18 @@ void Link_Init(void)
     s_send_k(1);            /* 上电就绪, 只发一次, F103 不依赖它 */
 }
 
+/* 取走"M 命令未回执"告警; 返回 1=确实发生过一次 */
+uint8_t Link_TakeMiss(void)
+{
+    uint8_t m = s_m_miss;
+    s_m_miss = 0;
+    return m;
+}
+
 /* 取走一帧机械臂状态(取走即清标志); 返回 1=有新数据 */
 uint8_t Link_GetArmStat(int32_t *out, uint8_t max)
 {
-    uint8_t i, n = 6;
+    uint8_t i, n = 7;
 
     if (!s_arm_new) return 0;
     if (n > max) n = max;
@@ -276,8 +303,14 @@ uint8_t Link_GetArmStat(int32_t *out, uint8_t max)
 
 void Link_FeedByte(uint8_t c)
 {
+    uint16_t nx = (uint16_t)((s_link_h723.wr + 1) % FR_RX_SZ);
+
+    /* 满则不写入(丢弃这一个新字节), 绝不覆盖还没被 Link_Poll 取走的旧数据:
+       覆盖会让整条字节流错位, 后续所有帧解析失败, 表现为"突然所有命令都没回执". */
+    if (nx == (uint16_t)(s_link_h723.rd % FR_RX_SZ)) return;
+
     s_link_h723.rx[s_link_h723.wr] = c;
-    s_link_h723.wr = (uint16_t)((s_link_h723.wr + 1) % FR_RX_SZ);
+    s_link_h723.wr = nx;
 }
 
 void Link_Poll(void)
@@ -368,7 +401,12 @@ void Link_Poll(void)
             s_arm[3] = v[3];                                  /* yact */
             s_arm[4] = (nf >= 5u) ? v[4] : -1;
             s_arm[5] = (nf >= 6u) ? v[5] : -1;
+            s_arm[6] = (nf >= 7u) ? v[6] : -1;      /* 自动放料流程当前步 */
             s_arm_new = 1;
+            s_m_wait  = 0;                          /* 收到回执 */
+            s_m_miss  = 0;
+            s_m_retry = 0;
+            s_m_fail  = 0;
         }
         else
         {
@@ -403,6 +441,33 @@ void Link_Poll(void)
     {
         s_last_a_ms = now;
         s_send_a();
+    }
+
+    /* 4.5) M 命令超时无回执: 查询(9)/中止(10) 幂等, 自动补发一次;
+           运动类命令不补发(重发会让轴重新起步造成顿挫)。连续 3 次失败才告警。 */
+    if (s_m_wait && (uint32_t)(now - s_m_ms) >= LINK_M_TIMEOUT_MS)
+    {
+        if (s_m_retry == 0u && (s_m_sub == 9 || s_m_sub == 10))
+        {
+            int32_t v2[3];
+            v2[0] = s_m_sub;
+            v2[1] = s_m_v1;
+            v2[2] = s_m_v2;
+            s_m_retry = 1u;
+            s_m_ms    = now;
+            s_emit("M", v2, s_m_nv);
+            s_tx_pump();
+        }
+        else
+        {
+            s_m_wait = 0;
+            if (s_m_fail < 255u) s_m_fail++;
+            if (s_m_fail >= LINK_M_FAIL_ALARM)
+            {
+                s_m_miss = 1;
+                s_m_fail = 0;
+            }
+        }
     }
 
     /* 5) TX 泵: 非阻塞 */

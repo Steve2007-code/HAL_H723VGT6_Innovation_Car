@@ -20,6 +20,7 @@
 #include "servo.h"
 #include "backlight.h"
 #include "link_config.h"
+#include "auto_place.h"
 
 #define CMD_MAX_VALS    3
 #define CMD_PPS_DEF     3000        /* 未指定速度时的默认 pps */
@@ -108,6 +109,9 @@ void Cmd_ExecSub(int32_t sub, const int32_t *v, uint8_t n)
 
     if (n > 0 && v == 0) return;
 
+    /* 手动单轴命令优先：任何 A/B/Y/T/H/G/L 指令都先中止自动放料流程 */
+    if (sub >= 1 && sub <= 7) AutoPlace_Stop();
+
     switch (sub) {
 
     case 1:                                     /* A 轴绝对位置（水平伸缩） */
@@ -156,7 +160,19 @@ void Cmd_ExecSub(int32_t sub, const int32_t *v, uint8_t n)
         Backlight_Set(v[0] ? 1 : 0);
         break;
 
+    case 8:                                     /* 启动自动放料流程 */
+        AutoPlace_Start();
+        break;
+
     case 9:                                     /* 查询：回 S 帧给 H723 */
+        break;
+
+    case 10:                                    /* 中止自动流程 */
+        AutoPlace_Stop();
+        break;
+
+    case 11:                                    /* 启动自动卸料流程 */
+        AutoUnload_Start();
         break;
 
     default:
@@ -166,11 +182,12 @@ void Cmd_ExecSub(int32_t sub, const int32_t *v, uint8_t n)
     /* 执行类命令(1~7)与查询(9)都回一帧状态:
        H723 侧一旦打印出 # ARM ... 就证明 F103 真的收到了这条命令并走完了分支,
        从而把"上位机已入队"和"下位机已执行"区分开. */
-    if (sub >= 1 && sub <= 9)
+    if (sub >= 1 && sub <= 11)
     {
         Link_SendStatus(Stepper_GetPos(AXIS_A), Stepper_GetPos(AXIS_B),
                         YawTrack_GetTargetMrad(), Link_GetYawPos(),
-                        (int32_t)Track_GetRun(), (int32_t)YawTrack_IsManual());
+                        (int32_t)Track_GetRun(), (int32_t)YawTrack_IsManual(),
+                        (int32_t)AutoPlace_GetStep());
     }
 }
 
