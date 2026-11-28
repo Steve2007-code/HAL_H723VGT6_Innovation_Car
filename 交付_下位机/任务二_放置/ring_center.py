@@ -37,7 +37,7 @@ def _kasa_fit(pts):
     return float(a), float(bb), float(np.sqrt(r2))
 
 
-def ring_center(img, box, iters=2, dark_thr=120):
+def ring_center(img, box, iters=2, dark_thr=None):
     x0, y0, x1, y1 = [int(v) for v in box[:4]]
     H, W = img.shape[:2]
     x0, y0 = max(0, x0), max(0, y0)
@@ -45,6 +45,11 @@ def ring_center(img, box, iters=2, dark_thr=120):
     if x1 - x0 < 20 or y1 - y0 < 20:
         return None
     roi = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
+    if dark_thr is None:
+        # 自适应阈值：整幅光不均时，固定 120 会把较亮那一侧的环丢掉，
+        # 拟合便朝有环的一侧偏（实测可偏 20–40 像素）。Otsu 随画面走。
+        otsu, _ = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        dark_thr = float(np.clip(otsu, 60, 200))
     m = (roi < dark_thr).astype(np.uint8) * 255
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     m = cv2.morphologyEx(m, cv2.MORPH_OPEN, k, iterations=1)

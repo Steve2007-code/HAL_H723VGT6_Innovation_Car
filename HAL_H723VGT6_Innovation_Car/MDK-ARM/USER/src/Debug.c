@@ -110,7 +110,7 @@ static void s_help(void)
     printf(" M Y <deg> [deg/s]  4340 yaw 目标角(度,-130~130,可小数) + 角速度(度/秒,0~343)\r\n");
     printf(" M T <0|1>          A 轴视觉跟随 0=停 1=开\r\n");
     printf(" M H                yaw 恢复视觉跟随\r\n");
-    printf(" M G <0|1|2>        夹爪 0=合(50) 1=小开(65) 2=大开(100)\r\n");
+    printf(" M G <0|1|2|3>      夹爪 0=合(50) 1=小开(65) 2=大开(100) 3=最大(130)\r\n");
     printf(" M L <0|1>          补光 0=关 1=开\r\n");
     printf(" M Q                查询机械臂状态 (回 # ARM ... step=流程步号)\r\n");
     printf(" M P                启动自动放料: 依次抓 3 个物料放进车上 1/2/3 号盘\r\n");

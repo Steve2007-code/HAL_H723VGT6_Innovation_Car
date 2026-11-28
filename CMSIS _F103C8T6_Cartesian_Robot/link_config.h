@@ -35,7 +35,7 @@
 #define YAW_SIGN                (1)     /* 方向符号，目标在正右方时跑反了就改 -1 */
 #define YAW_KP_Q12              2800    /* 比例项 2800/4096 约 68% (有超前量限幅兜底) */
 #define YAW_KD_Q12              5000    /* 微分阻尼(像素/帧), 随 KP 上调压抖 */
-#define YAW_ANGLE_DEAD          1       /* 像素死区 (5->1): 对准要求 ±2px, 死区必须更小 */
+#define YAW_ANGLE_DEAD          3       /* 像素死区: 对准判据 5px, 死区 3px 兼顾稳定 */
 #define YAW_RATE_MAX_MRAD       200     /* 每帧最大角度增量 mrad (30fps x 200 = 6000 mrad/s) */
 #define YAW_LPF_Q12             2048    /* 一阶低通系数 Q12，0.5 */
 #define YAW_VEL_MRADPS          6000    /* 发给 4340 的限速 6.0 rad/s (需 H723 LINK_VEL_LIM 同步放开) */

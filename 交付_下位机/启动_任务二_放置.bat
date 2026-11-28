@@ -37,7 +37,10 @@ set "RES=1280x720"
 
 rem 数字怎么读：hybrid=模型+模板互相校验（推荐）
 rem             model=只用模型    template=只用模板
-set "DIGIT_FROM=hybrid"
+rem 读数字来源：model = 只信模型（推荐，dial_v5 已够准）
+rem             hybrid = 模型+模板互校（需现场按 b 重建模板；模板旧了反而会读错）
+rem             template = 只信模板
+set "DIGIT_FROM=model"
 
 rem 置信度门槛：漏检往下调到 0.30，误检往上调到 0.50
 set "CONF=0.40"
@@ -48,11 +51,14 @@ set "TOL=15"
 rem 画面太暗 / 偏色时，在引号里填 1 打开对应预处理（可以两个都填）
 set "CLAHE="
 set "WBGRAY="
+rem 软件压暗倍数，如 0.6；留空=不压。像素已经顶到 255 时它救不回来
+set "SOFTEXP="
 rem ============================
 
 set "EXTRA="
 if defined CLAHE  set "EXTRA=%EXTRA% --clahe"
 if defined WBGRAY set "EXTRA=%EXTRA% --wb-gray"
+if defined SOFTEXP set "EXTRA=%EXTRA% --soft-exposure %SOFTEXP%"
 
 rem ---- 定位程序目录：优先根目录最新版，没有才退回"新文件"里的 11-19 旧快照 ----
 set "APPDIR=%~dp0任务二_放置"
@@ -76,9 +82,9 @@ if not exist "%APPDIR%\link.py" (
   exit /b 1
 )
 
-if not exist "%APPDIR%\dial_v3.pt" (
+if not exist "%APPDIR%\dial_v5.pt" (
   echo.
-  echo [ERROR] 缺权重 dial_v3.pt，应该在：
+  echo [ERROR] 缺权重 dial_v5.pt，应该在：
   echo         %APPDIR%\
   pause
   exit /b 1
@@ -135,7 +141,7 @@ echo   按键： q 退出并存偏移   s 存图 + 存偏移
 echo          j / l 标定点左 / 右移   i / k 上 / 下移（每下 2 像素）
 echo.
 
-"%PY%" -W ignore::SyntaxWarning zones_yolo.py --weights dial_v3.pt --cam %CAM% --res %RES% --conf %CONF% --tol %TOL% --digit-from %DIGIT_FROM% --link %LINK% --com %COM_PORT% --baud %BAUD%%EXTRA%
+"%PY%" -W ignore::SyntaxWarning zones_yolo.py --weights dial_v5.pt --cam %CAM% --res %RES% --conf %CONF% --tol %TOL% --digit-from %DIGIT_FROM% --link %LINK% --com %COM_PORT% --baud %BAUD%%EXTRA%
 
 echo.
 echo [exited] code %errorlevel%

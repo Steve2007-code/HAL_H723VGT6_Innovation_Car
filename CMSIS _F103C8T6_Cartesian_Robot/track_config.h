@@ -23,7 +23,7 @@
 #define TRACK_KP               72.0f     /* 单位 pps/px (36 -> 72, 小/中误差响应再翻倍) */
 #define TRACK_KI               0.0f
 #define TRACK_KD               0.0f
-#define TRACK_DEAD_PX          1         /* 死区(5->1): 对准要求 ±2px, 死区必须更小才压得进去 */
+#define TRACK_DEAD_PX          3         /* 死区(mrad/px): 对准判据 5px, 死区 3px 既能压进去又不持续微抖 */
 #define TRACK_OUT_MAX_PPS      12000      /* 输出限幅 (6000 -> 12000, 与 MAX_PPS 同步) */
 #define TRACK_MIN_PPS          600       /* 小误差保底速度 (300 -> 600, 微小误差也快速贴合) */
 #define TRACK_INTEG_MAX        200.0f    /* 积分抗饱和 */

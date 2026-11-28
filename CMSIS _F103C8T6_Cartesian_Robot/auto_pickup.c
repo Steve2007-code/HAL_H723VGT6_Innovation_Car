@@ -37,8 +37,8 @@
 #define PU_WAIT_TIMEOUT 12000u      /* 等对准超时(6000->12000): 2px/50帧 需要更长收敛时间 */
 #define PU_YAW_TOL      45          /* yaw 到位容差 mrad (2.6 度): 容差收紧后 35 对慢速转动更易判不到位 */
 
-#define PU_ALIGN_PX     2           /* 对准判据: |dx|、|dy| 都 <= 2 像素 */
-#define PU_ALIGN_FRAMES 50          /* 连续 50 帧满足才算对准 (30fps 约 1.7s) */
+#define PU_ALIGN_PX     5           /* 对准判据: |dx|、|dy| 都 <= 5 像素 */
+#define PU_ALIGN_FRAMES 10          /* 连续 10 帧满足才算对准 (30fps 约 0.33s) */
 
 #define PU_YAW_HOME     900         /* +90.0 度 (度x10) */
 #define PU_YAW_PARK     (-1150)     /* -115.0 度: 上电待命位 */

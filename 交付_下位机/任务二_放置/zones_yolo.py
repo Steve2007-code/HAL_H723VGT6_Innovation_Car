@@ -51,18 +51,26 @@ def load_templates(path):
     return {k: data[k] for k in data.files}
 
 
-def read_digit(img, box, tpl, mode, model_cls):
-    """按 --digit-from 决定号码来源。返回 (号码, 相似度, 与模型是否一致)。"""
+def read_digit(img, box, tpl, mode, model_cls, model_conf=1.0):
+    """按 --digit-from 决定号码来源。返回 (号码, 相似度, 与模型是否一致)。
+
+    两家不合时，光看"模板相似度 > 0.35"不够——实测有模板把"2"读成"3"、
+    而模型 0.55 读对的情形。故 hybrid 下多比一层**谁的把握大**：
+    模板要 0.55 以上、且模型自己也不到 0.60，才敢覆盖模型。
+    """
     if mode == "model" or not tpl:
         return model_cls, 1.0, True
     cx, cy, r = (box[0] + box[2]) // 2, (box[1] + box[3]) // 2, max(6, min(box[2] - box[0], box[3] - box[1]) // 2)
     name, score = classify_digit(img, (cx, cy, r), tpl)
+    if not name:
+        return model_cls, 0.0, True
+    if name == model_cls:
+        return name, score, True
     if mode == "template":
-        return name, score, (name == model_cls)
-    # hybrid：模板有把握才采信，否则听模型的
-    if name and score >= 0.35:
-        return name, score, (name == model_cls)
-    return model_cls, score, True
+        return name, score, False
+    if score >= 0.55 and model_conf < 0.60:
+        return name, score, False
+    return model_cls, score, False
 
 
 def annotate(img, dials, tpl, mode, aim=(0.0, 0.0), tol=15.0):
@@ -85,7 +93,7 @@ def annotate(img, dials, tpl, mode, aim=(0.0, 0.0), tol=15.0):
             cx, cy, how = (x0 + x1) / 2.0, (y0 + y1) / 2.0, "box"
         if not (0 <= cx < W and 0 <= cy < H):
             continue                       # 半个盘，放不了心，弃
-        num, score, agree = read_digit(img, (x0, y0, x1, y1), tpl, mode, mname)
+        num, score, agree = read_digit(img, (x0, y0, x1, y1), tpl, mode, mname, cf)
         ax, ay = cx + aim[0], cy + aim[1]
         d = ((ax - icx) ** 2 + (ay - icy) ** 2) ** 0.5
         pts.append((str(num), cx, cy, how, cf, agree, str(mname), ax, ay, d))
@@ -96,7 +104,13 @@ def annotate(img, dials, tpl, mode, aim=(0.0, 0.0), tol=15.0):
         col = (0, 255, 0) if d <= tol else (0, 165, 255)
         cv2.drawMarker(vis, (int(ax), int(ay)), col, cv2.MARKER_TILTED_CROSS, 26, 2)
         cv2.circle(vis, (int(ax), int(ay)), 8, col, 2)
-        txt = f"{num} {cf:.2f}" if agree else f"{num}!=模型{mname}"
+        if agree:
+            txt = f"{num} {cf:.2f}"
+        elif str(num) == str(mname):
+            # 模板提了异议、但最终听了模型的：号码没变，只标一下有分歧
+            txt = f"{num} {cf:.2f} [模板异议]"
+        else:
+            txt = f"{num}!=模型{mname}"
         cv2.putText(vis, txt, (x0 + 4, max(16, y0 - 6)), cv2.FONT_HERSHEY_SIMPLEX,
                     0.7, (0, 255, 255) if agree else (0, 0, 255), 2)
         if best is None or d < best[9]:
@@ -129,10 +143,21 @@ def main():
     ap.add_argument("--conf", type=float, default=0.40, help="置信度门槛")
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--tpl", default=str(here / "zones_templates.npz"))
-    ap.add_argument("--digit-from", default="hybrid", choices=["model", "template", "hybrid"])
+    ap.add_argument("--digit-from", default="model", choices=["model", "template", "hybrid"],
+                    help="默认 model：只信模型。template/hybrid 需现场重建模板才可用")
     ap.add_argument("--order", default="1,2,3", help="按 b 重建模板时，从左到右依次是几号")
     ap.add_argument("--clahe", action="store_true", help="暗场景先做 CLAHE 拉对比再推理")
-    ap.add_argument("--wb-gray", action="store_true", help="灰世界白平衡，治偏色（锁了自动白平衡时尤其需要）")
+    # 一对 store_true/store_false：BooleanOptionalAction 要 Python 3.9+，
+    # 而 bat 里那个 PY= 指向哪个解释器不由我们控制，别冒这个险
+    ap.add_argument("--wb-gray", dest="wb_gray", action="store_true", default=False,
+                    help="灰世界白平衡。只在换光/换相机后画面偏色时才开——"
+                         "模型若已在偏色帧上训过，再洗一遍反而不准")
+    ap.add_argument("--no-wb-gray", dest="wb_gray", action="store_false", help="关掉灰世界白平衡")
+    ap.add_argument("--soft-exposure", type=float, default=1.0,
+                    help="软件压暗倍数，如 0.6；像素已顶到 255 时无效")
+    ap.add_argument("--exposure", type=float, default=None, help="启动时设定曝光（-13~-1 常见）")
+    ap.add_argument("--brightness", type=float, default=None, help="启动时设定亮度")
+    ap.add_argument("--gain", type=float, default=None, help="启动时设定增益")
     ap.add_argument("--aim-dx", type=float, default=None, help="标定点相对盘心的 x 偏移（像素）")
     ap.add_argument("--aim-dy", type=float, default=None, help="标定点相对盘心的 y 偏移（像素，向下为正）")
     ap.add_argument("--aim-file", default=str(here / "aim_offset.json"), help="偏移存盘处")
@@ -170,6 +195,9 @@ def main():
             f[:, :, 1] *= k / max(g, 1e-3)
             f[:, :, 2] *= k / max(r, 1e-3)
             im = np.clip(f, 0, 255).astype(np.uint8)
+        if args.soft_exposure != 1.0:
+            # 软件压暗：只对"没顶到 255"的像素有效，已经饱和的信息救不回来
+            im = np.clip(im.astype(np.float32) * args.soft_exposure, 0, 255).astype(np.uint8)
         if args.clahe:
             lab = cv2.cvtColor(im, cv2.COLOR_BGR2LAB)
             l, a, b2 = cv2.split(lab)
@@ -236,6 +264,15 @@ def main():
                       ("gain", cv2.CAP_PROP_GAIN)):
         if key in cfg:
             cap.set(prop, float(cfg[key]))
+
+    # 命令行的 --exposure/--brightness/--gain 优先级高于存盘值：
+    # 现场临时试一组快门，不必先改 json，试对了按 s 自然就存进去了
+    for val, prop, name in ((args.exposure, cv2.CAP_PROP_EXPOSURE, "EXPOSURE"),
+                            (args.brightness, cv2.CAP_PROP_BRIGHTNESS, "BRIGHTNESS"),
+                            (args.gain, cv2.CAP_PROP_GAIN, "GAIN")):
+        if val is not None:
+            cap.set(prop, float(val))
+            print(f"  按命令行设定 {name}={val:g}")
 
     exp = cap.get(cv2.CAP_PROP_EXPOSURE)
     bri = cap.get(cv2.CAP_PROP_BRIGHTNESS)

@@ -16,22 +16,10 @@ zones_yolo.py —— YOLO 找盘 / 读号（可选），传统法精求中心
     python zones_yolo.py --weights dial_v3.pt --image 现场.jpg
     python zones_yolo.py --weights dial_v3.pt --cam 0
     python zones_yolo.py --weights dial_v3.pt --cam 0 --digit-from model
-
-窗口里的按键：
-    q / Esc   退出（退出时存标定偏移与相机参数）
-    s         存一帧图 + 存标定偏移
-    j / l     标定点左移 / 右移 2 像素（相机不在爪子正上方时用它校准）
-    i / k     标定点上移 / 下移 2 像素
-    e / E     曝光变暗 / 变亮   b / B  亮度   g / G  增益   m / M  gamma   w  锁白平衡
-    （相机参数每次改动都落盘到 camera_settings_zones.json，下次启动自动套用）
-
-屏幕左下角是"串口输出"窗口：标题显示通道与已发条数，下面是最近 4 条报文，
-最新一条亮绿。--link print 时不会真发，只上屏，用来核对报文格式。
 """
 
 import argparse
 import json
-from collections import deque
 from pathlib import Path
 
 import cv2
@@ -131,86 +119,6 @@ def _save_aim(path, dx, dy):
                           encoding="utf-8")
 
 
-def _num(v, default):
-    """cap.get() 拿到的值转 float；None / nan / 抛异常一律退回 default。"""
-    try:
-        v = float(v)
-    except (TypeError, ValueError):
-        return float(default)
-    return float(default) if v != v else v          # nan 自己不等于自己
-
-
-def _bump(cap, prop, cur, delta, name):
-    """改一个相机参数，再以"驱动实际接受的值"回读为准。
-
-    不能硬编码 0~255 去夹：实测这台相机曝光是 -13~-1，亮度读出来是 -64 而且写不进去。
-    照老代码 max(0.0, bri-5) 那套，从 -64 按 b 会跳到 0，画面反而变亮——方向都是反的。
-    所以改成写进去再回读：驱动不认就当场说明，别让人白按二十下。
-    """
-    want = cur + delta
-    try:
-        cap.set(prop, want)
-        got = _num(cap.get(prop), want)
-    except Exception as e:
-        print(f"  {name} 写不进去：{e}")
-        return cur
-    if abs(got - cur) < 1e-6:
-        print(f"  {name}={got:g} 没变化 —— 这个相机没开放这一项，实际只有 EXPOSURE(E/e) 有效")
-    else:
-        print(f"  {name} {cur:g} -> {got:g}")
-    return got
-
-
-def _panel(vis, lines, x, y, fs, colors=None, alpha=0.55, border=(0, 200, 200)):
-    """画一块半透明黑底 + 若干行文字，返回底板高度。
-
-    cv2.putText 用的是 Hershey 笔画字体，没有汉字字形，所以这里只认 ASCII，
-    塞中文进去会变成一串问号。底板是为了压住亮背景——实测白墙上一行黄字根本看不见。
-    """
-    lines = list(lines)
-    if not lines:
-        return 0
-    lh = max(16, int(fs * 38))
-    pad = max(8, int(fs * 16))
-    bw = 0
-    for s in lines:
-        (tw, _th), _ = cv2.getTextSize(s, cv2.FONT_HERSHEY_SIMPLEX, fs, 1)
-        bw = max(bw, tw)
-    bw += pad * 2 + 4          # +4：Hershey 的最后一个字符advance 偏小，不留会贴边
-    bh = lh * len(lines) + pad * 2
-    H, W = vis.shape[:2]
-    x0 = max(4, min(x, W - bw - 4))
-    y0 = max(4, min(y, H - bh - 4))
-    if x0 + bw > W or y0 + bh > H:
-        return 0
-
-    roi = vis[y0:y0 + bh, x0:x0 + bw]
-    dark = np.zeros_like(roi)
-    cv2.addWeighted(dark, alpha, roi, 1.0 - alpha, 0, roi)      # 半黑底，不全遮
-    if border is not None:
-        cv2.rectangle(vis, (x0, y0), (x0 + bw - 1, y0 + bh - 1), border, 1)
-    if colors is None:
-        colors = [(255, 255, 255)] * len(lines)
-    for i, s in enumerate(lines):
-        cv2.putText(vis, s, (x0 + pad, y0 + pad + lh * (i + 1) - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, fs, colors[i % len(colors)], 1)
-    return bh
-
-
-def _draw_tx_box(vis, lines, title, alpha=0.55):
-    """左下角的"串口输出"小终端：标题 + 最近几条报文，最新一条亮绿。"""
-    lines = list(lines)
-    body = [title] + lines
-    cols = [(0, 220, 220)]
-    for i in range(len(lines)):
-        cols.append((0, 255, 0) if i == len(lines) - 1 else (185, 185, 185))
-    H, W = vis.shape[:2]
-    fs = max(0.45, W / 2300.0)
-    lh = max(16, int(fs * 38))
-    pad = max(8, int(fs * 16))
-    _panel(vis, body, 6, H - (lh * len(body) + pad * 2) - 6, fs, cols, alpha)
-
-
 def main():
     here = Path(__file__).resolve().parent
     ap = argparse.ArgumentParser()
@@ -305,7 +213,7 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
     cap.set(cv2.CAP_PROP_AUTO_WB, 0)
 
-    # ---- 相机参数存盘：曝光 / 亮度 / 增益 / gamma，下次启动自动套用 ----
+    # ---- 相机参数（曝光/亮度/gamma/增益）存盘，下次启动自动恢复
     cfg_path = here / "camera_settings_zones.json"
 
     def _load_cfg():
@@ -322,45 +230,55 @@ def main():
             print("  参数存不下来：", e)
 
     cfg = _load_cfg()
-    for _k, _p in (("exposure", cv2.CAP_PROP_EXPOSURE),
-                   ("brightness", cv2.CAP_PROP_BRIGHTNESS),
-                   ("gain", cv2.CAP_PROP_GAIN),
-                   ("gamma", cv2.CAP_PROP_GAMMA)):
-        if _k in cfg:
-            try:
-                cap.set(_p, float(cfg[_k]))
-            except Exception:
-                pass
+    for key, prop in (("exposure", cv2.CAP_PROP_EXPOSURE),
+                      ("brightness", cv2.CAP_PROP_BRIGHTNESS),
+                      ("gamma", cv2.CAP_PROP_GAMMA),
+                      ("gain", cv2.CAP_PROP_GAIN)):
+        if key in cfg:
+            cap.set(prop, float(cfg[key]))
 
-    exp = _num(cap.get(cv2.CAP_PROP_EXPOSURE), -6.0)
-    bri = _num(cap.get(cv2.CAP_PROP_BRIGHTNESS), 128.0)
-    gai = _num(cap.get(cv2.CAP_PROP_GAIN), 0.0)
-    gam = _num(cap.get(cv2.CAP_PROP_GAMMA), 100.0)
-    if gam <= 0:
-        gam = 100.0                    # 驱动没暴露 gamma 时给个安全默认
+    exp = cap.get(cv2.CAP_PROP_EXPOSURE)
+    bri = cap.get(cv2.CAP_PROP_BRIGHTNESS)
+    gai = cap.get(cv2.CAP_PROP_GAIN)
+    gam = cap.get(cv2.CAP_PROP_GAMMA)
+    if gam is None or gam < 0:          # 驱动没暴露 gamma 时给个安全默认
+        gam = 100.0
+    print(f"初值：EXPOSURE={exp:.1f}  GAMMA={gam:.0f}  BRIGHTNESS={bri:.0f}  "
+          f"GAIN={gai:.0f}  分辨率 {w}x{h}")
 
     def remember():
         _save_cfg({"cam": args.cam, "res": f"{w}x{h}",
                    "exposure": round(float(exp), 2),
                    "brightness": round(float(bri), 1),
-                   "gain": round(float(gai), 1),
-                   "gamma": round(float(gam), 1)})
-
-    print(f"初值：EXPOSURE={exp:+.1f}  GAMMA={gam:.0f}  BRIGHTNESS={bri:.0f}  "
-          f"GAIN={gai:.0f}   分辨率 {w}x{h}")
-    print(f"参数存盘：{cfg_path.name}（每调一次自动落盘，下次启动自动套用）")
+                   "gamma": round(float(gam), 1),
+                   "gain": round(float(gai), 1)})
 
     lk = Link(args.link, com=args.com, baud=args.baud, host=args.udp_host, port=args.udp_port)
     print(f"信号通道：{lk.describe()}   协议 <<N,号码,X,dx,Y,dy>>（无目标 <<N,0,X,9999,Y,9999>>）")
     last_send = 0.0
-    send_cnt = 0
-    pkt_log = deque(maxlen=4)                                   # 屏上只留最近 4 条
-    tx_tag = f"TX {args.link}" + ("  (not sent)" if args.link == "print" else "")
     import time as _t
-    print("q 退出   s 存帧并保存偏移   j/l 左移/右移标定点   i/k 上移/下移标定点")
-    print("e 变暗 / E 变亮（曝光）   b/B 亮度   g/G 增益   m/M gamma   w 锁白平衡")
-    print("红十=盘心，橙十/绿十=标定点（绿=已对准），绿十=画面中心，左下角=串口输出")
 
+    # ---- 屏上显示真正发出去的原始报文（最近 4 帧 + 实际发送速率）
+    tx_hist = []
+    tx_n, tx_t0, tx_hz = 0, _t.time(), 0.0
+
+    def _tx(msg):
+        nonlocal tx_n, tx_t0, tx_hz
+        lk.send(msg)
+        tx_hist.append(msg)
+        if len(tx_hist) > 4:
+            del tx_hist[0]
+        tx_n += 1
+        el = _t.time() - tx_t0
+        if el >= 1.0:
+            tx_hz = tx_n / el
+            tx_n, tx_t0 = 0, _t.time()
+
+    print("q 退出   s 存帧并保存偏移   j/l 左移/右移标定点   i/k 上移/下移")
+    print("e/E 曝光   m/M gamma   b/B 亮度   g/G 增益   w 锁白平衡")
+    print("红十=盘心，橙十/绿十=标定点（绿=已对准），绿十=画面中心")
+
+    fps, prev_t = 0.0, _t.time()
     while True:
         ok, frame = cap.read()
         if not ok or frame is None:
@@ -369,42 +287,47 @@ def main():
         dials = detect_dials(model, frame, args.conf, args.imgsz)
         vis, pts, best = annotate(frame, dials, tpl, args.digit_from, (aim_x, aim_y), args.tol)
         mn = float(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).mean())
+        warn = "  DARK:add light" if mn < 80 else ("  OVER" if mn > 235 else "")
         now = _t.time()
-        pkt = None
+        dt = now - prev_t
+        prev_t = now
+        if dt > 1e-6:
+            inst = 1.0 / dt
+            fps = inst if fps == 0.0 else 0.9 * fps + 0.1 * inst
+        cv2.putText(vis, f"fps {fps:.1f}  dials {len(pts)}  exp {exp:.0f} gam {gam:.0f} "
+                         f"mean {mn:.0f}{warn}  aim({aim_x:+.0f},{aim_y:+.0f})",
+                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         if best is not None:
             num, cx, cy, how, cf, agree, mname, ax, ay, d = best
             icx, icy = vis.shape[1] / 2.0, vis.shape[0] / 2.0
-            ix, iy = int(round(ax - icx)), int(round(ay - icy))
-            if d <= args.tol:
-                if now - last_send > 0.05:            # 对准了：约 20Hz
-                    pkt = f"<<N,{num},X,{ix},Y,{iy}>>"
-                    last_send = now
-            elif now - last_send > 0.10:              # 有盘但没对准：10Hz 发无效帧
-                pkt = "<<N,0,X,9999,Y,9999>>"
+            # 符号已反转：改为"画面中心 - 标定点"，即下位机需要移动的量
+            # dx>0 → 盘在中心左侧，要往左走 dx 像素；dy>0 → 要往上走
+            ix, iy = int(round(icx - ax)), int(round(icy - ay))
+            # 看到盘就发真实偏差，不再等对准（死区交给下位机）
+            if now - last_send > 0.05:                    # 约 20Hz
+                _tx(f"<<N,{num},X,{ix},Y,{iy}>>")
                 last_send = now
-        elif now - last_send > 0.10:                  # 一个盘也没检出
-            pkt = "<<N,0,X,9999,Y,9999>>"
+        elif now - last_send > 0.10:                      # 一个盘也没检出
+            _tx("<<N,0,X,9999,Y,9999>>")
             last_send = now
-        if pkt is not None:                           # 一条报文，既真发也上屏
-            lk.send(pkt)
-            pkt_log.append(pkt)
-            send_cnt += 1
-        # ---- 顶部 HUD：固定三行，黑底垫着，压在亮背景上也看得清 ----
-        warn = "  DARK:add light" if mn < 80 else ("  OVER" if mn > 235 else "")
-        hud = [f"dials {len(pts)}  mean {mn:.0f}{warn}  aim({aim_x:+.0f},{aim_y:+.0f})"]
-        hud_col = [(0, 80, 255)]
         if best is not None:
             num, cx, cy, how, cf, agree, mname, ax, ay, d = best
-            hud.append(f"AIM #{num}  " + ("ALIGNED" if d <= args.tol else f"d={d:.0f}px"))
-            hud_col.append((0, 255, 0) if d <= args.tol else (0, 200, 255))
-        else:
-            hud.append("AIM --  no dial")
-            hud_col.append((160, 160, 160))
-        hud.append(f"exp {exp:+.1f}  bri {bri:.0f}  gain {gai:.0f}  gam {gam:.0f}")
-        hud_col.append((255, 255, 0))
-        _panel(vis, hud, 6, 6, 0.6, hud_col, alpha=0.45)
+            ok_txt = "ALIGNED" if d <= args.tol else f"d={d:.0f}px"
+            cv2.putText(vis, f"AIM #{num}  {ok_txt}",
+                        (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                        (0, 255, 0) if d <= args.tol else (0, 165, 255), 2)
 
-        _draw_tx_box(vis, pkt_log, f"{tx_tag}  n={send_cnt}")
+        # ---- 左下角：真正发出去的原始报文（最新一帧在最下面）
+        base = vis.shape[0] - 12
+        box_top = max(0, base - 108)
+        cv2.rectangle(vis, (0, box_top), (300, min(vis.shape[0] - 1, base + 8)),
+                      (0, 0, 0), -1)
+        cv2.putText(vis, f"TX  {tx_hz:.1f} Hz", (10, base - 88),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        for i, _m in enumerate(reversed(tx_hist)):
+            _c = (0, 255, 255) if "9999" in _m else (0, 255, 0)
+            cv2.putText(vis, _m, (10, base - i * 22),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.58, _c, 2)
         cv2.imshow("zones_yolo  (q quit)", vis)
         k = cv2.waitKey(1) & 0xFF
         if k in (ord("q"), 27):
@@ -418,21 +341,33 @@ def main():
         elif k == ord("k"):
             aim_y += 2
         elif k == ord("e"):
-            exp = _bump(cap, cv2.CAP_PROP_EXPOSURE, exp, -1.0, "EXPOSURE")      # 变暗
+            exp -= 1.0
+            cap.set(cv2.CAP_PROP_EXPOSURE, exp)
         elif k == ord("E"):
-            exp = _bump(cap, cv2.CAP_PROP_EXPOSURE, exp, +1.0, "EXPOSURE")      # 变亮
-        elif k == ord("b"):
-            bri = _bump(cap, cv2.CAP_PROP_BRIGHTNESS, bri, -5.0, "BRIGHTNESS")
-        elif k == ord("B"):
-            bri = _bump(cap, cv2.CAP_PROP_BRIGHTNESS, bri, +5.0, "BRIGHTNESS")
-        elif k == ord("g"):
-            gai = _bump(cap, cv2.CAP_PROP_GAIN, gai, -10.0, "GAIN")
-        elif k == ord("G"):
-            gai = _bump(cap, cv2.CAP_PROP_GAIN, gai, +10.0, "GAIN")
+            exp += 1.0
+            cap.set(cv2.CAP_PROP_EXPOSURE, exp)
         elif k == ord("m"):
-            gam = _bump(cap, cv2.CAP_PROP_GAMMA, gam, -20.0, "GAMMA")
+            gam = max(72.0, gam - 20.0)
+            cap.set(cv2.CAP_PROP_GAMMA, gam)
+            print(f"  GAMMA={gam:.0f}")
         elif k == ord("M"):
-            gam = _bump(cap, cv2.CAP_PROP_GAMMA, gam, +20.0, "GAMMA")
+            gam = min(500.0, gam + 20.0)
+            cap.set(cv2.CAP_PROP_GAMMA, gam)
+            print(f"  GAMMA={gam:.0f}")
+        elif k == ord("b"):
+            bri = max(-64.0, bri - 5.0)
+            cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
+        elif k == ord("B"):
+            bri = min(64.0, bri + 5.0)
+            cap.set(cv2.CAP_PROP_BRIGHTNESS, bri)
+        elif k == ord("g"):
+            gai = max(0.0, gai - 10.0)
+            cap.set(cv2.CAP_PROP_GAIN, gai)
+            print(f"  GAIN={gai:.0f}")
+        elif k == ord("G"):
+            gai = min(255.0, gai + 10.0)
+            cap.set(cv2.CAP_PROP_GAIN, gai)
+            print(f"  GAIN={gai:.0f}")
         elif k == ord("w"):
             cap.set(cv2.CAP_PROP_AUTO_WB, 0)
             print("  白平衡已锁定")
@@ -448,7 +383,7 @@ def main():
             print(f"  已存 {args.out}；偏移 dx={aim_x:+.0f} dy={aim_y:+.0f} → {args.aim_file}")
 
     _save_aim(args.aim_file, aim_x, aim_y)
-    remember()                             # 退出时再存一次，保住最后的相机参数
+    remember()
     lk.close()
     cap.release()
     cv2.destroyAllWindows()

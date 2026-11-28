@@ -32,6 +32,7 @@
 #define CMD_GRIP_CLOSE  50.0f   /* 状态 0: 闭合 */
 #define CMD_GRIP_OPEN   65.0f   /* 状态 1: 小开 */
 #define CMD_GRIP_WIDE   100.0f  /* 状态 2: 大开 */
+#define CMD_GRIP_MAX    130.0f  /* 状态 3: 最大开 */
 
 /* ---------- 裸机整数转字符串（不用 sprintf） ---------- */
 static char *i2s(char *p, int32_t v)
@@ -153,9 +154,10 @@ void Cmd_ExecSub(int32_t sub, const int32_t *v, uint8_t n)
         YawTrack_SetAuto();
         break;
 
-    case 6:                                     /* 夹爪: 0=合 1=小开 2=大开 */
+    case 6:                                     /* 夹爪: 0=合 1=小开 2=大开 3=最大开 */
         if (n < 1) return;
-        if      (v[0] == 2) Servo_SetAngle(CMD_GRIP_WIDE);
+        if      (v[0] == 3) Servo_SetAngle(CMD_GRIP_MAX);
+        else if (v[0] == 2) Servo_SetAngle(CMD_GRIP_WIDE);
         else if (v[0] == 1) Servo_SetAngle(CMD_GRIP_OPEN);
         else                Servo_SetAngle(CMD_GRIP_CLOSE);
         break;

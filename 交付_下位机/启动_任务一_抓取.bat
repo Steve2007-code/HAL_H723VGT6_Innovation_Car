@@ -5,7 +5,7 @@ chcp 936 >nul
 rem ====== edit these ======
 set "PY=D:\programming\python\python.exe"
 rem 串口号：换 USB 口就会变。本机只有 COM21 是真实 USB 串口，COM4/COM5 是蓝牙虚拟口
-set "COM_PORT=COM26"
+set "COM_PORT=COM27"
 set "BAUD=115200"
 set "CAM=1"
 rem 640x480 -> 30fps ; 1280x720 -> only 10fps (usb2 bandwidth limit)
@@ -13,17 +13,36 @@ set "RES=640x480"
 rem TASK color code: 1=red 2=yellow 3=blue 4=green 5=black 6=lightblue
 rem e.g. "532" = black then blue then yellow ; "4" = green only
 set "TASK=4"
+
+rem ---- 红叉(目标点)位置：相对画面中心的偏移，单位像素 ----
+rem X_OFF  正=往右，负=往左
+rem Y_OFF  正=往下，负=往上（原来的"固定上移100"就是 Y_OFF=-100）
+rem 留空 = 用上次在预览窗口里鼠标点出来的存盘值(target_point.json)
+rem 填数字 = 强制用这个值，忽略存盘值
+set "X_OFF="
+set "Y_OFF="
 rem 通道：serial = 走串口发给下位机
 rem       print  = 不开串口、不真发，报文只在窗口左下角显示（先验证识别时用）
 set "LINK=serial"
 rem free-run mode: send dx/dy as soon as the target is seen (no align wait)
 rem   TOL        huge  -> locked always true
 rem   MOTION_TOL huge  -> "turntable stopped" check disabled
+rem   MOTION_TOL 8     -> turn the check ON: send dx/dy only after the turntable stops
 rem   LOCK_FRAMES   1  -> no 3-frame confirm
 set "TOL=2000"
 set "MOTION_TOL=100000"
 set "LOCK_FRAMES=1"
+rem 连续几帧不动才算停稳；留空=用程序默认 5。只有 MOTION_TOL 调到 8 附近才有意义
+set "STILL_FRAMES="
 rem ========================
+
+rem 红叉偏移：留空则不传，交给 target_point.json 决定
+set "XARG="
+if defined STILL_FRAMES set "XARG=%XARG% --still-frames %STILL_FRAMES%"
+
+set "TOFF="
+if defined X_OFF set "TOFF=%TOFF% --target-dx %X_OFF%"
+if defined Y_OFF set "TOFF=%TOFF% --target-dy %Y_OFF%"
 
 cd /d "%~dp0"
 set "APPDIR="
@@ -69,10 +88,11 @@ echo   COM  = %COM_PORT%  @ %BAUD%
 echo   CAM  = %CAM%
 echo   TASK = %TASK%
 echo   LINK = %LINK%
+echo   OFF  = %X_OFF% / %Y_OFF%   (留空=用鼠标点出来的存盘值)
 if /i "%LINK%"=="print" echo   注意：print 模式不开串口，也不会真的发报文
 echo.
 
-"%PY%" live_detect.py --weights best.pt --cam %CAM% --res %RES% --task %TASK% --link %LINK% --com %COM_PORT% --baud %BAUD% --tol %TOL% --motion-tol %MOTION_TOL% --lock-frames %LOCK_FRAMES%
+"%PY%" live_detect.py --weights best.pt --cam %CAM% --res %RES% --task %TASK% --link %LINK% --com %COM_PORT% --baud %BAUD% --tol %TOL% --motion-tol %MOTION_TOL% --lock-frames %LOCK_FRAMES% %TOFF% %XARG%
 
 echo.
 echo [exited] code %errorlevel%

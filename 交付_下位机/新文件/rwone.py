@@ -26,7 +26,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from sixcolor import COLORS, Prototypes, classify, label_of_lab, roi_lab
+from sixcolor import COLORS, Prototypes, classify, label_of_lab, nearest_of_lab, roi_lab
 from link import Link
 from taskcode import NAMES as TASK_NAMES, Tracker, parse as parse_task
 from top_center import material_mask, top_center_edge, top_center_from_mask
@@ -69,6 +69,7 @@ def make_patches(size=22):
 
 
 _PATCHES = None
+_NEAREST = True          # 判不出颜色时是否按最近色兜底；--no-nearest-color 可关
 
 
 def draw(img, boxes, protos, votes=None):
@@ -89,6 +90,14 @@ def draw(img, boxes, protos, votes=None):
         else:
             cid = label_of_lab(vec)
 
+        # 规则判不出（返回 None）时，按最近色给一个——总比"没有颜色"强，
+        # 但要记下欠了几回，屏上也好看出是"判出来的"还是"猜出来的"
+        near = False
+        if cid is None and _NEAREST:
+            cid, _de = nearest_of_lab(vec)
+            near = True
+            votes["_near"] = votes.get("_near", 0) + 1
+
         tc = estimate_top(img, (x0, y0, x1, y1))
         if tc is not None:
             votes.setdefault("_tops", []).append((cid, tc, (x0, y0, x1, y1), conf))
@@ -108,6 +117,10 @@ def draw(img, boxes, protos, votes=None):
             tx = px + w_av + 4
         cv2.putText(img, f"{conf:.2f}", (tx, max(14, y0 - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)
+        if near:
+            # 这颜色是"猜"的：在框角打个 ≈，一眼看得出
+            cv2.putText(img, "≈", (max(2, x0 - 16), y0 + 18),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
         if tc is not None:
             cv2.drawMarker(img, (int(tc[0]), int(tc[1])), (0, 0, 255),
                            cv2.MARKER_CROSS, 16, 2)
@@ -182,10 +195,12 @@ def estimate_top(img, box):
 def main():
     here = Path(__file__).resolve().parent
     ap = argparse.ArgumentParser(description="实时检测联调")
-    ap.add_argument("--weights", default=str(here.parent / "best.pt"))
+    ap.add_argument("--weights", default=str(here / "best.pt"))
     ap.add_argument("--cam", type=int, default=None)
     ap.add_argument("--image", default=None, help="用一张静态图试，不接相机")
     ap.add_argument("--proto", default=None, help="六色原型 proto.json（可选）")
+    ap.add_argument("--nearest-color", action=argparse.BooleanOptionalAction, default=True,
+                    help="规则判不出颜色时按最近色兜底（默认开；--no-nearest-color 关）")
     ap.add_argument("--res", default=None, help="分辨率，如 1280x720；不给则用上次存下的")
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument("--imgsz", type=int, default=640)
@@ -212,6 +227,8 @@ def main():
 
     from ultralytics import YOLO
     model = YOLO(args.weights)
+    global _NEAREST
+    _NEAREST = args.nearest_color
     protos = Prototypes.load(args.proto) if args.proto else None
     if protos:
         print("已载入原型：", ", ".join(protos.name_of(c) for c in protos.ids()))
@@ -247,7 +264,7 @@ def main():
         return
 
     # 上次的相机参数（曝光/亮度/增益/分辨率），存在工创\camera_settings.json
-    cfg_path = here.parent / "camera_settings.json"
+    cfg_path = here / "camera_settings.json"
 
     def load_cfg():
         try:
@@ -284,7 +301,8 @@ def main():
         print(f"读到上次参数：{cfg}")
         for key, prop in (("exposure", cv2.CAP_PROP_EXPOSURE),
                           ("brightness", cv2.CAP_PROP_BRIGHTNESS),
-                          ("gain", cv2.CAP_PROP_GAIN)):
+                          ("gain", cv2.CAP_PROP_GAIN),
+                          ("auto_wb", cv2.CAP_PROP_AUTO_WB)):
             if key in cfg:
                 cap.set(prop, float(cfg[key]))
 
@@ -319,12 +337,8 @@ def main():
         Path(p).write_text(json.dumps({"dx": dx, "dy": dy}, ensure_ascii=False, indent=2),
                            encoding="utf-8")
 
-    aim_x, aim_y = _load_aim(args.aim_file)
-    if args.aim_dx is not None:
-        aim_x = args.aim_dx
-    if args.aim_dy is not None:
-        aim_y = args.aim_dy
-    print(f"标定点偏移：dx={aim_x:+.0f}  dy={aim_y:+.0f} 像素（对准点 = 顶心 + 此偏移）")
+    # 偏移已弃用：顶心对到画面中心即对准
+    print("对准方式：顶心对齐画面中心（不再使用标定点偏移）")
     dup_t = 0.0
     lk = Link(args.link, host=args.udp_host, port=args.udp_port,
               com=args.com, baud=args.baud)
@@ -410,8 +424,8 @@ def main():
                 tops = [t for t in tops if t[0] == tracker.target()]
 
         for cid, tc, bb, cf in tops:
-            # 标定点 = 顶心 + 偏移；对准它，爪子才落在料上（相机不在爪子正中）
-            ax, ay = tc[0] + aim_x, tc[1] + aim_y
+            # 不再要偏移：顶心对到画面中心即算对准（爪子随相机走）
+            ax, ay = tc[0], tc[1]
             d = ((ax - cx0) ** 2 + (ay - cy0) ** 2) ** 0.5
             if best is None or d < best[0]:
                 best = (d, cid, tc, (ax, ay))
@@ -485,16 +499,13 @@ def main():
         if best is not None:
             d = best[0]
             ax, ay = best[3]
-            col = (0, 255, 0) if locked else (0, 165, 255)
-            cv2.drawMarker(vis, (int(ax), int(ay)), col, cv2.MARKER_TILTED_CROSS, 26, 2)
-            cv2.circle(vis, (int(ax), int(ay)), 8, col, 2)
             if locked:
                 cv2.circle(vis, (int(ax), int(ay)), int(args.tol), (0, 255, 0), 2)
             txt = (f"LOCK {COLORS.get(best[1], '?')} d={d:.0f}px" if locked
                    else f"track d={d:.0f}px")
             if sending:
                 txt += "  >>> SEND"
-            cv2.putText(vis, txt + f"  aim({aim_x:+.0f},{aim_y:+.0f})", (10, 98),
+            cv2.putText(vis, txt, (10, 98),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.62,
                         (0, 255, 0) if sending else ((0, 255, 255) if locked else (200, 200, 200)), 2)
         cv2.imshow("live_detect  (q quit)", vis)
@@ -522,18 +533,6 @@ def main():
         elif k == ord("w"):
             cap.set(cv2.CAP_PROP_AUTO_WB, 0)
             print("  白平衡已锁定")
-        elif k == ord("j"):
-            aim_x -= 2
-            print(f"  标定点 dx={aim_x:+.0f} dy={aim_y:+.0f}")
-        elif k == ord("l"):
-            aim_x += 2
-            print(f"  标定点 dx={aim_x:+.0f} dy={aim_y:+.0f}")
-        elif k == ord("i"):
-            aim_y -= 2
-            print(f"  标定点 dx={aim_x:+.0f} dy={aim_y:+.0f}")
-        elif k == ord("k"):
-            aim_y += 2
-            print(f"  标定点 dx={aim_x:+.0f} dy={aim_y:+.0f}")
         if k == ord("t"):
             tops = votes.get("_tops", [])
             if not tops:
@@ -552,8 +551,7 @@ def main():
             for (x0, y0, x1, y1, c) in boxes:
                 lines.append(f"0 {(x0+x1)/2/W:.6f} {(y0+y1)/2/H:.6f} {(x1-x0)/W:.6f} {(y1-y0)/H:.6f}")
             Path(args.out).with_suffix(".txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-            _save_aim(args.aim_file, aim_x, aim_y)
-            print(f"  已存 {args.out} 与标签；标定点 dx={aim_x:+.0f} dy={aim_y:+.0f} → {args.aim_file}")
+            print(f"  已存 {args.out} 与标签（{len(boxes)} 个框）")
 
     remember()
     print(f"参数已存 {cfg_path.name}：EXPOSURE={exp:.1f} BRIGHTNESS={bri:.0f} GAIN={gai:.0f}（下次启动自动套用）")

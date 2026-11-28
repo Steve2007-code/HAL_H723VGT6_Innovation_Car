@@ -14,9 +14,13 @@ live_detect.py —— 实时联调：相机 → YOLO 检框 → （可选）框�
 
 屏幕上的记号：
     绿框 = 物料；框上写 置信度 /（有原型时）颜色名 + 后验概率
-    左上角 = fps、本帧框数
+    绿十字 = 画面中心（参考点，不动）
+    红叉   = 目标点（= 画面中心 + 偏移），偏差与对准都以它为准
 快捷键：
     q 退出   s 存帧（存成 live_shot.jpg，附同名 .txt 标签，可直接拿去做数据）
+    方向键 / 小键盘 8 2 4 6 = 逐像素挪红叉（每次 --target-step 像素，默认 1）
+    鼠标左键点预览窗口 = 把红叉挪到点击处
+    红叉偏移随时落盘，退出时再存一次，下次启动原样恢复
 """
 
 import argparse
@@ -26,10 +30,33 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from sixcolor import COLORS, Prototypes, classify, label_of_lab, roi_lab
+from sixcolor import (COLORS, Prototypes, classify, label_of_lab,
+                      nearest_of_lab, roi_lab)
 from link import Link
 from taskcode import NAMES as TASK_NAMES, Tracker, parse as parse_task
 from top_center import material_mask, top_center_edge, top_center_from_mask
+
+# ---- 方向键的 waitKey 返回值 ----
+# 坑：Windows 的 highgui 把方向键编成 0x250000~0x280000 这种 32 位码，
+# 而老写法 `cv2.waitKey(1) & 0xFF` 只取低字节 -> 全部变成 0，按了完全没反应。
+# 所以判断方向键必须用 waitKey 的**完整返回值**查这张表。
+# 65361~65364 是 Linux/GTK 后端的编码，顺手兼容一下。
+ARROW_KEYS = {
+    0x250000: (-1, 0),    # 左
+    0x260000: (0, -1),    # 上
+    0x270000: (1, 0),     # 右
+    0x280000: (0, 1),     # 下
+    65361: (-1, 0), 65362: (0, -1), 65363: (1, 0), 65364: (0, 1),
+}
+
+# 小键盘在 NumLock 亮着的时候，8/2/4/6 发的是普通数字键，不是方向键事件。
+# 单独映射一份，省得用户为了挪红叉还得先去关 NumLock。
+NUM_KEYS = {
+    ord("8"): (0, -1),    # 上
+    ord("2"): (0, 1),     # 下
+    ord("4"): (-1, 0),    # 左
+    ord("6"): (1, 0),     # 右
+}
 
 
 def read_image(path):
@@ -71,6 +98,7 @@ def make_patches(size=22):
 
 
 _PATCHES = None
+_NEAREST = True          # 判不出颜色时是否按最近色兜底；--no-nearest-color 可关
 
 
 def parse_cmd(payload):
@@ -139,6 +167,14 @@ def draw(img, boxes, protos, votes=None):
         else:
             cid = label_of_lab(vec)
 
+        # 规则判不出（返回 None）时，按最近色给一个——总比"没有颜色"强，
+        # 但要记下欠了几回，屏上也好看出是"判出来的"还是"猜出来的"
+        near = False
+        if cid is None and _NEAREST:
+            cid, _de = nearest_of_lab(vec)
+            near = True
+            votes["_near"] = votes.get("_near", 0) + 1
+
         tc = estimate_top(img, (x0, y0, x1, y1))
         if tc is not None:
             votes.setdefault("_tops", []).append((cid, tc, (x0, y0, x1, y1), conf))
@@ -158,6 +194,10 @@ def draw(img, boxes, protos, votes=None):
             tx = px + w_av + 4
         cv2.putText(img, f"{conf:.2f}", (tx, max(14, y0 - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)
+        if near:
+            # 这颜色是"猜"的：在框角打个 ≈，一眼看得出
+            cv2.putText(img, "≈", (max(2, x0 - 16), y0 + 18),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
         if tc is not None:
             cv2.drawMarker(img, (int(tc[0]), int(tc[1])), (0, 0, 255),
                            cv2.MARKER_CROSS, 16, 2)
@@ -236,13 +276,27 @@ def main():
     ap.add_argument("--cam", type=int, default=None)
     ap.add_argument("--image", default=None, help="用一张静态图试，不接相机")
     ap.add_argument("--proto", default=None, help="六色原型 proto.json（可选）")
+    # 用一对 store_true/store_false 而不是 BooleanOptionalAction：
+    # 后者要 Python 3.9+，这对 bat 里那个 PY= 是个没必要的隐患
+    ap.add_argument("--nearest-color", dest="nearest_color", action="store_true", default=True,
+                    help="规则判不出颜色时按最近色兜底（默认开）")
+    ap.add_argument("--no-nearest-color", dest="nearest_color", action="store_false",
+                    help="关掉最近色兜底，判不出就当没颜色")
     ap.add_argument("--res", default=None, help="分辨率，如 1280x720；不给则用上次存下的")
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--out", default="live_shot.jpg")
     ap.add_argument("--tol", type=float, default=20.0, help="顶心与目标点相差多少像素内算重合")
-    ap.add_argument("--target-up", type=float, default=100.0,
-                    help="目标点相对画面中心上移多少像素（屏上红叉；偏差与对准都以它为基准）")
+    ap.add_argument("--target-up", type=float, default=None,
+                    help="（兼容旧写法）红叉相对中心上移多少像素，等价于 --target-dy -N")
+    ap.add_argument("--target-dx", type=float, default=None,
+                    help="红叉相对画面中心的水平偏移（像素），正=右；不给则用存盘值")
+    ap.add_argument("--target-dy", type=float, default=None,
+                    help="红叉相对画面中心的垂直偏移（像素），正=下；不给则用存盘值")
+    ap.add_argument("--target-file", default=str(here / "target_point.json"),
+                    help="红叉偏移的存盘处（鼠标点一下、按方向键、按 s 都会写这里）")
+    ap.add_argument("--target-step", type=float, default=1.0,
+                    help="方向键每按一次挪几像素（默认 1）")
     ap.add_argument("--lock-frames", type=int, default=3, help="连续几帧重合才发信号")
     ap.add_argument("--motion-tol", type=float, default=8.0,
                     help="帧间位移小于此像素算静止；分辨率减半时应同步减半")
@@ -266,6 +320,8 @@ def main():
 
     from ultralytics import YOLO
     model = YOLO(args.weights)
+    global _NEAREST
+    _NEAREST = args.nearest_color
     protos = Prototypes.load(args.proto) if args.proto else None
     if protos:
         print("已载入原型：", ", ".join(protos.name_of(c) for c in protos.ids()))
@@ -332,7 +388,8 @@ def main():
     cap.set(cv2.CAP_PROP_AUTO_WB, 0)
 
     print("q 退出   s 存帧   e 变暗 / E 变亮（调曝光值）   m 变暗 / M 变亮（调 gamma）")
-    print("b/B 亮度   g/G 增益   w 锁白平衡")
+    print("b/B 亮度   g/G 增益   w 锁白平衡   i/k 标定点上下   j/l 标定点左右")
+    print(f"方向键(或小键盘8/2/4/6) 挪红叉，每次 {args.target_step:g}px；鼠标左键点一下就挪过去")
     print("（绿框=物料。曝光一动就过曝/发黑时，把曝光压在 -8 保 30fps，改用 m/M 调 gamma）")
 
     if cfg:
@@ -340,7 +397,8 @@ def main():
         for key, prop in (("exposure", cv2.CAP_PROP_EXPOSURE),
                           ("brightness", cv2.CAP_PROP_BRIGHTNESS),
                           ("gamma", cv2.CAP_PROP_GAMMA),
-                          ("gain", cv2.CAP_PROP_GAIN)):
+                          ("gain", cv2.CAP_PROP_GAIN),
+                          ("auto_wb", cv2.CAP_PROP_AUTO_WB)):
             if key in cfg:
                 cap.set(prop, float(cfg[key]))
 
@@ -350,19 +408,26 @@ def main():
     gam = cap.get(cv2.CAP_PROP_GAMMA)
     if gam is None or gam < 0:          # 驱动没暴露 gamma 时给个安全默认
         gam = 100.0
+    awb = cap.get(cv2.CAP_PROP_AUTO_WB)     # 自动白平衡状态，0=锁 1=开
+    if awb is None or awb < 0:
+        awb = 0.0
     print(f"初值：EXPOSURE={exp:.1f}  BRIGHTNESS={bri:.0f}  GAMMA={gam:.0f}  "
-          f"GAIN={gai:.0f}  分辨率 {w}x{h}")
+          f"GAIN={gai:.0f}  AWB={awb:.0f}  分辨率 {w}x{h}")
 
     def remember():
         save_cfg({"cam": args.cam, "res": f"{w}x{h}",
                   "exposure": round(float(exp), 2),
                   "brightness": round(float(bri), 1),
                   "gamma": round(float(gam), 1),
-                  "gain": round(float(gai), 1)})
+                  "gain": round(float(gai), 1),
+                  "auto_wb": round(float(awb), 1)})
 
     fps, prev = 0.0, time.time()
     locked_n = 0
     last_send = 0.0
+    prev_centers = None     # 上一帧各框中心，用来算帧间位移（判断转盘停没停）
+    still = 0               # 连续静止帧数
+    announced = False       # [停稳] 只打印一次
 
     def _load_aim(p):
         import json
@@ -383,6 +448,60 @@ def main():
     if args.aim_dy is not None:
         aim_y = args.aim_dy
     print(f"标定点偏移：dx={aim_x:+.0f}  dy={aim_y:+.0f} 像素（对准点 = 顶心 + 此偏移）")
+
+    # ---- 红叉（目标点）位置 = 画面中心 + 偏移 ----
+    # 优先级：命令行 --target-dx/--target-dy > 存盘文件 > 默认 (0, -100)
+    # 运行中在预览窗口里用鼠标点一下，红叉就挪到点击处并立刻存盘。
+    # 用 dict 传值：鼠标回调里写、主循环里读，省得跟 nonlocal 绕。
+    def _load_target(p):
+        import json
+        try:
+            d = json.loads(Path(p).read_text(encoding="utf-8"))
+            return float(d.get("dx", 0.0)), float(d.get("dy", -100.0))
+        except Exception:
+            return 0.0, -100.0
+
+    def _save_target(p, dx, dy):
+        import json
+        Path(p).write_text(json.dumps({"dx": dx, "dy": dy}, ensure_ascii=False, indent=2),
+                           encoding="utf-8")
+
+    _tdx, _tdy = _load_target(args.target_file)
+    if args.target_dx is not None:
+        _tdx = float(args.target_dx)
+    if args.target_dy is not None:
+        _tdy = float(args.target_dy)
+    elif args.target_up is not None:
+        _tdy = -float(args.target_up)      # 兼容旧写法：--target-up N 就是 --target-dy -N
+    tgt = {"dx": _tdx, "dy": _tdy}
+    dim = {"w": float(w), "h": float(h)}   # 帧实际尺寸，每帧更新，供鼠标回调换算
+
+    def _on_mouse(event, x, y, flags, param):
+        if event != cv2.EVENT_LBUTTONDOWN:
+            return
+        # 取整：不然中心是 320.0/240.0 时点出来会是 -39.5 这种半个像素，
+        # 后面方向键 +1 就变成 -38.5，看着别扭
+        tgt["dx"] = float(round(x - dim["w"] / 2.0))
+        tgt["dy"] = float(round(y - dim["h"] / 2.0))
+        _save_target(args.target_file, tgt["dx"], tgt["dy"])
+        print(f"  [红叉] 点击 ({x},{y}) -> 偏移 dx={tgt['dx']:+.0f} dy={tgt['dy']:+.0f}px"
+              f"   已存 {Path(args.target_file).name}")
+
+    TGT_STEP = float(args.target_step)
+    tgt_state = {"dirty": False, "last_save": 0.0}
+
+    def _nudge(dx, dy):
+        """方向键微调红叉。dx/dy 只取 -1/0/1，实际移动量是 TGT_STEP 像素。"""
+        tgt["dx"] = float(round(tgt["dx"] + dx * TGT_STEP))
+        tgt["dy"] = float(round(tgt["dy"] + dy * TGT_STEP))
+        # 每按一次就落盘：这样就算 Ctrl+C 硬掐、或者直接关窗口，
+        # 也不会有"按了半天白按"的情况。文件才几十字节，写起来没成本。
+        _save_target(args.target_file, tgt["dx"], tgt["dy"])
+        tgt_state["dirty"] = True      # 这个只用来控制控制台打印频率
+
+    WIN_NAME = "live_detect  (q quit, click to set red X)"
+    cv2.namedWindow(WIN_NAME, cv2.WINDOW_AUTOSIZE)
+    cv2.setMouseCallback(WIN_NAME, _on_mouse)
     dup_t = 0.0
     lk = Link(args.link, host=args.udp_host, port=args.udp_port,
               com=args.com, baud=args.baud)
@@ -396,7 +515,8 @@ def main():
     else:
         print("串口命令：<<color 3>> 换单色   <<task 156+123>> 换整串   <<color 0>> 清空目标")
         print("          <<stop>> 停止追踪（一条都不发）   <<resume>> 恢复")
-    print(f"目标点 = 画面中心上移 {args.target_up:.0f}px（屏上红叉），偏差与对准均以它为准")
+    print(f"红叉位置 = 画面中心 + dx{tgt['dx']:+.0f} dy{tgt['dy']:+.0f}px（偏差与对准都以它为准）")
+    print(f"          鼠标在预览窗口点一下即可把红叉挪过去，自动存 {Path(args.target_file).name}")
 
     # ---- 屏上显示真正发出去的原始报文（最近 4 帧 + 实际发送速率）
     tx_hist = []
@@ -440,6 +560,39 @@ def main():
         votes = {}
         vis = draw(frame, boxes, protos, votes)
 
+        # ---------------- 转盘停稳判定：看检出中心的帧间位移
+        # 转起来时（6~10 秒一圈）每帧挪二三十像素，停下不到一像素，极好分。
+        # 取中位数，免受个别坏匹配牵连；门槛默认 8px，因为框本身有 ±5px 抖动。
+        #
+        # 注意 motion-tol 给一个巨大值（bat 里就是 100000）等于**故意关掉**这项：
+        # 那种情况下 still 条件恒成立，等价于原来的"看见就发"，行为一点不变。
+        motion = None
+        if prev_centers is not None and centers and len(centers) == len(prev_centers):
+            disps = sorted(min(((c[0]-p[0])**2 + (c[1]-p[1])**2) ** 0.5 for p in prev_centers)
+                           for c in centers)
+            motion = disps[len(disps) // 2]
+            if motion < args.motion_tol:
+                still += 1
+            else:
+                still = 0
+                announced = False
+        else:
+            still = 0
+            announced = False
+        prev_centers = centers
+
+        still_check = args.motion_tol < 1e4        # 巨大值 = 关掉停稳判定
+        ready = still >= args.still_frames
+        gate_ok = ready or not still_check         # 没开停稳判定时永不拦
+
+        # 只在这项判定真的开着时才打印：关掉的时候 still 会一路累加，
+        # 每 5 帧就"停稳"一次，纯属噪声
+        if still_check and ready and not announced and motion is not None:
+            announced = True
+            print(f"\n[停稳] 检出 {len(boxes)} 只，位移 {motion:.1f} 像素")
+            for (x0, y0, x1, y1, c) in boxes:
+                print(f"   ({x0},{y0})-({x1},{y1})  conf={c:.2f}")
+
         now = time.time()
         dt = now - prev
         prev = now
@@ -479,8 +632,9 @@ def main():
 
         # ---------------- 顶心与画面中心的重合判定 → 发信号
         cx0, cy0 = vis.shape[1] / 2.0, vis.shape[0] / 2.0
-        # 目标点（红叉）= 画面中心上移 --target-up 像素。爪子不在光轴上时对准它
-        tx0, ty0 = cx0, cy0 - args.target_up
+        dim["w"], dim["h"] = float(vis.shape[1]), float(vis.shape[0])
+        # 目标点（红叉）= 画面中心 + (tgt_dx, tgt_dy)。爪子不在光轴上时对准它
+        tx0, ty0 = cx0 + tgt["dx"], cy0 + tgt["dy"]
         best = None
         tops = votes.get("_tops", [])
         if tracker is not None:
@@ -520,7 +674,7 @@ def main():
         if args.wire == "offs":
             # 协议：<<X,±dx,Y,±dy>>；无目标 <<X,9999,Y,9999>>
             # 差值一律取"目标点(红叉) - 标定点"，四舍五入成整数，不带小数点
-            ok_now = locked and locked_n >= args.lock_frames
+            ok_now = locked and locked_n >= args.lock_frames and gate_ok
             if ok_now:
                 # 符号已反转：改为"目标点 - 标定点"，即下位机需要移动的量
                 # dx>0 → 目标在红叉左侧，要往左走 dx 像素才对准
@@ -538,7 +692,7 @@ def main():
                 if now - last_send > 0.10:             # 无目标约 10Hz
                     _tx("<<X,9999,Y,9999>>")
                     last_send = now
-        elif locked and locked_n >= args.lock_frames:
+        elif locked and locked_n >= args.lock_frames and gate_ok:
             if now - last_send > 0.05:                 # 约 20Hz 上限，别把串口灌满
                 _tx(args.msg.format(id=best[1],
                                     dx=tx0 - best[2][0], dy=ty0 - best[2][1]))
@@ -554,6 +708,19 @@ def main():
         warn = "  << OVER" if m > 235 else ("  << DARK" if m < 15 else "")
         cv2.putText(vis, f"fps {fps:.1f}  obj {len(boxes)}  exp {exp:.0f} gam {gam:.0f} bri {bri:.0f} gain {gai:.0f} mean {m:.0f}{warn}",
                     (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        # 转盘状态单独一行（y=142，避开 122 的任务目标、也避开底部 TX 区）。
+        # motion-tol 给了巨大值时这里恒显示 STOPPED —— 那就是"停稳判定被关掉"的意思。
+        if not still_check:
+            _mstate, _mcol = "still-check OFF", (180, 180, 180)
+        elif ready:
+            _mstate, _mcol = "STOPPED", (0, 255, 0)
+        elif still == 0:
+            _mstate, _mcol = "MOVING", (0, 255, 255)
+        else:
+            _mstate, _mcol = "settling %d/%d" % (still, args.still_frames), (0, 255, 255)
+        _mo = "-" if motion is None else "%.0f" % motion
+        cv2.putText(vis, "motion %spx  %s" % (_mo, _mstate),
+                    (10, 142), cv2.FONT_HERSHEY_SIMPLEX, 0.6, _mcol, 2)
         # 注：OpenCV 是 BGR，(0,0,255)=红，(0,255,255)=黄，(0,255,0)=绿
 
         # 物料编号图例。编号即判色结果：1红 2黄 3蓝 4绿 5黑 6浅蓝。
@@ -567,11 +734,11 @@ def main():
 
         # 相机中心：绿十字（仅作参考）
         cv2.drawMarker(vis, (int(cx0), int(cy0)), (0, 255, 0), cv2.MARKER_CROSS, 30, 2)
-        # 目标点：红十字（中心上移 target_up 像素）——偏差与对准都以它为准
+        # 目标点：红十字（中心 + 偏移）——偏差与对准都以它为准
         cv2.drawMarker(vis, (int(tx0), int(ty0)), (0, 0, 255),
                        cv2.MARKER_TILTED_CROSS, 34, 2)
         cv2.line(vis, (int(cx0), int(cy0)), (int(tx0), int(ty0)), (0, 0, 255), 1)
-        cv2.putText(vis, f"TARGET -{args.target_up:.0f}px",
+        cv2.putText(vis, f"TARGET dx{tgt['dx']:+.0f} dy{tgt['dy']:+.0f}",
                     (int(tx0) + 14, int(ty0) - 12),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
         if tracker is not None:
@@ -610,9 +777,17 @@ def main():
             _c = (0, 255, 255) if "9999" in _m else (0, 255, 0)
             cv2.putText(vis, _m, (10, base - i * 22),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.62, _c, 2)
-        cv2.imshow("live_detect  (q quit)", vis)
-        k = cv2.waitKey(1) & 0xFF
-        if k in (ord("q"), 27):
+        cv2.imshow(WIN_NAME, vis)
+        # 方向键要用 waitKey 的**完整返回值**判断：Windows 后端把它们编成
+        # 0x250000~0x280000，一 & 0xFF 就全成 0 了，按下去毫无反应。
+        _raw = cv2.waitKey(1)
+        k = _raw & 0xFF
+        _mv = ARROW_KEYS.get(_raw)
+        if _mv is None:
+            _mv = NUM_KEYS.get(k)          # 小键盘 NumLock 亮着时按 8/2/4/6
+        if _mv is not None:
+            _nudge(_mv[0], _mv[1])
+        elif k in (ord("q"), 27):
             break
         elif k == ord("e"):
             exp -= 1.0
@@ -641,8 +816,10 @@ def main():
             gai = min(255.0, gai + 10.0)
             cap.set(cv2.CAP_PROP_GAIN, gai)
         elif k == ord("w"):
-            cap.set(cv2.CAP_PROP_AUTO_WB, 0)
-            print("  白平衡已锁定")
+            # 改成开关：偏色时开，模型见过偏色帧就关着（与 site_tune 的 w 一致）
+            awb = 0.0 if awb else 1.0
+            cap.set(cv2.CAP_PROP_AUTO_WB, awb)
+            print(f"  自动白平衡 {'开' if awb else '关（锁）'}")
         elif k == ord("j"):
             aim_x -= 2
             print(f"  标定点 dx={aim_x:+.0f} dy={aim_y:+.0f}")
@@ -665,7 +842,7 @@ def main():
                 print(f"  {COLORS.get(cid, '?'):<3} 顶心=({tc[0]:.0f},{tc[1]:.0f})"
                       f"  dx={dx:+.0f} dy={dy:+.0f} px")
         if k in (ord("e"), ord("E"), ord("b"), ord("B"), ord("g"), ord("G"),
-                 ord("m"), ord("M")):
+                 ord("m"), ord("M"), ord("w")):
             remember()                      # 每调一次便落盘，万一强退也不丢
         if k == ord("s"):
             cv2.imwrite(args.out, vis)
@@ -675,7 +852,23 @@ def main():
                 lines.append(f"0 {(x0+x1)/2/W:.6f} {(y0+y1)/2/H:.6f} {(x1-x0)/W:.6f} {(y1-y0)/H:.6f}")
             Path(args.out).with_suffix(".txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
             _save_aim(args.aim_file, aim_x, aim_y)
-            print(f"  已存 {args.out} 与标签；标定点 dx={aim_x:+.0f} dy={aim_y:+.0f} → {args.aim_file}")
+            _save_target(args.target_file, tgt["dx"], tgt["dy"])
+            print(f"  已存 {args.out} 与标签；标定点 dx={aim_x:+.0f} dy={aim_y:+.0f}"
+                  f"；红叉 dx={tgt['dx']:+.0f} dy={tgt['dy']:+.0f}"
+                  f" → {Path(args.target_file).name}")
+
+        # 方向键连按（键盘自动重复）时别每帧都往控制台刷：0.25s 最多打一行。
+        # 落盘已经在 _nudge 里做完了，这里纯粹是给眼睛看的。
+        if tgt_state["dirty"] and time.time() - tgt_state["last_save"] > 0.25:
+            tgt_state["dirty"] = False
+            tgt_state["last_save"] = time.time()
+            print(f"  [红叉] dx={tgt['dx']:+.0f} dy={tgt['dy']:+.0f}px"
+                  f"  -> {Path(args.target_file).name}")
+
+    # 退出前再存一次：不管是 q / ESC 退的，都把当前红叉偏移留下
+    _save_target(args.target_file, tgt["dx"], tgt["dy"])
+    print(f"红叉偏移已存：dx={tgt['dx']:+.0f} dy={tgt['dy']:+.0f}"
+          f" -> {Path(args.target_file).name}")
 
     remember()
     print(f"参数已存 {cfg_path.name}：EXPOSURE={exp:.1f} BRIGHTNESS={bri:.0f} GAIN={gai:.0f}（下次启动自动套用）")
